@@ -1,4 +1,5 @@
 "use client";
+import { getVisitStepActive, getStepActive, isVisitStepUnavailable } from "@/lib/adminHelpers";
 
 import { customerDrivingDirections, customerPropertyAddress } from "@/lib/customerNavigation";
 
@@ -11,7 +12,7 @@ import {
   ShieldAlert, ShieldCheck, Check, ClipboardList,
 } from "lucide-react";
 import { useAdminPageCtx } from "@/components/admin/AdminPageContext";
-import { getFollowupPrompt, getEffectiveWorkflowStatus } from "@/lib/adminHelpers";
+import { getFollowupPrompt } from "@/lib/adminHelpers";
 import { formatApptDate, formatApptTime } from "@/lib/scheduling";
 import { ScopeOfWorkPanel } from "@/components/admin/ScopeOfWorkPanel";
 import type { Lead } from "@/components/admin/types";
@@ -66,22 +67,13 @@ export function TechnicianLeadRow({ l }: { l: Lead }) {
 
   const saving = Boolean(jobBookingsSaving[leadRowKey(l)]);
   const cancelled = ["Lost", "Cancelled"].includes(l.status);
-  const workflowStatus = getEffectiveWorkflowStatus(l);
 
-  const techStepIdx = (() => {
-    const s = workflowStatus;
-    if (s === "Job En Route") return 1;
-    if (s === "Job Arrived") return 2;
-    if (s === "Job Started" || s === "Job In Progress" || s === "In Progress") return 3;
-    if (s === "Job Done" || s === "Completed" || s === "Invoice Sent" || s === "Payment Pending" || s === "Payment Received" || s === "Warranty Sent") return 4;
-    return 0;
-  })();
 
-  const isJobBookedDone = Boolean(l.jobAt) || workflowStatus === "Job Booked" || techStepIdx >= 1;
-  const isOnTheWayDone = techStepIdx >= 1;
-  const isReachedDone = techStepIdx >= 2;
-  const isStartDone = techStepIdx >= 3;
-  const isJobDoneDone = techStepIdx >= 4;
+  const isJobBookedDone = getStepActive(l, "Job Booked");
+  const isOnTheWayDone = getVisitStepActive(l, "job", "Job En Route");
+  const isReachedDone = getVisitStepActive(l, "job", "Job Arrived");
+  const isStartDone = getVisitStepActive(l, "job", "Job In Progress");
+  const isJobDoneDone = getVisitStepActive(l, "job", "Job Done");
 
   return (
     <div
@@ -281,7 +273,7 @@ export function TechnicianLeadRow({ l }: { l: Lead }) {
           <div className="grid grid-cols-4 gap-1">
             <button
               type="button"
-              disabled={saving || cancelled || isOnTheWayDone || onTheWayLoading === leadRowKey(l)}
+              disabled={saving || cancelled || isVisitStepUnavailable(l, "job", "Job En Route") || isOnTheWayDone || onTheWayLoading === leadRowKey(l)}
               onClick={() => {
                 if (isOnTheWayDone) return;
                 handleOnTheWay(l, "en_route", "job");
@@ -298,7 +290,7 @@ export function TechnicianLeadRow({ l }: { l: Lead }) {
 
             <button
               type="button"
-              disabled={saving || cancelled || isReachedDone || onTheWayLoading === leadRowKey(l)}
+              disabled={saving || cancelled || isVisitStepUnavailable(l, "job", "Job Arrived") || isReachedDone || onTheWayLoading === leadRowKey(l)}
               onClick={() => {
                 if (isReachedDone) return;
                 handleOnTheWay(l, "arrived", "job");
@@ -315,7 +307,7 @@ export function TechnicianLeadRow({ l }: { l: Lead }) {
 
             <button
               type="button"
-              disabled={saving || cancelled || isStartDone}
+              disabled={saving || cancelled || isVisitStepUnavailable(l, "job", "Job In Progress") || isStartDone}
               onClick={() => {
                 if (isStartDone) return;
                 setStartJobDays(1);
@@ -333,7 +325,7 @@ export function TechnicianLeadRow({ l }: { l: Lead }) {
 
             <button
               type="button"
-              disabled={saving || cancelled || isJobDoneDone}
+              disabled={saving || cancelled || isVisitStepUnavailable(l, "job", "Job Done") || isJobDoneDone}
               onClick={() => {
                 if (isJobDoneDone) return;
                 updateJobBooking(l, { status: "Job Done" });
@@ -408,8 +400,8 @@ export function TechnicianLeadRow({ l }: { l: Lead }) {
               )}
             </div>
             {[
-              { label: "Job In Progress", status: "Job In Progress", isDone: ["Job Started","Job In Progress","In Progress","Job Done","Completed"].includes(workflowStatus) },
-              { label: "Job Done", status: "Job Done", isDone: workflowStatus === "Job Done" || workflowStatus === "Completed" },
+              { label: "Job In Progress", status: "Job In Progress", isDone: isStartDone },
+              { label: "Job Done", status: "Job Done", isDone: isJobDoneDone },
             ].map((item) => (
               <div
                 key={item.label}

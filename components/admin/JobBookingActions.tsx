@@ -3,6 +3,7 @@
 import { Check } from "lucide-react";
 import { useAdminPageCtx } from "./AdminPageContext";
 import type { Lead } from "./types";
+import { getVisitStepActive, isVisitStepUnavailable } from "@/lib/adminHelpers";
 import { leadRowKey } from "@/lib/leadBookings";
 
 const STEPS = [
@@ -18,18 +19,18 @@ export function JobBookingActions({ lead }: { lead: Lead }) {
   const key = leadRowKey(lead);
   const saving = Boolean(jobBookingsSaving[key]);
   const blocked = saving || onTheWayLoading === key || ["Lost", "Cancelled"].includes(lead.status);
-  const current = STEPS.findIndex(step => step.status === lead.status);
   const totalDays = lead.jobTotalDays || 1;
   const daysDone = lead.jobDaysDone || 1;
 
   return <div className="space-y-2" aria-label={`Job actions for ${lead.jobAt}`} aria-busy={saving}>
     <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
       {STEPS.map((step, index) => {
-        const done = current >= index;
-        return <button key={step.status} type="button" disabled={blocked || done}
+        const done = getVisitStepActive(lead, "job", step.status);
+        const unavailable = isVisitStepUnavailable(lead, "job", step.status);
+        return <button key={step.status} type="button" disabled={blocked || unavailable || done}
           title={`${step.label} · ${lead.jobAt?.replace("T", " at ")}`}
           onClick={() => {
-            if (blocked || done) return;
+            if (blocked || unavailable || done) return;
             if (index < 2) void handleOnTheWay(lead, index === 0 ? "en_route" : "arrived", "job");
             else if (step.status === "Job In Progress") {
               setStartJobDays(lead.jobTotalDays || lead.jobWorkSegments?.length || 1);

@@ -41,7 +41,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       { staffOverride: true, retainPrevious: true, replaceStart: body.start, bookingId: booking.bookingId, statusOnly: true });
     if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.conflict ? 409 : 503 });
     const session = await verifySession(req.cookies.get(SESSION_COOKIE)?.value);
-    await appendActivity(id, { time: new Date().toISOString(), actor: session?.username || "staff", action: "Booking status changed",
+    await appendActivity(id, { time: new Date().toISOString(), actor: session?.username || "staff", action: "Booking status changed", bookingId: booking.bookingId,
       detail: `${body.type} ${body.start}: ${booking.status} → ${body.status}${Object.keys(progress).length ? ` (day ${progress.jobDaysDone ?? booking.jobDaysDone ?? 1} of ${progress.jobTotalDays ?? booking.jobTotalDays ?? 1})` : ""}` });
   }
   if (body.type === "job" && body.syncWorkflow === true && await syncJobBookingWorkflow(id)) {

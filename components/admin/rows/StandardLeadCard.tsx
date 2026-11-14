@@ -28,8 +28,8 @@ import { useAdminPageCtx } from "@/components/admin/AdminPageContext";
 import {
   getLeadQuoteTotal, getFollowupPrompt, getWhatsAppLink,
   getManualStatusOptions, visitStepsFor, INSPECTION_STEPS,
-  JOB_STEPS, STATUS_LIST, MANAGER_STATUS_OPTIONS_LIST, fmtDate, getStepActive,
-  INSPECTION_PHASE, isTerminalStatus, getEffectiveWorkflowStatus,
+  JOB_STEPS, getVisitStepActive, isVisitStepUnavailable, MANAGER_STATUS_OPTIONS_LIST, fmtDate, getStepActive,
+  isTerminalStatus, getEffectiveWorkflowStatus,
 } from "@/lib/adminHelpers";
 import { formatApptDate, formatApptTime } from "@/lib/scheduling";
 import type { Lead } from "@/components/admin/types";
@@ -388,13 +388,11 @@ export function StandardLeadCard({ l }: { l: Lead }) {
             </div>
             <div className="mb-1.5">
               {(() => {
-                const isInspectionBooked =
-                  Boolean(l.inspectionAt) ||
-                  workflowStatus === "Inspection Completed" ||
-                  INSPECTION_PHASE.includes(workflowStatus);
+                const isInspectionBooked = getStepActive(l, "Inspection Booked");
                 return (
                   <button
                     type="button"
+                    disabled={isVisitStepUnavailable(l, "inspection", "Inspection Booked")}
                     onClick={() => updateLeadField(l.id, { status: "Inspection Booked" })}
                     className={`w-full px-2 py-1.5 rounded-lg text-[11px] font-bold transition-all flex items-center justify-center gap-1 text-center leading-tight min-h-[34px] cursor-pointer ${
                       isInspectionBooked
@@ -441,31 +439,22 @@ export function StandardLeadCard({ l }: { l: Lead }) {
           {/* Inspection Live Visit */}
           {(() => {
             const steps = INSPECTION_STEPS;
-            const s = workflowStatus;
-            const sIdx = s ? STATUS_LIST.indexOf(s) : -1;
-            const currentIdx = (() => {
-              if (sIdx >= 7 || l.inspectionReport?.status === "completed" || (s && (s.startsWith("Quote") || s === "Won" || s.startsWith("Job") || s === "Scheduled" || s.startsWith("Invoice") || s.startsWith("Payment") || s.startsWith("Warranty") || s === "Completed"))) return 3;
-              if (s === "Inspection In Progress") return 2;
-              if (s === "Inspection Arrived") return 1;
-              if (s === "Inspection En Route") return 0;
-              return -1;
-            })();
             return (
               <div className="pt-0.5">
                 <label className="text-[10px] font-bold text-slate-400 block mb-1 uppercase tracking-wider">Inspection live visit</label>
                 <div className="grid grid-cols-5 gap-1">
-                  {steps.map((step, idx) => {
-                    const done = currentIdx >= 0 && idx <= currentIdx;
-                    const isNext = currentIdx === -1 ? idx === 0 : idx === currentIdx + 1;
+                  {steps.map((step) => {
+                    const done = getVisitStepActive(l, "inspection", step.status);
+                    const unavailable = isVisitStepUnavailable(l, "inspection", step.status);
                     if (step.label === "Start") {
                       return (
                         <div key={step.status + "-group"} className="contents">
                           <button
                             key={step.status}
                             type="button"
-                            disabled={done}
+                            disabled={done || unavailable}
                             onClick={() => {
-                              if (done) return;
+                              if (done || unavailable) return;
                               updateLeadField(l.id, { status: step.status });
                             }}
                             className={`px-0.5 py-1.5 rounded-lg text-[9.5px] font-bold transition-colors truncate ${
@@ -473,7 +462,7 @@ export function StandardLeadCard({ l }: { l: Lead }) {
                                 ? "bg-amber-500 text-white shadow-2xs cursor-default select-none"
                                 : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200 cursor-pointer"
                             }`}
-                            title={done ? `${step.label} (Completed)` : `Set status: ${step.status}`}
+                            title={done ? `${step.label} (Recorded)` : unavailable ? "No recorded action; workflow has already advanced" : `Set status: ${step.status}`}
                           >
                             {step.label}
                           </button>
@@ -482,9 +471,9 @@ export function StandardLeadCard({ l }: { l: Lead }) {
                             type="button"
                             onClick={() => openInspectionModal(l)}
                             className={`px-0.5 py-1.5 rounded-lg text-[9.5px] font-bold transition-colors cursor-pointer text-center leading-tight truncate ${
-                              l.inspectionReport?.status === "completed" || currentIdx >= 3 ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-2xs" : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200"
+                              l.inspectionReport?.status === "completed" ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-2xs" : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200"
                             }`}
-                            title={l.inspectionReport?.status === "completed" || currentIdx >= 3 ? "Inspection form completed" : "Open Inspection form"}
+                            title={l.inspectionReport?.status === "completed" ? "Inspection form completed" : "Open Inspection form"}
                           >
                             Inspection Form
                           </button>
@@ -498,9 +487,9 @@ export function StandardLeadCard({ l }: { l: Lead }) {
                       <button
                         key={step.status}
                         type="button"
-                        disabled={done || (isOnTheWayStep && onTheWayLoading === l.id)}
+                        disabled={done || unavailable || (isOnTheWayStep && onTheWayLoading === l.id)}
                         onClick={() => {
-                          if (done) return;
+                          if (done || unavailable) return;
                           if (isOnTheWayStep) {
                             handleOnTheWay(l, eventType, "inspection");
                           } else {
@@ -516,7 +505,7 @@ export function StandardLeadCard({ l }: { l: Lead }) {
                               : "bg-blue-600 text-white shadow-2xs cursor-default select-none"
                             : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200 cursor-pointer"
                         }`}
-                        title={done ? `${step.label} (Completed)` : `Set status: ${step.status}`}
+                        title={done ? `${step.label} (Recorded)` : unavailable ? "No recorded action; workflow has already advanced" : `Set status: ${step.status}`}
                       >
                         {isOnTheWayStep && onTheWayLoading === l.id ? "..." : step.label}
                       </button>
@@ -550,7 +539,7 @@ export function StandardLeadCard({ l }: { l: Lead }) {
           {/* Quote quick status */}
           <div className="grid grid-cols-3 gap-1.5 items-center">
             {(() => {
-              const isQuoteSent = Boolean(l.quoteNumber) || workflowStatus === "Quote Sent" || ["Won", "Job Booked", "Scheduled", "Job Confirmed", "Job En Route", "Job Arrived", "Job Started", "Job In Progress", "Job Done", "Invoice Sent", "Payment Pending", "Payment Received", "Warranty Sent", "Completed"].includes(workflowStatus);
+              const isQuoteSent = getStepActive(l, "Quote Sent");
               return (
                 <button
                   onClick={() => openQuoteModal(l)}
@@ -566,13 +555,11 @@ export function StandardLeadCard({ l }: { l: Lead }) {
               );
             })()}
             {(() => {
-              const s = workflowStatus;
-              const sIdx = s ? STATUS_LIST.indexOf(s) : -1;
-              const isJobBookedDone = (sIdx >= 12 || Boolean(l.jobAt) || Boolean(s && (s.startsWith("Job") || s === "Scheduled" || s.startsWith("Invoice") || s.startsWith("Payment") || s.startsWith("Warranty") || s === "Completed")));
+              const isJobBookedDone = getStepActive(l, "Job Booked");
               return (
                 <button
                   type="button"
-                  disabled={isJobBookedDone}
+                  disabled={isJobBookedDone || isVisitStepUnavailable(l, "job", "Job Booked")}
                   onClick={() => {
                     if (isJobBookedDone) return;
                     updateLeadField(l.id, { status: "Job Booked" });
@@ -627,22 +614,14 @@ export function StandardLeadCard({ l }: { l: Lead }) {
             Manage each job using its booking buttons below.
           </p> : (() => {
             const steps = JOB_STEPS;
-            const s = jobStatus;
-            const sIdx = s ? STATUS_LIST.indexOf(s) : -1;
-            const currentIdx = (() => {
-              if (sIdx >= 19 || (s && (s === "Job Done" || s === "Completed" || s.startsWith("Invoice") || s.startsWith("Payment") || s.startsWith("Warranty")))) return 3;
-              if (s === "Job Started" || s === "Job In Progress") return 2;
-              if (s === "Job Arrived") return 1;
-              if (s === "Job En Route") return 0;
-              return -1;
-            })();
+            const jobDone = getVisitStepActive(l, "job", "Job Done");
             return (
               <div className="pt-0.5">
                 <label className="text-[10px] font-bold text-slate-400 block mb-1 uppercase tracking-wider">Job Status</label>
                 <div className="grid grid-cols-5 gap-1">
-                  {steps.map((step, idx) => {
-                    const done = currentIdx >= 0 && idx <= currentIdx;
-                    const isNext = currentIdx === -1 ? idx === 0 : idx === currentIdx + 1;
+                  {steps.map((step) => {
+                    const done = getVisitStepActive(l, "job", step.status);
+                    const unavailable = isVisitStepUnavailable(l, "job", step.status);
                     const isJobDone = step.status === "Job Done";
                     if (step.label === "Start") {
                       return (
@@ -650,9 +629,9 @@ export function StandardLeadCard({ l }: { l: Lead }) {
                           <button
                             key={step.status}
                             type="button"
-                            disabled={done || jobSaving || jobActionsBlocked}
+                            disabled={done || unavailable || jobSaving || jobActionsBlocked}
                             onClick={() => {
-                              if (done) return;
+                              if (done || unavailable) return;
                               setStartJobDays(jobTotalDays || jobBooking?.workSegments?.length || 1);
                               setStartJobPrompt({ lead: l });
                             }}
@@ -661,24 +640,24 @@ export function StandardLeadCard({ l }: { l: Lead }) {
                                 ? "bg-amber-500 text-white shadow-2xs cursor-default select-none"
                                 : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200 cursor-pointer"
                             }`}
-                            title={done ? `${step.label} (Completed)` : `Set status: ${step.status}`}
+                            title={done ? `${step.label} (Recorded)` : unavailable ? "No recorded action; workflow has already advanced" : `Set status: ${step.status}`}
                           >
                             {step.label}
                           </button>
                           <button
                             key="job-done-inline"
                             type="button"
-                            disabled={currentIdx >= 3 || jobSaving || jobActionsBlocked}
+                            disabled={jobDone || isVisitStepUnavailable(l, "job", "Job Done") || jobSaving || jobActionsBlocked}
                             onClick={() => {
-                              if (currentIdx >= 3) return;
+                              if (jobDone) return;
                               updateJobBooking(l, { status: "Job Done" });
                             }}
                             className={`px-0.5 py-1.5 rounded-lg text-[9.5px] font-semibold transition-colors truncate ${
-                              currentIdx >= 3
+                              jobDone
                                 ? "bg-blue-600 text-white shadow-2xs cursor-default select-none"
                                 : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200 cursor-pointer"
                             }`}
-                            title={currentIdx >= 3 ? "Job Done (Completed)" : "Set: Job Done"}
+                            title={jobDone ? "Job Done (Completed)" : "Set: Job Done"}
                           >
                             Job Done
                           </button>
@@ -693,9 +672,9 @@ export function StandardLeadCard({ l }: { l: Lead }) {
                       <button
                         key={step.status}
                         type="button"
-                        disabled={done || jobSaving || jobActionsBlocked || (isYellowStep && (onTheWayLoading === jobKey || onTheWayLoading === l.id))}
+                        disabled={done || unavailable || jobSaving || jobActionsBlocked || (isYellowStep && (onTheWayLoading === jobKey || onTheWayLoading === l.id))}
                         onClick={() => {
-                          if (done) return;
+                          if (done || unavailable) return;
                           if (isYellowStep) {
                             handleOnTheWay(l, eventType, "job");
                           } else {
@@ -711,7 +690,7 @@ export function StandardLeadCard({ l }: { l: Lead }) {
                               : "bg-blue-600 text-white shadow-2xs cursor-default select-none"
                             : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200 cursor-pointer"
                         }`}
-                        title={done ? `${step.label} (Completed)` : `Set status: ${step.status}`}
+                        title={done ? `${step.label} (Recorded)` : unavailable ? "No recorded action; workflow has already advanced" : `Set status: ${step.status}`}
                       >
                         {step.label}
                       </button>
@@ -1150,7 +1129,7 @@ export function StandardLeadCard({ l }: { l: Lead }) {
               type="button"
               onClick={() => {
                 if (!confirmCompleteIfDues()) return;
-                const updates: Record<string, any> = { status: "Completed" };
+                const updates: Partial<Lead> = { status: "Completed" };
                 if (l.warrantyProvided === false || l.warranty?.provided === false) {
                   updates.warrantyProvided = false;
                   updates.warranty = { ...(l.warranty || {}), provided: false };

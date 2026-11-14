@@ -102,6 +102,7 @@ export interface WarrantyDoc {
 // A single entry in a lead's audit trail. `actor` is the staff username, or
 // "system" for automatic steps (assignment, follow-ups, timestamps).
 export interface ActivityEntry {
+  bookingId?: string;
   time: string;
   actor: string;
   action: string;
@@ -185,6 +186,8 @@ export interface SubmissionDoc {
   warranty?: WarrantyDoc;
   warrantyProvided?: boolean;
   activity?: ActivityEntry[];
+  /** Compact audit evidence supplied by dashboard reads. */
+  recordedWorkflowSteps?: Pick<ActivityEntry, "action" | "detail" | "bookingId">[];
   quoteNumber?: string;
   quoteReference?: string;
   hasCustomerQuotes?: boolean;
@@ -691,7 +694,7 @@ async function withBookings(items: SubmissionJSON[], prefetched?: Pick<Dashboard
 // Explicit read model: new stored documents/history must not silently enlarge
 // every dashboard refresh. Editors always load the complete lead separately.
 const dashboardFields = [
-  "dashboardSummary", "hasQuoteSignature", "hasCustomerUnread", "hasCustomerReplied", "type", "status",
+  "dashboardSummary", "recordedWorkflowSteps", "hasQuoteSignature", "hasCustomerUnread", "hasCustomerReplied", "type", "status",
   "previousStatus", "createdAt", "jobNo", "name", "phone", "email",
   "service", "enquiry", "message", "address", "city", "state",
   "assigned", "inspectorId", "inspectorUsername", "technician", "technicianId", "technicianUsername",
@@ -735,6 +738,11 @@ export async function listSubmissions(
       { $limit: pageSize },
       { $set: {
         dashboardSummary: true,
+        recordedWorkflowSteps: { $map: {
+          input: { $filter: { input: { $ifNull: ["$activity", []] }, as: "entry", cond: {
+            $in: ["$$entry.action", ["Status changed", "Booking status changed"]],
+          } } }, as: "entry", in: { action: "$$entry.action", detail: "$$entry.detail", bookingId: "$$entry.bookingId" },
+        } },
         hasQuoteSignature: { $ne: [{ $ifNull: ["$quoteSignature", ""] }, ""] },
         hasCustomerQuotes: { $ifNull: ["$hasCustomerQuotes", { $or: [
           { $gt: [{ $size: { $ifNull: ["$quoteItems", []] } }, 0] },

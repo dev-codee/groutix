@@ -1,4 +1,5 @@
 "use client";
+import { getVisitStepActive, getStepActive, isVisitStepUnavailable } from "@/lib/adminHelpers";
 import { InspectionBookingDates } from "../InspectionBookingDates";
 
 import { isProgressStatus } from "@/lib/adminHelpers";
@@ -13,9 +14,8 @@ import {
   ShieldAlert, ShieldCheck, Check, ChevronRight, ClipboardList,
 } from "lucide-react";
 import { useAdminPageCtx } from "@/components/admin/AdminPageContext";
-import { getManualStatusOptions, getFollowupPrompt, getWhatsAppLink, isTerminalStatus, getEffectiveWorkflowStatus } from "@/lib/adminHelpers";
+import { getManualStatusOptions, getFollowupPrompt, getWhatsAppLink, isTerminalStatus } from "@/lib/adminHelpers";
 import { formatApptDate, formatApptTime } from "@/lib/scheduling";
-import { STATUS_KEYS } from "@/lib/pipeline";
 import type { Lead } from "@/components/admin/types";
 import { useDistanceKm } from "@/lib/useDistanceKm";
 
@@ -76,25 +76,23 @@ export function IntakeLeadRow({ l }: { l: Lead }) {
     : l.service || l.notes || l.message || "3 Bathrooms | Silicone Replacement";
   const notesDisplay = l.notes || l.message;
 
-  const workflowStatus = getEffectiveWorkflowStatus(l);
-  const sIdx = workflowStatus ? STATUS_KEYS.indexOf(workflowStatus) : -1;
-  const atOrPast = (s: string) => sIdx >= 0 && sIdx >= STATUS_KEYS.indexOf(s);
+
 
   const isNewDone = true;
-  const isInspectionBookedDone = Boolean(l.inspectionAt) || atOrPast("Inspection En Route");
-  const isInspectionCompletedDone = l.inspectionReport?.status === "completed" || atOrPast("Inspection Completed");
-  const isQuoteSentDone = atOrPast("Quote Sent");
-  const isJobBookedDone = atOrPast("Job Booked");
+  const isInspectionBookedDone = getStepActive(l, "Inspection Booked");
+  const isInspectionCompletedDone = getStepActive(l, "Inspection Completed");
+  const isQuoteSentDone = getStepActive(l, "Quote Sent");
+  const isJobBookedDone = getStepActive(l, "Job Booked");
 
   // Action button "done" states
-  const isOnTheWayDone = atOrPast("Inspection En Route");
-  const isReachedDone = atOrPast("Inspection Arrived");
-  const isStartDone = atOrPast("Inspection In Progress");
-  const isInspectionFormDone = isInspectionCompletedDone;
-  const isCompleteDone = atOrPast("Inspection Completed");
+  const isOnTheWayDone = getVisitStepActive(l, "inspection", "Inspection En Route");
+  const isReachedDone = getVisitStepActive(l, "inspection", "Inspection Arrived");
+  const isStartDone = getVisitStepActive(l, "inspection", "Inspection In Progress");
+  const isInspectionFormDone = l.inspectionReport?.status === "completed";
+  const isCompleteDone = getVisitStepActive(l, "inspection", "Inspection Completed");
   const isQuoteCreatedDone = Boolean(l.quoteAmount || l.quoteItems?.length);
-  const isSentDone = atOrPast("Quote Sent");
-  const isJobBookedBtnDone = atOrPast("Job Booked");
+  const isSentDone = getStepActive(l, "Quote Sent");
+  const isJobBookedBtnDone = getStepActive(l, "Job Booked");
 
   return (
     <div
@@ -261,7 +259,7 @@ export function IntakeLeadRow({ l }: { l: Lead }) {
                 value={l.status || "New"}
                 onChange={(e) => {
                   const newStatus = e.target.value;
-                  const updates: Record<string, any> = { status: newStatus };
+                  const updates: Partial<Lead> = { status: newStatus };
                   if (isTerminalStatus(newStatus)) {
                     updates.previousStatus = l.previousStatus || l.status || "New";
                   }
@@ -390,7 +388,7 @@ export function IntakeLeadRow({ l }: { l: Lead }) {
 
             <button
               type="button"
-              disabled={isSentDone}
+              disabled={isSentDone || isVisitStepUnavailable(l, "inspection", "Quote Sent")}
               onClick={() => {
                 if (isSentDone) return;
                 updateLeadField(l.id, { status: "Quote Sent" });
@@ -407,7 +405,7 @@ export function IntakeLeadRow({ l }: { l: Lead }) {
             <div className="min-w-0">
               <button
                 type="button"
-                disabled={isJobBookedBtnDone}
+                disabled={isJobBookedBtnDone || isVisitStepUnavailable(l, "job", "Job Booked")}
                 onClick={() => {
                   if (isJobBookedBtnDone) return;
                   updateLeadField(l.id, { status: "Job Booked" });

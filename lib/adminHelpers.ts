@@ -6,6 +6,7 @@ import type { Role } from "./roles";
 import type { StageGroup } from "./pipeline";
 import { STAGES, FIELD_STATUSES, STATUS_KEYS, INTAKE_STATUSES, INSPECTION_STATUSES, TECHNICIAN_STATUSES, FINANCE_STATUSES } from "./pipeline";
 import { formatAppt } from "./scheduling";
+import { isPrimaryBooking, selectedJobBooking, leadBookings } from "./leadBookings";
 
 // ── Job number constants ──────────────────────────────────────────────────────
 export const JOB_NO_START = 1201;
@@ -457,63 +458,54 @@ export function getEffectiveWorkflowStatus(lead: Lead): string {
   return normalizeStatus(lead.status);
 }
 
+/** Exact recorded transitions only: a later stage does not prove earlier actions happened. */
+function recordedStatus(lead: Lead, status: string, type?: "inspection" | "job"): boolean {
+  const booking = type === "job" ? selectedJobBooking(lead) : type === "inspection"
+    ? leadBookings(lead).find(item => item.type === "inspection" && (lead.activeBooking?.type === "inspection"
+      ? lead.activeBooking.bookingId ? item.bookingId === lead.activeBooking.bookingId : `${item.date}T${item.time}` === lead.activeBooking.start
+      : isPrimaryBooking(lead, item))) : undefined;
+  const rawBooking = booking && lead.bookings?.find(item => booking.bookingId
+    ? item.bookingId === booking.bookingId : item.type === type && item.date === booking.date && item.time === booking.time);
+  const primary = !booking || isPrimaryBooking(lead, booking);
+  const current = type && rawBooking?.status ? rawBooking.status : getEffectiveWorkflowStatus(lead);
+  if (normalizeStatus(current) === status && (primary || Boolean(rawBooking?.status) || Boolean(lead.activeBooking))) return true;
+  const start = booking ? `${booking.date}T${booking.time}` : type === "inspection" ? lead.inspectionAt?.slice(0, 16) : undefined;
+  return [...(lead.activity || []), ...(lead.recordedWorkflowSteps || [])].some(entry => {
+    const detail = entry.detail || "";
+    if (entry.action === "Status changed" && primary) return normalizeStatus(detail.split(" → ")[1]?.trim()) === status;
+    if (entry.action !== "Booking status changed") return false;
+    // Scope booking history by identity; ambiguous legacy same-time visits cannot prove an action.
+    if (type && entry.bookingId && entry.bookingId !== booking?.bookingId) return false;
+    if (type && !entry.bookingId && (lead.bookings || []).filter(item => item.type === type && `${item.date}T${item.time}` === start).length > 1) return false;
+    if (type && (!start || !detail.startsWith(`${type} ${start}: `))) return false;
+    return normalizeStatus(detail.split(" → ")[1]?.replace(/ \(day .*$/, "").trim()) === status;
+  });
+}
+
+export function getVisitStepActive(lead: Lead, type: "inspection" | "job", status: string): boolean {
+  return recordedStatus(lead, status, type)
+    || (type === "inspection" && status === "Inspection Completed" && lead.inspectionReport?.status === "completed");
+}
+
+/** Keep skipped actions neutral without allowing an old button to rewind the workflow. */
+export function isVisitStepUnavailable(lead: Lead, type: "inspection" | "job", status: string): boolean {
+  const current = type === "job" ? selectedJobBooking(lead)?.status || getEffectiveWorkflowStatus(lead) : getEffectiveWorkflowStatus(lead);
+  const index = STATUS_LIST.indexOf(normalizeStatus(current));
+  return isTerminalStatus(lead.status) || index >= STATUS_LIST.indexOf(status);
+}
+
 export function getStepActive(lead: Lead, step: string): boolean {
-  const s = getEffectiveWorkflowStatus(lead);
   switch (step) {
-    case "New":
-      return true;
-    case "Inspection Booked":
-      return [
-        "Inspection Booked","Inspection En Route","Inspection Arrived","Inspection In Progress",
-        "Inspection Completed","Quote Pending","Quote Sent","Negotiation","Won","Job Booked",
-        "Scheduled","Job Confirmed","Job En Route","Job Arrived","Job Started","Job In Progress",
-        "Job Done","Invoice Sent","Payment Request","Payment Pending","Payment Received",
-        "Warranty Sent","Completed",
-      ].includes(s);
-    case "Inspection Completed":
-      return [
-        "Inspection Completed","Quote Pending","Quote Sent","Negotiation","Won","Job Booked",
-        "Scheduled","Job Confirmed","Job En Route","Job Arrived","Job Started","Job In Progress",
-        "Job Done","Invoice Sent","Payment Request","Payment Pending","Payment Received",
-        "Warranty Sent","Completed",
-      ].includes(s);
-    case "Quote Sent":
-      return [
-        "Quote Sent","Negotiation","Won","Job Booked","Scheduled","Job Confirmed","Job En Route",
-        "Job Arrived","Job Started","Job In Progress","Job Done","Invoice Sent","Payment Request",
-        "Payment Pending","Payment Received","Warranty Sent","Completed",
-      ].includes(s);
-    case "Job Booked":
-      return [
-        "Job Booked","Scheduled","Job Confirmed","Job En Route","Job Arrived","Job Started",
-        "Job In Progress","Job Done","Invoice Sent","Payment Request","Payment Pending",
-        "Payment Received","Warranty Sent","Completed",
-      ].includes(s);
-    case "Job Done":
-      return [
-        "Job Done","Invoice Sent","Payment Request","Payment Pending","Payment Received",
-        "Warranty Sent","Completed",
-      ].includes(s);
-    case "Invoice Sent":
-      return (
-        Boolean(lead.invoiceSentAt) ||
-        ["Invoice Sent","Payment Request","Payment Pending","Payment Received","Warranty Sent","Completed"].includes(s)
-      );
-    case "Payment Request":
-      return [
-        "Payment Request","Invoice Sent","Payment Pending","Payment Received","Warranty Sent","Completed",
-      ].includes(s);
-    case "Payment Pending":
-      return ["Payment Pending","Payment Received","Warranty Sent","Completed"].includes(s);
-    case "Payment Received":
-      return ["Payment Received","Warranty Sent","Completed"].includes(s);
+    case "New": return true;
+    case "Inspection Booked": return Boolean(lead.inspectionAt) || recordedStatus(lead, step);
+    case "Inspection Completed": return getVisitStepActive(lead, "inspection", step);
+    case "Job Booked": return Boolean(lead.jobAt) || recordedStatus(lead, step);
+    case "Job Done": return getVisitStepActive(lead, "job", step);
+    case "Quote Sent": return Boolean(lead.quoteSentAt) || recordedStatus(lead, step);
+    case "Invoice Sent": return Boolean(lead.invoiceSentAt) || recordedStatus(lead, step);
     case "Warranty":
-    case "Warranty Sent":
-      return Boolean(lead.warranty?.sentAt) || ["Warranty Sent","Completed"].includes(s);
-    case "Completed":
-      return s === "Completed";
-    default:
-      return false;
+    case "Warranty Sent": return Boolean(lead.warranty?.sentAt) || recordedStatus(lead, "Warranty Sent");
+    default: return recordedStatus(lead, normalizeStatus(step));
   }
 }
 

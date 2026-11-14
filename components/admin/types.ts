@@ -51,6 +51,7 @@ export interface WarrantyDoc {
 }
 
 export interface ActivityEntry {
+  bookingId?: string;
   time: string;
   actor: string;
   action: string;
@@ -126,6 +127,8 @@ export interface Lead {
   warranty?: WarrantyDoc;
   warrantyProvided?: boolean;
   activity?: ActivityEntry[];
+  /** Compact audit evidence supplied by dashboard reads. */
+  recordedWorkflowSteps?: Pick<ActivityEntry, "action" | "detail" | "bookingId">[];
   quoteReference?: string;
   quoteNumber?: string;
   hasCustomerQuotes?: boolean;

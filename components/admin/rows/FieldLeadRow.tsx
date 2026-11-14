@@ -1,4 +1,5 @@
 "use client";
+import { getVisitStepActive, getStepActive, isVisitStepUnavailable } from "@/lib/adminHelpers";
 import { InspectionBookingDates } from "../InspectionBookingDates";
 
 import { customerDrivingDirections, customerPropertyAddress } from "@/lib/customerNavigation";
@@ -11,7 +12,7 @@ import {
   ShieldAlert, ShieldCheck, Check, ClipboardList,
 } from "lucide-react";
 import { useAdminPageCtx } from "@/components/admin/AdminPageContext";
-import { getFollowupPrompt, getEffectiveWorkflowStatus } from "@/lib/adminHelpers";
+import { getFollowupPrompt } from "@/lib/adminHelpers";
 import { formatApptDate, formatApptTime } from "@/lib/scheduling";
 import type { Lead } from "@/components/admin/types";
 import { useDistanceKm } from "@/lib/useDistanceKm";
@@ -54,35 +55,14 @@ export function FieldLeadRow({ l }: { l: Lead }) {
     ? `${l.service} | ${l.notes || l.message}`
     : l.service || l.notes || l.message || "3 Bathrooms | Silicone Replacement";
 
-  const workflowStatus = getEffectiveWorkflowStatus(l);
-  const isInspectionBookedDone = Boolean(l.inspectionAt) || (workflowStatus && (workflowStatus.startsWith("Inspection") || workflowStatus.startsWith("Quote") || workflowStatus === "Job Booked" || workflowStatus === "Completed"));
-  const isInspectionCompletedDone = workflowStatus === "Inspection Completed" || (workflowStatus && (workflowStatus.startsWith("Quote") || workflowStatus === "Job Booked" || workflowStatus === "Completed")) || l.inspectionReport?.status === "completed";
+  const isInspectionBookedDone = getStepActive(l, "Inspection Booked");
+  const isInspectionCompletedDone = getStepActive(l, "Inspection Completed");
 
-  const inspectionStepIdx = (() => {
-    const s = workflowStatus;
-    if (!s || s === "Inspection Booked") return 0;
-    if (s === "Inspection En Route") return 1;
-    if (s === "Inspection Arrived") return 2;
-    if (s === "Inspection In Progress") return 3;
-    if (
-      s === "Inspection Completed" ||
-      l.inspectionReport?.status === "completed" ||
-      s.startsWith("Quote") ||
-      s === "Won" ||
-      s.startsWith("Job") ||
-      s === "Scheduled" ||
-      s.startsWith("Invoice") ||
-      s.startsWith("Payment") ||
-      s.startsWith("Warranty") ||
-      s === "Completed"
-    ) return 4;
-    return 0;
-  })();
 
-  const isOnTheWayDone = inspectionStepIdx >= 1;
-  const isReachedDone = inspectionStepIdx >= 2;
-  const isStartDone = inspectionStepIdx >= 3;
-  const isCompleteDone = inspectionStepIdx >= 4;
+  const isOnTheWayDone = getVisitStepActive(l, "inspection", "Inspection En Route");
+  const isReachedDone = getVisitStepActive(l, "inspection", "Inspection Arrived");
+  const isStartDone = getVisitStepActive(l, "inspection", "Inspection In Progress");
+  const isCompleteDone = getVisitStepActive(l, "inspection", "Inspection Completed");
 
   return (
     <div
@@ -244,7 +224,7 @@ export function FieldLeadRow({ l }: { l: Lead }) {
           <div className="grid grid-cols-5 gap-1">
             <button
               type="button"
-              disabled={isOnTheWayDone || onTheWayLoading === l.id}
+              disabled={isVisitStepUnavailable(l, "inspection", "Inspection En Route") || isOnTheWayDone || onTheWayLoading === l.id}
               onClick={() => {
                 if (isOnTheWayDone) return;
                 handleOnTheWay(l, "en_route", "inspection");
@@ -261,7 +241,7 @@ export function FieldLeadRow({ l }: { l: Lead }) {
 
             <button
               type="button"
-              disabled={isReachedDone || onTheWayLoading === l.id}
+              disabled={isVisitStepUnavailable(l, "inspection", "Inspection Arrived") || isReachedDone || onTheWayLoading === l.id}
               onClick={() => {
                 if (isReachedDone) return;
                 handleOnTheWay(l, "arrived", "inspection");
@@ -278,7 +258,7 @@ export function FieldLeadRow({ l }: { l: Lead }) {
 
             <button
               type="button"
-              disabled={isStartDone}
+              disabled={isVisitStepUnavailable(l, "inspection", "Inspection In Progress") || isStartDone}
               onClick={() => {
                 if (isStartDone) return;
                 updateLeadField(l.id, { status: "Inspection In Progress" });
@@ -296,7 +276,7 @@ export function FieldLeadRow({ l }: { l: Lead }) {
             <button
               type="button"
               onClick={() => openInspectionModal(l)}
-              className={`py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 flex items-center justify-center gap-1 ${l.inspectionReport?.status === "completed" || isCompleteDone ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-2xs" : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
+              className={`py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 flex items-center justify-center gap-1 ${l.inspectionReport?.status === "completed" ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-2xs" : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
               title="Inspection Form"
             >
               <ClipboardList className="w-3.5 h-3.5 shrink-0" />
@@ -305,7 +285,7 @@ export function FieldLeadRow({ l }: { l: Lead }) {
 
             <button
               type="button"
-              disabled={isCompleteDone}
+              disabled={isVisitStepUnavailable(l, "inspection", "Inspection Completed") || isCompleteDone}
               onClick={() => {
                 if (isCompleteDone) return;
                 updateLeadField(l.id, { status: "Inspection Completed" });
