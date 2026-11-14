@@ -10,7 +10,7 @@ type ManagerNote = { _id: string; text: string; secondaryText?: string; columns?
 async function authorize(req: NextRequest) {
   const session = await verifyRequestSession(req);
   if (!session) return { error: NextResponse.json({ error: "Please sign in." }, { status: 401 }) };
-  if (session.role !== "manager" && session.role !== "super_admin") return { error: NextResponse.json({ error: "Manager access required." }, { status: 403 }) };
+  if (session.role !== "manager" && session.role !== "super_admin" && session.role !== "intake") return { error: NextResponse.json({ error: "Personal notes access required." }, { status: 403 }) };
   if (!isMongoConfigured()) return { error: NextResponse.json({ error: "Database is not configured." }, { status: 503 }) };
   return { username: session.username };
 }

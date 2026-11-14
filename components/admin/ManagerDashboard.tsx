@@ -1017,7 +1017,7 @@ export function ManagerDashboard() {
       </div>
 
       {searchQuery.trim() ? <LeadsView /> : <>
-      {(role === "manager" || role === "super_admin") && <ManagerNotesCard key={username} />}
+      {(role === "manager" || role === "super_admin" || role === "intake") && <ManagerNotesCard key={username} />}
       {/* 2. Today at a Glance Container */}
       <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-4 sm:p-5 space-y-4">
         {/* Top Header Row */}
@@ -1063,7 +1063,7 @@ export function ManagerDashboard() {
 
         {/* Status Cards Grid (Compact 2-row view without scrolling) */}
         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-7 lg:grid-cols-10 xl:grid-cols-11 gap-1.5 sm:gap-2 pt-1">
-          {statusCards.map((c, i) => (
+          {(role === "intake" ? statusCards.slice(0, statusCards.findIndex(c => c.label === "Job Done") + 1) : statusCards).map((c, i) => (
             <button
               key={i}
               type="button"
@@ -1085,6 +1085,7 @@ export function ManagerDashboard() {
         </div>
       </div>
 
+      {role === "intake" ? <LeadsView /> : <>
       {/* 3. Middle Grid: 5 Core Operations Boxes in 1 Single Row */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3.5 items-stretch">
         {/* 1. Today View (Today's Schedule) */}
@@ -1762,6 +1763,7 @@ export function ManagerDashboard() {
         <div>© {new Date().getFullYear()} Groutix. All rights reserved.</div>
         <div className="text-blue-600 font-semibold">Cleaner Spaces, Healthier Homes.</div>
       </div>
+      </>}
       </>}
     </div>
   );

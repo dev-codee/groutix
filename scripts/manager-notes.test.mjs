@@ -20,7 +20,7 @@ test("personal notes persist per authenticated manager across reloads; request c
   assert.ok(a.updatedAt);
   assert.equal(store.has("other-account"), false);
 });
-test("unsigned users and non-manager roles cannot access personal manager notes", async () => {
+test("unsigned users and unsupported roles cannot access personal notes", async () => {
   assert.equal((await GET({ session: null })).status, 401);
   assert.equal((await PATCH(req("tech", "note", "technician"))).status, 403);
   assert.equal(store.has("tech"), false);
@@ -61,4 +61,11 @@ test("invalid column settings and oversized second columns are rejected", async 
   const defaults = await (await GET(req("manager-new"))).json();
   assert.equal(defaults.secondaryText, "");
   assert.equal(defaults.columns, 1);
+});
+
+test("intake personal notes persist separately from manager notes", async () => {
+  await PATCH(req("intake-a", "Call customer", "intake"));
+  const saved = await (await GET(req("intake-a", undefined, "intake"))).json();
+  assert.equal(saved.text, "Call customer");
+  assert.equal((await (await GET(req("intake-b", undefined, "intake"))).json()).text, "");
 });

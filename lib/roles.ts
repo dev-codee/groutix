@@ -29,7 +29,7 @@ export const ROLE_LABELS: Record<Role, string> = {
 export const ROLE_VIEWS: Record<Role, string[]> = {
   // Operational roles share their focused views:
   // primary board ("jobs"), completed records archive ("completed"), etc.
-  intake: ["jobs", "completed"],
+  intake: ["jobs", "leads", "inbox", "dispatch", "schedule", "completed"],
   inspection: ["jobs", "completed", "zones"],
   field: ["jobs", "completed"],
   technician: ["jobs", "completed"],
@@ -121,6 +121,7 @@ const MANAGER_ONLY_API = [
 
 export function canAccessApi(role: Role, pathname: string): boolean {
   if (role === "super_admin" || role === "manager") return true;
+  if (role === "intake" && pathname === "/api/admin/manager-notes") return true;
   return !MANAGER_ONLY_API.some(
     (p) => pathname === p || pathname.startsWith(p + "/")
   );

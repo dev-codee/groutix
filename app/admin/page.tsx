@@ -3661,7 +3661,7 @@ export default function CrmDashboardPage() {
   const scopedLeads = useMemo(() => {
     const visibleLeads = leads.filter(lead => visibleInRole(lead, role));
     const roleScoped =
-      role === "manager" || role === "super_admin"
+      role === "manager" || role === "super_admin" || role === "intake"
         ? visibleLeads
         : visibleLeads.filter((l) => {
           if (role === "technician") {
@@ -4054,7 +4054,24 @@ export default function CrmDashboardPage() {
     onlyUnread, setOnlyUnread, setPriorityFilter,
   };
 
-  const renderNavLinks = (onItemClick?: () => void) => (
+  const renderNavLinks = (onItemClick?: () => void) => role === "intake" ? (
+    <nav className="mt-4 flex flex-col gap-1">
+      {([
+        { view: "jobs", label: "Leads & Bookings", Icon: Briefcase },
+        { view: "inbox", label: "Conversation Inbox", Icon: Mail },
+        { view: "dispatch", label: "Dispatch", Icon: Truck },
+        { view: "schedule", label: "Schedule & Calendar", Icon: CalendarDays },
+        { view: "completed", label: "Completed", Icon: CheckCircle2 },
+      ] as const).map(({ view, label, Icon }) => (
+        <button key={view} type="button"
+          onClick={() => { if (view === "inbox") openInbox(); else navigateTo(view); onItemClick?.(); }}
+          className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${(currentView === view || (view === "jobs" && currentView === "leads")) ? "bg-blue-600 text-white shadow-xs" : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"}`}>
+          <span className="flex items-center gap-2.5"><Icon className="w-4 h-4" />{label}</span>
+          {view === "inbox" && unreadReplyCount > 0 && <span>{initialLoading ? "…" : unreadReplyCount}</span>}
+        </button>
+      ))}
+    </nav>
+  ) : (
     <nav className="mt-4 flex flex-col gap-1">
       {canSee("dashboard") && (
         <button
@@ -4136,9 +4153,7 @@ export default function CrmDashboardPage() {
             <Briefcase className="w-4 h-4" />
             {role === "finance"
               ? "Finance & Jobs"
-              : role === "intake"
-                ? "Leads & Bookings"
-                : role === "technician"
+              : role === "technician"
                   ? "Jobs & Work"
                   : role === "inspection" || role === "field"
                     ? "Inspections"
@@ -4150,9 +4165,7 @@ export default function CrmDashboardPage() {
           >
             {initialLoading ? "…" : (role === "finance"
               ? scopedLeads.filter((l) => isFlowInProgress(role, l.status, l)).length
-              : role === "intake"
-                ? scopedLeads.filter((l) => INTAKE_STATUSES.includes(l.status)).length
-                : role === "technician"
+              : role === "technician"
                   ? scopedLeads.filter((l) => isFlowInProgress(role, l.status, l)).length
                   : role === "inspection" || role === "field"
                     ? scopedLeads.filter((l) => isFlowInProgress(role, l.status, l)).length
@@ -4471,7 +4484,7 @@ export default function CrmDashboardPage() {
                       : currentView === "quotes"
                         ? "Quotations"
                         : currentView === "jobs"
-                          ? "Jobs & Bookings"
+                          ? (role === "intake" ? "Leads & Bookings" : "Jobs & Bookings")
                           : currentView === "completed"
                             ? "Completed Records Archive"
                             : currentView === "dispatch"
@@ -4687,7 +4700,7 @@ export default function CrmDashboardPage() {
             {/* =========================================================================
               VIEW: JOBS / BOOKINGS
              ========================================================================= */}
-            {currentView === "jobs" && canSee("jobs") && <JobsView />}
+            {currentView === "jobs" && canSee("jobs") && (role === "intake" ? <ManagerDashboard /> : <JobsView />)}
 
             {/* =========================================================================
               VIEW: COMPLETED RECORDS ARCHIVE
