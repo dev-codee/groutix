@@ -357,7 +357,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
       // A cleared primary appointment must leave no active booking record for
       // withBookings() to project back over the cleared lead fields.
       const primaryBooking = primary.bookings?.find(b => b.type === type && isPrimaryBooking(primary, b));
-      await deleteBooking(id, type, primaryBooking?.bookingId);
+      await deleteBooking(id, type, primaryBooking?.bookingId, old);
       continue;
     }
     await releaseBookingSlot(id, type, old.slice(0, 10), old.slice(11, 16), { bookingId: selectedBookingId || primary.bookings?.find(b => b.type === type && isPrimaryBooking(primary, b))?.bookingId });
