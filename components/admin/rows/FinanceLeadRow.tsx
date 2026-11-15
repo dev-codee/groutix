@@ -521,6 +521,9 @@ export function FinanceLeadRow({ l }: { l: Lead }) {
                   </button>
                 </div>
               )}
+
+            </div>
+            <div className="space-y-1">
               <SendInvoiceToQuickBooksButton lead={l} onChooseInvoice={openInvoiceModal} />
             </div>
             <button
