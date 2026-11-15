@@ -352,9 +352,15 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
   for (const type of ["inspection", "job"] as const) {
     const field = type === "job" ? "jobAt" : "inspectionAt";
     const old = before[field]?.slice(0, 16);
-    if (!appendBooking && old && field in body && body[field]?.slice(0, 16) !== old) {
-      await releaseBookingSlot(id, type, old.slice(0, 10), old.slice(11, 16), { bookingId: selectedBookingId || primary.bookings?.find(b => b.type === type && isPrimaryBooking(primary, b))?.bookingId });
+    if (appendBooking || !old || !(field in body) || body[field]?.slice(0, 16) === old) continue;
+    if (!body[field]) {
+      // A cleared primary appointment must leave no active booking record for
+      // withBookings() to project back over the cleared lead fields.
+      const primaryBooking = primary.bookings?.find(b => b.type === type && isPrimaryBooking(primary, b));
+      await deleteBooking(id, type, primaryBooking?.bookingId);
+      continue;
     }
+    await releaseBookingSlot(id, type, old.slice(0, 10), old.slice(11, 16), { bookingId: selectedBookingId || primary.bookings?.find(b => b.type === type && isPrimaryBooking(primary, b))?.bookingId });
   }
 
   // Automatic step: write an audit-trail entry for meaningful staff changes.
