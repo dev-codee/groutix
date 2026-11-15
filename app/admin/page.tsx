@@ -1,4 +1,6 @@
 "use client";
+import { EmailBodyEditor, type EmailBodyEditorHandle } from "@/components/admin/EmailBodyEditor";
+import { formatEmailReplyToHtml } from "@/lib/emailReplyFormatting";
 
 import { publishCrmChange, subscribeCrmChanges } from "@/lib/crmChanges";
 import { financeFilterStatus, financeWorkVisible, releaseFinanceCompletions, type FinanceCompletionHolds } from "@/lib/financeCompletion";
@@ -574,7 +576,7 @@ export default function CrmDashboardPage() {
   const [replySubject, setReplySubject] = useState("");
   const [selectedTemplateId, setSelectedTemplateId] = useState("");
   const [replyText, setReplyText] = useState("");
-  const replyBodyRef = useRef<HTMLTextAreaElement | null>(null);
+  const replyBodyRef = useRef<EmailBodyEditorHandle | null>(null);
   const [replyPreviewMode, setReplyPreviewMode] = useState(false);
   // Files staged to email along with the next reply. `content` is base64 for the
   // API; the rest is metadata used for the chip UI and the logged message.
@@ -2652,8 +2654,9 @@ export default function CrmDashboardPage() {
     type: "bold" | "italic" | "underline" | "h2" | "h3" | "bullet" | "number" | "link" | "hr",
     target: "template" | "reply"
   ) {
+    if (target === "reply") { replyBodyRef.current?.format(type); return; }
     const isTemplate = target === "template";
-    const el = isTemplate ? templateBodyRef.current : replyBodyRef.current;
+    const el = templateBodyRef.current;
     const currentVal = isTemplate ? formBody : replyText;
     const setter = isTemplate ? setFormBody : setReplyText;
 
@@ -6451,6 +6454,8 @@ export default function CrmDashboardPage() {
                               <div className="space-y-1">
                                 {isCustomerEmail && msg.channel === "email" ? (
                                   <EmailMessageText text={cleanText} attachments={msg.attachments} />
+                                ) : !isCustomer && msg.channel === "email" ? (
+                                  <div className="leading-relaxed [&_ul]:list-disc [&_ol]:list-decimal" dangerouslySetInnerHTML={{ __html: formatEmailReplyToHtml(cleanText) }} />
                                 ) : <div className="whitespace-pre-wrap leading-relaxed">{cleanText}</div>}
                                 {hasQuoted && (
                                   <details className="mt-1 text-[10px] text-slate-400">
@@ -6974,7 +6979,7 @@ export default function CrmDashboardPage() {
                               type="button"
                               onClick={() => applyTextFormatting("bold", "reply")}
                               className="p-1.5 bg-white hover:bg-slate-200 border border-slate-200 rounded text-slate-800 transition cursor-pointer"
-                              title="Bold (**text**)"
+                              title="Bold"
                             >
                               <Bold className="w-3.5 h-3.5" />
                             </button>
@@ -6982,7 +6987,7 @@ export default function CrmDashboardPage() {
                               type="button"
                               onClick={() => applyTextFormatting("italic", "reply")}
                               className="p-1.5 bg-white hover:bg-slate-200 border border-slate-200 rounded text-slate-800 transition cursor-pointer"
-                              title="Italic (*text*)"
+                              title="Italic"
                             >
                               <Italic className="w-3.5 h-3.5" />
                             </button>
@@ -6990,7 +6995,7 @@ export default function CrmDashboardPage() {
                               type="button"
                               onClick={() => applyTextFormatting("underline", "reply")}
                               className="p-1.5 bg-white hover:bg-slate-200 border border-slate-200 rounded text-slate-800 transition cursor-pointer"
-                              title="Underline (<u>text</u>)"
+                              title="Underline"
                             >
                               <Underline className="w-3.5 h-3.5" />
                             </button>
@@ -6999,7 +7004,7 @@ export default function CrmDashboardPage() {
                               type="button"
                               onClick={() => applyTextFormatting("h2", "reply")}
                               className="px-2 py-1 bg-white hover:bg-slate-200 border border-slate-200 rounded font-black text-slate-800 text-[11px] transition cursor-pointer"
-                              title="Heading 2 (## Heading)"
+                              title="Heading 2"
                             >
                               H2
                             </button>
@@ -7007,7 +7012,7 @@ export default function CrmDashboardPage() {
                               type="button"
                               onClick={() => applyTextFormatting("h3", "reply")}
                               className="px-2 py-1 bg-white hover:bg-slate-200 border border-slate-200 rounded font-bold text-slate-800 text-[11px] transition cursor-pointer"
-                              title="Heading 3 (### Heading)"
+                              title="Heading 3"
                             >
                               H3
                             </button>
@@ -7016,7 +7021,7 @@ export default function CrmDashboardPage() {
                               type="button"
                               onClick={() => applyTextFormatting("bullet", "reply")}
                               className="p-1.5 bg-white hover:bg-slate-200 border border-slate-200 rounded text-slate-800 transition cursor-pointer"
-                              title="Bullet list (• Item)"
+                              title="Bullet list"
                             >
                               <List className="w-3.5 h-3.5" />
                             </button>
@@ -7024,7 +7029,7 @@ export default function CrmDashboardPage() {
                               type="button"
                               onClick={() => applyTextFormatting("number", "reply")}
                               className="p-1.5 bg-white hover:bg-slate-200 border border-slate-200 rounded text-slate-800 transition cursor-pointer"
-                              title="Numbered list (1. Item)"
+                              title="Numbered list"
                             >
                               <ListOrdered className="w-3.5 h-3.5" />
                             </button>
@@ -7032,7 +7037,7 @@ export default function CrmDashboardPage() {
                               type="button"
                               onClick={() => applyTextFormatting("link", "reply")}
                               className="p-1.5 bg-white hover:bg-slate-200 border border-slate-200 rounded text-slate-800 transition cursor-pointer"
-                              title="Insert Link ([Text](https://...))"
+                              title="Insert link"
                             >
                               <Link2 className="w-3.5 h-3.5" />
                             </button>
@@ -7040,7 +7045,7 @@ export default function CrmDashboardPage() {
                               type="button"
                               onClick={() => applyTextFormatting("hr", "reply")}
                               className="p-1.5 bg-white hover:bg-slate-200 border border-slate-200 rounded text-slate-800 transition cursor-pointer"
-                              title="Horizontal line (---)"
+                              title="Horizontal line"
                             >
                               <Minus className="w-3.5 h-3.5" />
                             </button>
@@ -7049,14 +7054,7 @@ export default function CrmDashboardPage() {
                             </span>
                           </div>
 
-                          <textarea
-                            ref={replyBodyRef}
-                            rows={6}
-                            placeholder="Type your email message or pick a template from the dropdown above..."
-                            value={replyText}
-                            onChange={(e) => setReplyText(e.target.value)}
-                            className="w-full p-3 text-xs border border-slate-200 rounded-b-xl border-t-0 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 leading-relaxed font-sans resize-y min-h-[100px]"
-                          />
+                          <EmailBodyEditor ref={replyBodyRef} value={replyText} onChange={setReplyText} />
                         </div>
                       ) : (
                         /* Lead drawer Branded email preview */
@@ -7075,7 +7073,7 @@ export default function CrmDashboardPage() {
                               {replyText.trim() ? (
                                 <div
                                   dangerouslySetInnerHTML={{
-                                    __html: formatEmailContentToHtml(replyText),
+                                    __html: formatEmailReplyToHtml(replyText),
                                   }}
                                 />
                               ) : (

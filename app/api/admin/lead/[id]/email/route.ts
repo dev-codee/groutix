@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSubmission, appendActivity } from "@/lib/submissions";
 import { sendEmail, cleanEmailText, wrapEmailHtml, getEmailLogoUrl } from "@/lib/email";
-import { formatEmailContentToHtml } from "@/lib/emailTemplates";
+import { formatEmailReplyToHtml } from "@/lib/emailReplyFormatting";
 import { getDb } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 import type { CustomerMessage, SubmissionDoc } from "@/lib/submissions";
@@ -48,7 +48,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const cleanSubject = cleanEmailText(subject || `Re: Your Groutix Enquiry`);
 
   const logoUrl = await getEmailLogoUrl();
-  const rawHtml = html ? cleanEmailText(html) : formatEmailContentToHtml(bodyText);
+  const rawHtml = html ? cleanEmailText(html) : formatEmailReplyToHtml(bodyText);
   const finalHtml = wrapEmailHtml(rawHtml || "<p>(See attached files.)</p>", cleanSubject, logoUrl);
 
   try {

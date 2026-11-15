@@ -578,6 +578,9 @@ export function formatEmailContentToHtml(text: string): string {
     '$1<a href="tel:+61370238094" style="color:#001f97;text-decoration:none;font-weight:700;">(03) 7023 8094</a>'
   );
 
+  // Combined emphasis must be consumed before the individual delimiters.
+  str = str.replace(/\*\*\*([^*\n]+)\*\*\*/g, '<strong style="font-weight:700;"><em style="font-style:italic;">$1</em></strong>');
+
   // 2. Bold: **text**, <b>text</b>, <strong>text</strong>
   str = str.replace(/\*\*([^*\n]+)\*\*/g, '<strong style="color:#0f172a;font-weight:700;">$1</strong>');
   str = str.replace(/<(?:b|strong)>([\s\S]*?)<\/(?:b|strong)>/gi, '<strong style="color:#0f172a;font-weight:700;">$1</strong>');
