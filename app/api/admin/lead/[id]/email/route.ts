@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+import { conversationRecipient } from "@/lib/conversationRecipient";
 import { NextRequest, NextResponse } from "next/server";
 import { getSubmission, appendActivity } from "@/lib/submissions";
 import { sendEmail, cleanEmailText, wrapEmailHtml, getEmailLogoUrl } from "@/lib/email";
@@ -13,8 +15,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (!id) return NextResponse.json({ error: "Missing ID" }, { status: 400 });
 
   const lead = await getSubmission(id);
-  if (!lead || !lead.email) {
-    return NextResponse.json({ error: "Lead not found or has no email address." }, { status: 404 });
+  if (!lead) {
+    return NextResponse.json({ error: "Lead not found." }, { status: 404 });
   }
 
   let body;
@@ -25,6 +27,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   }
 
   const { subject, text, html, attachments } = body;
+  let toEmail: string;
+  try { toEmail = conversationRecipient(body.toEmail, lead.email); }
+  catch (error) { return NextResponse.json({ error: (error as Error).message }, { status: 400 }); }
+  const emailMessageId = `<${randomUUID()}@groutix.com>`;
+
 
   // Normalise incoming attachments: each needs a name and base64 content to be
   // forwarded to the mailer. Anything malformed is dropped defensively.
@@ -54,7 +61,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   try {
     // 1. Send the email via Nodemailer with Groutix logo header & footer
     await sendEmail({
-      toEmail: lead.email,
+      toEmail,
+      messageId: emailMessageId,
       subject: cleanSubject,
       html: finalHtml,
       attachments: validAttachments.map((a) => ({
@@ -70,6 +78,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       id: `out_${Date.now()}`,
       from: "groutix",
       channel: "email",
+      toEmail,
+      emailMessageId,
       subject: cleanSubject,
       text: bodyText,
       time: new Date().toISOString(),
@@ -95,7 +105,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       actor: "admin",
       action: "Sent Email Reply",
       detail:
-        (subject || "No subject") +
+        `${cleanSubject} → ${toEmail}` +
         (validAttachments.length > 0 ? ` • ${validAttachments.length} attachment(s)` : ""),
     });
 

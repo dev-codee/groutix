@@ -18,6 +18,7 @@ export type SendEmailArgs = {
   fromEmail?: string;
   toEmail: string;
   replyTo?: string;
+  messageId?: string;
   subject: string;
   html: string;
   attachments?: EmailAttachment[];
@@ -144,6 +145,7 @@ export async function sendEmail(args: SendEmailArgs): Promise<void> {
     from: `"${fromName}" <${fromAddress}>`,
     to: args.toEmail,
     replyTo: args.replyTo || fromAddress,
+    messageId: args.messageId,
     subject: cleanedSubject,
     html: formatEmailPresentation(cleanedHtml),
     attachments: args.attachments?.map((att) => ({

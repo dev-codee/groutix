@@ -82,11 +82,17 @@ async function syncEmails(): Promise<EmailSyncResult> {
         const fromEmail = envelope && envelope.envelope?.from?.[0]?.address?.trim().toLowerCase();
         if (fromEmail && !staffEmails.has(fromEmail)) {
           const emailMatch = { $regex: `^${escapeRegex(fromEmail)}$`, $options: "i" };
-          const leads = await col.find({ $or: [{ email: emailMatch }, { "tenants.email": emailMatch }] })
+          const leads = await col.find({ $or: [{ email: emailMatch }, { "tenants.email": emailMatch }, { "messages.toEmail": emailMatch }] })
             .sort({ createdAt: -1 }).toArray();
           const subject = envelope && envelope.envelope?.subject || "";
-          const lead = leads.find(item => [item.quoteNumber, item.jobNo, item.jobNo?.replace(/^(?:JOBNO|Job No)-/i, "QT-")]
-            .some(ref => ref && new RegExp(`(?:^|[^a-z0-9])${escapeRegex(ref)}(?:$|[^a-z0-9])`, "i").test(subject))) || leads[0];
+          const inReplyTo = envelope && envelope.envelope?.inReplyTo;
+          const threadLead = inReplyTo ? leads.find(item => item.messages?.some(m => m.emailMessageId === inReplyTo || m.id === inReplyTo)) : undefined;
+          const referencedLead = leads.find(item => [item.quoteNumber, item.jobNo, item.jobNo?.replace(/^(?:JOBNO|Job No)-/i, "QT-")]
+            .some(ref => ref && new RegExp(`(?:^|[^a-z0-9])${escapeRegex(ref)}(?:$|[^a-z0-9])`, "i").test(subject)));
+          // A manager may handle several properties. Never attach an ambiguous,
+          // unthreaded external reply to an arbitrary customer's conversation.
+          const lead = threadLead || referencedLead || leads.find(item => item.email?.toLowerCase() === fromEmail
+            || item.tenants?.some(tenant => tenant.email?.toLowerCase() === fromEmail)) || (leads.length === 1 ? leads[0] : undefined);
           if (lead) {
             step = `source_${uid}`;
             // No size filter: customer replies with photos still need importing.
@@ -130,6 +136,7 @@ async function syncEmails(): Promise<EmailSyncResult> {
                 const text = stripQuotedReply(body) || body || "No text content.";
                 const crmMessage: CustomerMessage = {
                   id: messageId, from: "customer", channel: "email", subject: parsed.subject,
+                  fromEmail, emailMessageId: messageId,
                   text, time: (parsed.date || new Date()).toISOString(), read: false,
                   ...(attachments.length ? { attachments } : {}),
                 };
@@ -151,7 +158,9 @@ async function syncEmails(): Promise<EmailSyncResult> {
                 });
                 if (saved.modifiedCount) {
                   syncedCount++;
-                  await col.updateOne({ _id: lead._id, status: "Quote Sent" }, { $set: { status: "In Progress" } });
+                  const isCustomerSender = lead.email?.toLowerCase() === fromEmail
+                    || lead.tenants?.some(tenant => tenant.email?.toLowerCase() === fromEmail);
+                  if (isCustomerSender) await col.updateOne({ _id: lead._id, status: "Quote Sent" }, { $set: { status: "In Progress" } });
                   // Alerts are best effort; a failure cannot block later replies.
                   try {
                     if (Date.now() < deadline) await bounded(sendReplyNotification({ leadName: lead.name, leadEmail: fromEmail, subject: parsed.subject, snippet: text, leadId: lead._id.toString() }), Math.min(5000, deadline - Date.now()));

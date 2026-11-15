@@ -11,6 +11,9 @@ export interface QuoteItem {
 }
 
 export interface CustomerMessage {
+  toEmail?: string;
+  fromEmail?: string;
+  emailMessageId?: string;
   id: string;
   from: "customer" | "groutix";
   channel?: "email" | "sms" | "lead" | "internal";

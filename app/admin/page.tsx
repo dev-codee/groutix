@@ -1,4 +1,5 @@
 "use client";
+import { conversationRecipient } from "@/lib/conversationRecipient";
 import { EmailBodyEditor, type EmailBodyEditorHandle } from "@/components/admin/EmailBodyEditor";
 import { formatEmailReplyToHtml } from "@/lib/emailReplyFormatting";
 
@@ -573,6 +574,7 @@ export default function CrmDashboardPage() {
       SAMPLE_TEMPLATE_CONTEXT
     );
   }, [templatePreviewMode, formSubject, formBody]);
+  const [replyToEmail, setReplyToEmail] = useState("");
   const [replySubject, setReplySubject] = useState("");
   const [selectedTemplateId, setSelectedTemplateId] = useState("");
   const [replyText, setReplyText] = useState("");
@@ -2525,6 +2527,7 @@ export default function CrmDashboardPage() {
     setConvFilter("all");
     setMessageChannel(initialChannel);
     setSelectedTemplateId("");
+    setReplyToEmail(currentLead.email || "");
     setReplySubject(`Re: Groutix Enquiry - ${currentLead.name || "Customer"}`);
     setReplyText("");
     const firstName = currentLead.name ? currentLead.name.trim().split(/\s+/)[0] : "there";
@@ -2925,23 +2928,21 @@ export default function CrmDashboardPage() {
   }
 
   function handleOpenMailApp() {
-    if (!activeMessageLead?.email) {
-      alert("This customer does not have an email address on file.");
-      return;
-    }
+    if (!activeMessageLead) return;
+    let recipient: string;
+    try { recipient = conversationRecipient(replyToEmail); }
+    catch (error) { alert((error as Error).message); return; }
     const subj = encodeURIComponent(replySubject.trim() || `Re: Groutix Enquiry - ${activeMessageLead.name || "Customer"}`);
     const body = encodeURIComponent(replyText.trim());
-    window.location.href = `mailto:${activeMessageLead.email}?subject=${subj}&body=${body}`;
+    window.location.href = `mailto:${encodeURIComponent(recipient)}?subject=${subj}&body=${body}`;
   }
 
   async function handleSendReply() {
     if (!activeMessageLead) return;
     if (!replyText.trim() && replyAttachments.length === 0) return;
 
-    if (!activeMessageLead.email) {
-      alert("This customer does not have an email address on file.");
-      return;
-    }
+    try { conversationRecipient(replyToEmail); }
+    catch (error) { alert((error as Error).message); return; }
 
     setSendingReply(true);
     try {
@@ -2949,14 +2950,14 @@ export default function CrmDashboardPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          toEmail: replyToEmail.trim(),
           subject: replySubject.trim() || `Re: Groutix Enquiry - ${activeMessageLead.name || "Customer"}`,
           text: replyText.trim(),
           attachments: replyAttachments,
         })
       });
-      if (!res.ok) throw new Error("Failed to send email");
-
       const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to send email");
       const currentMsgs = getConversation(activeMessageLead);
       const updated = [...currentMsgs, data.message];
 
@@ -2969,7 +2970,7 @@ export default function CrmDashboardPage() {
         scrollToLatestMessage(true);
       }, 60);
     } catch (err) {
-      alert("Failed to send email reply. Check console for details.");
+      alert(err instanceof Error ? err.message : "Failed to send email reply.");
       console.error(err);
     } finally {
       setSendingReply(false);
@@ -6441,6 +6442,12 @@ export default function CrmDashboardPage() {
                             </div>
                             <span className="shrink-0">{fmtDate(msg.time)}</span>
                           </div>
+                          {msg.channel === "email" && (msg.toEmail || msg.fromEmail) && (
+                            <div className="text-[10px] break-all opacity-80">
+                              {isCustomer ? `From: ${msg.fromEmail || "Customer"}` : `To: ${msg.toEmail}`}
+                              {isCustomer && msg.fromEmail && <button type="button" className="ml-2 underline font-semibold" onClick={() => { setReplyToEmail(msg.fromEmail!); setMessageChannel("email"); setReplySubject(/^re:/i.test(msg.subject || "") ? msg.subject! : `Re: ${msg.subject || "Your Groutix enquiry"}`); }}>Reply to sender</button>}
+                            </div>
+                          )}
                           {msg.subject && (
                             <div className={`font-bold ${isOtw ? "text-sm text-white font-black" : ""}`}>
                               {msg.subject}
@@ -6933,6 +6940,16 @@ export default function CrmDashboardPage() {
                       )}
                     </div>
 
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <label htmlFor="conversation-email-to" className="text-[11px] font-bold text-slate-600">To:</label>
+                        {activeMessageLead.email && replyToEmail !== activeMessageLead.email && <button type="button" onClick={() => setReplyToEmail(activeMessageLead.email || "")} className="text-[11px] font-semibold text-blue-600 hover:underline">Use customer email</button>}
+                      </div>
+                      <input id="conversation-email-to" type="email" value={replyToEmail} onChange={e => setReplyToEmail(e.target.value)} disabled={sendingReply} placeholder="Customer, property manager or tenant email" autoComplete="off"
+                        className="w-full px-3 py-2 text-xs font-medium border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
+                      <p className="text-[11px] text-slate-500">This email stays in this customer’s conversation.</p>
+                    </div>
+
                     {/* Subject Input */}
                     <div className="space-y-1">
                       <label className="text-[11px] font-bold text-slate-600">Email Subject:</label>
@@ -7060,7 +7077,7 @@ export default function CrmDashboardPage() {
                         /* Lead drawer Branded email preview */
                         <div className="bg-slate-100/90 p-3 sm:p-4 rounded-xl border border-slate-200 space-y-2">
                           <div className="flex items-center justify-between text-[10px] text-slate-500 font-bold">
-                            <span>PREVIEW FOR: {activeMessageLeadLive?.name || activeMessageLead?.name || "Customer"}</span>
+                            <span>TO: {replyToEmail || "Enter a recipient"}</span>
                             <span className="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">Branded Groutix Template</span>
                           </div>
                           <div className="bg-white rounded-xl shadow-xs border border-slate-200 overflow-hidden text-xs">

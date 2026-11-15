@@ -13,7 +13,7 @@ function fixture({ messages = [mail(1)], leads = [customer()], failUid, state: i
     find(query) {
       const match = query.$or[0].email;
       const regex = new RegExp(match.$regex, match.$options);
-      const result = leads.filter(lead => regex.test(lead.email || "") || lead.tenants?.some(tenant => regex.test(tenant.email || "")));
+      const result = leads.filter(lead => regex.test(lead.email || "") || lead.tenants?.some(tenant => regex.test(tenant.email || "")) || lead.messages?.some(message => regex.test(message.toEmail || "")));
       const cursor = { sort: () => cursor, limit: () => cursor, toArray: async () => result };
       return cursor;
     },
@@ -51,7 +51,7 @@ function fixture({ messages = [mail(1)], leads = [customer()], failUid, state: i
     async fetchOne(uid, query, options) {
       calls.fetches.push({ uid, query, options });
       const message = messages.find(message => message.uid === Number(uid));
-      return query.source ? { source: message } : { envelope: { from: [{ address: message.from }], subject: message.subject } };
+      return query.source ? { source: message } : { envelope: { from: [{ address: message.from }], subject: message.subject, inReplyTo: message.inReplyTo } };
     }
     async messageFlagsAdd() { calls.flags++; }
     close() {}
@@ -232,4 +232,25 @@ test("sync replaces a PDF converted to PNG using the original email without dupl
   assert.match(lead.messages[0].attachments[0].url, /report\.pdf$/);
   assert.equal(lead.messages.length, 1);
   assert.equal(f.calls.notifications, 0);
+});
+
+
+test("a property manager reply follows its outbound message ID to the correct customer", async () => {
+ const manager = 'manager@example.com';
+ const first = customer('first', { messages: [{ id: 'out-first', toEmail: manager, emailMessageId: '<first@groutix.com>' }] });
+ const second = customer('second', { messages: [{ id: 'out-second', toEmail: manager, emailMessageId: '<second@groutix.com>' }] });
+ const f = fixture({ leads: [first, second], messages: [mail(1, { from: manager, subject: 'Re: Details requested', inReplyTo: '<second@groutix.com>' })] });
+ assert.equal((await f.sync()).syncedCount, 1);
+ assert.equal(first.messages.length, 1);
+ assert.equal(second.messages.length, 2);
+ assert.equal(second.messages[1].fromEmail, manager);
+ assert.equal(second.status, 'Quote Sent', 'A third-party details reply must not advance the customer workflow');
+});
+
+test("an ambiguous unthreaded property manager reply is not put on the wrong customer", async () => {
+ const manager = 'manager@example.com';
+ const leads = [customer('first', { messages: [{ toEmail: manager }] }), customer('second', { messages: [{ toEmail: manager }] })];
+ const f = fixture({ leads, messages: [mail(1, { from: manager, subject: 'Details requested' })] });
+ assert.equal((await f.sync()).syncedCount, 0);
+ assert.equal(leads[0].messages.length, 1); assert.equal(leads[1].messages.length, 1);
 });
