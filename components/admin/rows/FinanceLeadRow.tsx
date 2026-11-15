@@ -605,13 +605,6 @@ export function FinanceLeadRow({ l }: { l: Lead }) {
             </div>
 
             <div className="space-y-1.5 min-w-0">
-              <div
-                className={`w-full px-2 py-1.5 rounded-lg text-[11px] font-bold flex items-center justify-between cursor-default select-none border min-w-0 ${isInvoiceSent ? "bg-[#dcfce7] border-emerald-300 text-slate-900" : "bg-slate-50 border-slate-200 text-slate-600"}`}
-              >
-                <span className="truncate">Invoice delivered</span>
-                {isInvoiceSent && <Check className="w-3.5 h-3.5 text-emerald-600 stroke-[3] shrink-0 ml-0.5" />}
-              </div>
-
               <QuickBooksWorkflowStatus lead={l} />
 
               <div
