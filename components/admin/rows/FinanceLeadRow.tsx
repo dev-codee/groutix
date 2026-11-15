@@ -280,7 +280,6 @@ export function FinanceLeadRow({ l }: { l: Lead }) {
           {Boolean(l.customerInvoiceCount) && <button type="button" onClick={() => openInvoiceModal(l)} className="w-full rounded-lg border border-teal-200 bg-teal-50 p-2 text-left text-xs text-teal-900">
               {l.customerInvoiceCount} invoices · Total ${Number(l.customerInvoiceTotal || 0).toFixed(2)} · Outstanding ${Number(l.customerInvoiceOutstanding || 0).toFixed(2)} — Manage invoices
             </button>}
-            <SendInvoiceToQuickBooksButton lead={l} onChooseInvoice={openInvoiceModal} />
           <div className="flex items-end gap-1.5">
             <div className="flex-1 min-w-0">
               <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block mb-0.5">STATUS</label>
@@ -343,7 +342,7 @@ export function FinanceLeadRow({ l }: { l: Lead }) {
                   : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200"
                 }`}
             >
-              {l.customerInvoiceCount ? "Manage invoices" : isInvoiceSent ? "Invoice Sent" : "Send Invoice"}
+              {l.customerInvoiceCount || isInvoiceSent ? "Manage invoices" : "Send Invoice"}
             </button>
           </div>
 
@@ -525,6 +524,7 @@ export function FinanceLeadRow({ l }: { l: Lead }) {
                   </button>
                 </div>
               )}
+              <SendInvoiceToQuickBooksButton lead={l} onChooseInvoice={openInvoiceModal} />
             </div>
             <button
               type="button"
@@ -555,7 +555,7 @@ export function FinanceLeadRow({ l }: { l: Lead }) {
           <div className="bg-[#ffe4e6] border border-rose-200 text-slate-800 text-xs px-2.5 py-1 rounded-lg flex items-center gap-1.5 min-w-0">
             <span className="font-bold text-rose-600 uppercase tracking-wider text-[10px] shrink-0">FOLLOW-UP</span>
             <span title={followupPrompt} className="font-medium text-slate-700 break-words whitespace-normal leading-tight text-[11px] min-w-0">
-              {followupPrompt || l.followUpNext || (l.status === "Payment Received" ? (l.warrantyProvided === false || l.warranty?.provided === false ? "Payment Received — No Warranty Required" : "Payment Received — Issue Warranty") : l.status === "Payment Pending" ? "Payment Pending — Follow up" : "Invoice Sent — Awaiting payment")}
+              {followupPrompt || l.followUpNext || (l.status === "Payment Received" ? (l.warrantyProvided === false || l.warranty?.provided === false ? "Payment Received — No Warranty Required" : "Payment Received — Issue Warranty") : l.status === "Payment Pending" ? "Payment Pending — Follow up" : "Payment Pending — Awaiting payment")}
             </span>
           </div>
 
@@ -608,7 +608,7 @@ export function FinanceLeadRow({ l }: { l: Lead }) {
               <div
                 className={`w-full px-2 py-1.5 rounded-lg text-[11px] font-bold flex items-center justify-between cursor-default select-none border min-w-0 ${isInvoiceSent ? "bg-[#dcfce7] border-emerald-300 text-slate-900" : "bg-slate-50 border-slate-200 text-slate-600"}`}
               >
-                <span className="truncate">Invoice Sent</span>
+                <span className="truncate">Invoice delivered</span>
                 {isInvoiceSent && <Check className="w-3.5 h-3.5 text-emerald-600 stroke-[3] shrink-0 ml-0.5" />}
               </div>
 

@@ -25,7 +25,6 @@ export function JobCardModal({ lead: jobCardLead, onClose }: Props) {
     { label: "Quote Accepted", status: "Won" },
     { label: "Job Booked", status: "Job Booked" },
     { label: "Job Done", status: "Job Done" },
-    { label: "Invoice Sent", status: "Invoice Sent" },
     { label: "Payment Pending", status: "Payment Pending" },
     { label: "Payment Received", status: "Payment Received" },
     {

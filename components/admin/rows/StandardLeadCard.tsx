@@ -18,7 +18,7 @@ import { QuoteDeliveryHistory } from "@/components/admin/QuoteDeliveryHistory";
 import { useRef, useState } from "react";
 import {
   Camera, Phone, Mail, MessageSquare, Trash2, Check,
-  Navigation, Eye, CheckCircle2, ShieldCheck, ShieldAlert,
+  Navigation, CheckCircle2, ShieldCheck, ShieldAlert,
   Clock, ChevronRight, Send, DollarSign, X, StickyNote,
 } from "lucide-react";
 import { LeadRequestDetails } from "@/components/admin/LeadRequestDetails";
@@ -74,7 +74,6 @@ export function StandardLeadCard({ l }: { l: Lead }) {
   const workflowStatus = getEffectiveWorkflowStatus(l);
   const isFinanceStage = [
     "Job Done",
-    "Invoice Sent",
     "Payment Request",
     "Payment Pending",
     "Partial Payment",
@@ -793,7 +792,7 @@ export function StandardLeadCard({ l }: { l: Lead }) {
             <SendInvoiceToQuickBooksButton lead={l} onChooseInvoice={openInvoiceModal} />
             {/* Invoice Sent Button */}
             {(() => {
-              const isInvoiceSent = Boolean(l.invoiceSentAt) || ["Invoice Sent", "Payment Pending", "Payment Received", "Warranty Sent", "Completed"].includes(workflowStatus);
+              const isInvoiceSent = Boolean(l.invoiceSentAt) || ["Payment Pending", "Payment Received", "Warranty Sent", "Completed"].includes(workflowStatus);
               return (
                 <button
                   type="button"
@@ -803,9 +802,9 @@ export function StandardLeadCard({ l }: { l: Lead }) {
                       ? "bg-blue-600 text-white hover:bg-blue-700"
                       : "border border-slate-200 bg-slate-100 text-slate-700 hover:bg-slate-200 hover:border-blue-500"
                   }`}
-                  title={l.customerInvoiceCount ? "Manage invoices" : "Invoice Sent"}
+                  title={l.customerInvoiceCount || isInvoiceSent ? "Manage invoices" : "Send Invoice"}
                 >
-                  {l.customerInvoiceCount ? "Manage invoices" : "Invoice Sent"}
+                  {l.customerInvoiceCount || isInvoiceSent ? "Manage invoices" : "Send Invoice"}
                 </button>
               );
             })()}
@@ -1061,7 +1060,6 @@ export function StandardLeadCard({ l }: { l: Lead }) {
               { label: "Quote Sent", step: "Quote Sent" },
               { label: "Job Booked", step: "Job Booked" },
               { label: "Job Done", step: "Job Done" },
-              { label: "Invoice Sent", step: "Invoice Sent" },
               { label: "Payment Pending", step: "Payment Pending" },
               { label: "Payment Received", step: "Payment Received" },
               {
@@ -1082,12 +1080,6 @@ export function StandardLeadCard({ l }: { l: Lead }) {
                 >
                   <div className="flex items-center gap-1.5 min-w-0">
                     <span className="truncate">{label}</span>
-                    {step === "Invoice Sent" && l.invoiceOpenedAt && (
-                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 flex items-center gap-0.5 whitespace-nowrap">
-                        <Eye className="w-2.5 h-2.5 text-emerald-600" />
-                        Opened
-                      </span>
-                    )}
                   </div>
                   {isActive ? (
                     <Check className="w-3.5 h-3.5 text-[#0f766e] stroke-[2.5]" />

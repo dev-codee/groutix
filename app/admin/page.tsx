@@ -8236,7 +8236,7 @@ export default function CrmDashboardPage() {
                     <textarea
                       rows={2}
                       placeholder="e.g. Additional silicone replacement in second bathroom"
-                      disabled={Boolean(activeInvoiceLead.invoiceSentAt || activeInvoiceLead.qboInvoiceId || activeInvoiceLead.amountPaid || activeInvoiceLead.paymentReceipt || activeInvoiceLead.invoiceStatus === "Paid")}
+                      disabled={Boolean(activeInvoiceLead.qboInvoiceId || activeInvoiceLead.amountPaid || activeInvoiceLead.paymentReceipt || activeInvoiceLead.invoiceStatus === "Paid")}
                       value={invoiceExtraWork}
                       onChange={(e) => setInvoiceExtraWork(e.target.value)}
                       className="w-full p-2 border border-amber-200 rounded-lg text-xs bg-white"
@@ -8248,7 +8248,7 @@ export default function CrmDashboardPage() {
                         min={0}
                         step={1}
                         placeholder="0"
-                        disabled={Boolean(activeInvoiceLead.invoiceSentAt || activeInvoiceLead.qboInvoiceId || activeInvoiceLead.amountPaid || activeInvoiceLead.paymentReceipt || activeInvoiceLead.invoiceStatus === "Paid")}
+                        disabled={Boolean(activeInvoiceLead.qboInvoiceId || activeInvoiceLead.amountPaid || activeInvoiceLead.paymentReceipt || activeInvoiceLead.invoiceStatus === "Paid")}
                         value={invoiceExtraCharge || ""}
                         onChange={(e) => setInvoiceExtraCharge(parseFloat(e.target.value) || 0)}
                         className="w-24 p-2 border border-amber-200 rounded-lg text-xs font-bold bg-white"

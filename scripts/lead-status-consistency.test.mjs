@@ -5,7 +5,7 @@ import { loadTs } from './test-ts-loader.mjs';
 const { normalizeStatus, getEffectiveWorkflowStatus, getStepActive } = loadTs('lib/adminHelpers.ts');
 
 test('legacy statuses resolve to the same customer workflow in every role', () => {
-  for (const [saved, expected] of [['paid', 'Payment Received'], ['Payment Request', 'Payment Pending'], ['QUOTE ACCEPTED', 'Won'], ['read', 'Contacted'], ['In Progress', 'Job In Progress']]) {
+  for (const [saved, expected] of [['Invoice Sent', 'Payment Pending'], ['paid', 'Payment Received'], ['Payment Request', 'Payment Pending'], ['QUOTE ACCEPTED', 'Won'], ['read', 'Contacted'], ['In Progress', 'Job In Progress']]) {
     assert.equal(normalizeStatus(saved), expected);
     assert.equal(getEffectiveWorkflowStatus({ status: saved }), expected);
   }
@@ -47,4 +47,16 @@ test('the client sends the status it actually displayed and surfaces a rejected 
   assert.equal(payload.expectedStatus, 'Payment Received');
   assert.equal(result.ok, false);
   assert.match(result.error, /Refresh/);
+});
+
+
+test('stored Invoice Sent records serialize as Payment Pending and the retired stage is absent for both roles', () => {
+  const { toJSON } = loadTs('lib/submissions.ts');
+  const { roleQueue, STATUS_KEYS } = loadTs('lib/pipeline.ts');
+  assert.equal(toJSON({ status: 'Invoice Sent', createdAt: new Date() }).status, 'Payment Pending');
+  assert.equal(STATUS_KEYS.includes('Invoice Sent'), false);
+  for (const role of ['finance', 'manager']) {
+    assert.equal(roleQueue(role).includes('Invoice Sent'), false);
+    assert.equal(roleQueue(role).includes('Payment Pending'), true);
+  }
 });

@@ -26,7 +26,7 @@ function invoiceView(lead: SubmissionJSON, doc: CustomerInvoice): SubmissionJSON
   for (const field of invoiceFields) delete base[field];
   const invoice = { ...base, ...doc.values, id: doc._id, sourceQuoteId: doc.sourceQuoteId, sourceQuoteNumber: doc.sourceQuoteNumber,
     invoiceParentId: doc.leadId, createdAt: lead.createdAt, status: doc.values.invoiceStatus === "Paid" || doc.values.paymentReceipt ? "Payment Received"
-      : Number(doc.values.amountPaid) > 0 ? "Payment Pending" : doc.values.invoiceSentAt ? "Invoice Sent" : "Job Done" };
+      : Number(doc.values.amountPaid) > 0 ? "Payment Pending" : doc.values.invoiceSentAt ? "Payment Pending" : "Job Done" };
   if (invoice.invoiceDraft) invoice.invoiceDraft = invoiceDraftForLead(invoice);
   return invoice;
 }
@@ -141,11 +141,9 @@ export async function refreshInvoiceSummary(leadId: string, updatePaymentStage: 
   const paid = (item: SubmissionJSON) => item.invoiceStatus === "Paid" || item.paymentReceipt ? cents(item.invoiceAmount) : cents(item.amountPaid);
   const outstanding = invoices.reduce((sum, item) => sum + Math.max(0, cents(item.invoiceAmount) - paid(item)), 0) / 100;
   const lead = updatePaymentStage ? await getSubmission(leadId) : null;
-  const pending = updatePaymentStage === true || ["Payment Pending", "Payment Request", "Partial Payment"].includes(lead?.status || "")
-    || invoices.some(item => paid(item) > 0 && paid(item) < cents(item.invoiceAmount));
   const saved = await updateSubmission(leadId, {
     ...(lead && invoices.length && !["Completed", "Warranty Sent", "Cancelled", "Lost"].includes(lead.status)
-      ? { status: outstanding > 0 ? pending ? "Payment Pending" : "Invoice Sent" : "Payment Received" } : {}),
+      ? { status: outstanding > 0 ? "Payment Pending" : "Payment Received" } : {}),
     customerInvoiceCount: invoices.length,
     customerInvoiceSyncedCount: invoices.filter(item => Boolean(item.qboInvoiceId)).length,
     customerInvoiceTotal: invoices.reduce((sum, item) => sum + cents(item.invoiceAmount), 0) / 100,

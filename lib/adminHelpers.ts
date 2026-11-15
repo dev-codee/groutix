@@ -149,7 +149,6 @@ export function getJobsGroups(role: Role): JobsGroupDef[] {
   if (role === "finance") {
     return singleStageGroups([
       "Job Done",
-      "Invoice Sent",
       "Payment Pending",
       "Payment Received",
       "Warranty Sent",
@@ -221,7 +220,7 @@ export function getJobsGroups(role: Role): JobsGroupDef[] {
       {
         label: "Payment Received",
         group: "finance",
-        statuses: ["Invoice Sent", "Payment Pending", "Payment Received"],
+        statuses: ["Payment Pending", "Payment Received"],
       },
       { label: "Warranty Sent", group: "finance", statuses: ["Warranty Sent"] },
       { label: "Completed 🏆", group: "closed", statuses: ["Completed"] },
@@ -373,7 +372,7 @@ export function getManualStatusOptions(role: Role, currentStatus?: string): stri
 export function normalizeStatus(s?: string): string {
   if (!s) return "New";
   const lower = s.toLowerCase().trim();
-  const aliases: Record<string, string> = { "new lead": "New", "paid": "Payment Received", "payment request": "Payment Pending", "quote accepted": "Won", "in progress": "Job In Progress" };
+  const aliases: Record<string, string> = { "invoice sent": "Payment Pending", "new lead": "New", "paid": "Payment Received", "payment request": "Payment Pending", "quote accepted": "Won", "in progress": "Job In Progress" };
   if (aliases[lower]) return aliases[lower];
   if (lower === "new") return "New";
   if (lower === "read") return "Contacted";
@@ -570,7 +569,6 @@ export function getBadgeColor(status: string) {
     case "Job Confirmed":
     case "Inspection Booked":
       return "bg-sky-50 text-sky-700 border-sky-200/80 font-semibold";
-    case "Invoice Sent":
     case "Payment Pending":
       return "bg-rose-50 text-rose-700 border-rose-200/80 font-semibold";
     default:
@@ -603,7 +601,6 @@ export function getFollowupPrompt(lead: Lead): string {
     "Job Started": "Complete job",
     "Job In Progress": "Complete job",
     "Job Done": "Prepare and send invoice",
-    "Invoice Sent": lead.invoiceOpenedAt ? "Invoice opened — Follow up payment" : "Awaiting payment",
     "Payment Request": "Follow up payment",
     "Payment Pending": "Follow up payment",
     "Partial Payment": "Follow up remaining balance",

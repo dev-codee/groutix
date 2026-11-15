@@ -48,7 +48,6 @@ export function IntakeLeadRow({ l }: { l: Lead }) {
 
   const isFinanceStage = [
     "Job Done",
-    "Invoice Sent",
     "Payment Request",
     "Payment Pending",
     "Partial Payment",

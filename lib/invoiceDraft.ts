@@ -54,7 +54,7 @@ export function invoiceChanges(lead: InvoiceLead, input: InvoiceInput) {
     accountNumber: invoiceAccountNumber(input.accountNumber ?? defaults.accountNumber), bsb: input.bsb ?? defaults.bsb, dueDate: input.dueDate ?? defaults.dueDate,
   };
   if (lead.sourceQuoteId || lead.invoiceSentAt || lead.qboInvoiceId || lead.paymentReceipt || lead.invoiceStatus === "Paid" || Number(lead.amountPaid || 0) > 0) {
-    const fields: (keyof InvoiceDraft)[] = lead.invoiceSentAt || lead.qboInvoiceId || lead.paymentReceipt || lead.invoiceStatus === "Paid" || Number(lead.amountPaid || 0) > 0
+    const fields: (keyof InvoiceDraft)[] = lead.qboInvoiceId || lead.paymentReceipt || lead.invoiceStatus === "Paid" || Number(lead.amountPaid || 0) > 0
       ? ["service", "description", "extraWork", "extraCharge", "basePrice", "gst"]
       : ["service", "description", "basePrice", "gst"];
     if (fields.some(field => invoiceDraft[field] !== defaults[field])) throw new Error("This invoice’s commercial details are locked. Create a new accepted quote for additional work.");

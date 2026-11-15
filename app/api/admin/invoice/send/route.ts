@@ -5,8 +5,6 @@ import { verifyRequestSession } from "@/lib/adminAuth";
 import { sendEmail, isEmailConfigured, wrapEmailHtml, getEmailLogoUrl, type EmailAttachment } from "@/lib/email";
 import { buildQuotePdfBase64 } from "@/lib/quotePdf";
 import { invoiceTrackingPixel } from "@/lib/automations";
-import { isQboConfigured } from "@/lib/quickbooks";
-import { syncInvoiceToQuickbooks } from "@/lib/quickbooksInvoiceSync";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -216,12 +214,6 @@ export async function POST(req: NextRequest) {
     action: "Invoice emailed",
     detail: `${invoiceNumber} to ${lead.email} (${status})`,
   });
-
-  // Finish bookkeeping before the request ends; QBO failure never undoes email.
-  if (isQboConfigured() && !lead.qboInvoiceId) {
-    await syncInvoiceToQuickbooks({ ...lead, ...savedInvoice, id: body.id }, actor)
-      .catch(error => { console.error("QBO invoice push failed:", error); });
-  }
 
   const item = await getSubmission(body.id);
   const customer = item?.invoiceParentId ? await getSubmission(item.invoiceParentId) : item;

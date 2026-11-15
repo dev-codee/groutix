@@ -37,7 +37,7 @@ export function invoiceTrackingPixel(leadId: string): string {
 /**
  * Auto-generate and email the tax invoice when a job is marked done. Uses the
  * accepted quote amount as the (GST-inclusive) total. Sets the lead to
- * "Invoice Sent". Idempotent: does nothing if an invoice was already sent.
+ * "Payment Pending". Idempotent: does nothing if an invoice was already sent.
  */
 export async function autoSendInvoice(leadId: string): Promise<void> {
   try {
@@ -148,7 +148,7 @@ export async function autoSendInvoice(leadId: string): Promise<void> {
       invoiceStatus: "Unpaid",
       quoteAmount: total,
       invoiceAmount: total,
-      status: statusAfterDocumentSend(current?.status, "Invoice Sent"),
+      status: statusAfterDocumentSend(current?.status, "Payment Pending"),
     });
     if (!saved) throw new Error("Invoice email was sent, but its status could not be saved.");
     await appendActivity(leadId, {

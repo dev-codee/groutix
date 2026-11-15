@@ -44,7 +44,6 @@ export function CompletedView() {
   const isCompletedJob = (l: Lead) => {
     return [
       "Job Done",
-      "Invoice Sent",
       "Payment Pending",
       "Payment Received",
       "Warranty Sent",
@@ -70,7 +69,6 @@ export function CompletedView() {
         "Job Started",
         "Job In Progress",
         "Job Done",
-        "Invoice Sent",
         "Payment Pending",
         "Payment Received",
         "Warranty Sent",

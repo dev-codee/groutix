@@ -13,7 +13,7 @@ stored separately from every other invoice. Payment status is changed on the
 selected invoice and saved with **Save Invoice**. A paid invoice with a receipt
 cannot be reopened through this screen. Credit/refund workflows are not added.
 
-QuickBooks invoice sync uses the saved invoice. The customer reference returned
+QuickBooks invoice sync is manual through Send invoice to QuickBooks and uses the saved invoice. Sending or resending an invoice email never syncs it automatically. Extra work and its charge remain editable after sending until payment is recorded or the invoice is synced to QuickBooks. The customer reference returned
 by QuickBooks is retained on the parent customer record and reused for later
 invoices. Recording a payment here does not create a QuickBooks Payment transaction.
 
@@ -28,9 +28,9 @@ payment stage becomes Payment Received only when all saved invoices are settled.
 invoice sender skips customers using multiple quotes; staff select the agreed
 quote explicitly to avoid issuing an additional unlinked invoice.
 
-Sending an unpaid invoice advances the customer from Job Done to Invoice Sent,
-including invoices created from accepted quotes. Recording a payment moves the
-customer to Payment Pending while any saved invoice is outstanding, then Payment
+Sending an unpaid invoice advances the customer to Payment Pending,
+including invoices created from accepted quotes. Recording a payment keeps the
+customer at Payment Pending while any saved invoice is outstanding, then Payment
 Received when all are paid. Draft saves do not advance delivery. Resending retains
 payment progress and completed, warranty, cancelled or lost stages. The dashboard
 updates the parent customer's status and active filter after a successful save or send.

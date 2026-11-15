@@ -136,9 +136,9 @@ test('PDF, email, QuickBooks and receipt endpoints operate on the selected invoi
     const response = await sendRoute.POST({ json: async () => ({ id: invoice.id, price: invoice.invoiceAmount, gst: invoice.invoiceDraft.gst, status: 'Unpaid' }) });
     assert.equal(response.status, 200);
     const sent = await response.json();
-    assert.equal(sent.item.status, 'Invoice Sent');
+    assert.equal(sent.item.status, 'Payment Pending');
     assert.equal(sent.customer.id, 'customer');
-    assert.equal(sent.customer.status, 'Invoice Sent');
+    assert.equal(sent.customer.status, 'Payment Pending');
   }
   assert.equal(pdfs[0].quoteNumber, a.invoiceNumber);
   assert.equal(pdfs[2].quoteNumber, b.invoiceNumber);
@@ -314,7 +314,15 @@ test('multiple-invoice extra work saves, reopens and emails once without alterin
   assert.equal((await api.getInvoiceSubmission(b.id)).invoiceAmount, 250);
   assert.equal(api.docs.get(a.id).sourceQuoteSnapshot.quoteItems[0].price, 100);
   assert.equal((await api.getInvoiceSubmission(a.id)).invoiceAmount, 375);
-  assert.equal((await save.POST({ json: async () => ({ ...input, price: 475, extraCharge: 200 }) })).status, 400, 'issued invoices cannot silently change');
+  const revised = { ...input, price: 475, extraCharge: 200, extraWork: 'Revised extra work' };
+  assert.equal((await save.POST({ json: async () => revised })).status, 200);
+  assert.equal((await send.POST({ json: async () => revised })).status, 200);
+  assert.equal(pdfs[1].total, 475);
+  assert.equal(pdfs[1].items[1].price, 200);
+  assert.match(emails[1].html, /Revised extra work/);
+  assert.equal((await api.getInvoiceSubmission(a.id)).invoiceDraft.basePrice, 275);
+  assert.equal((await api.getInvoiceSubmission(b.id)).invoiceAmount, 250);
+  assert.equal(api.leads.get('customer').status, 'Payment Pending');
 });
 
 test('receiving an outstanding invoice payment does not reopen a cancelled customer', async () => {
@@ -332,7 +340,7 @@ test('invoice delivery advances the customer, resends preserve payment progress,
   const b = await api.createQuoteInvoice('customer', 'customer~b');
   assert.equal((await api.getInvoiceSubmission(a.id)).status, 'Job Done', 'unsent invoices are drafts');
   await api.updateInvoiceSubmission(a.id, { invoiceSentAt: 'sent' });
-  assert.equal(api.leads.get('customer').status, 'Invoice Sent');
+  assert.equal(api.leads.get('customer').status, 'Payment Pending');
   await api.updateInvoiceSubmission(a.id, { invoiceStatus: 'Paid' });
   assert.equal(api.leads.get('customer').status, 'Payment Pending');
   await api.updateInvoiceSubmission(b.id, { invoiceSentAt: 'sent-b' });
@@ -354,7 +362,7 @@ test('legacy invoice delivery advances the same customer pipeline without changi
   delete lead.paymentReceipt; delete lead.paymentType; delete lead.amountPaid;
   lead.invoiceStatus = 'Unpaid';
   await api.updateInvoiceSubmission('customer', { invoiceSentAt: 'sent' });
-  assert.equal(lead.status, 'Invoice Sent');
+  assert.equal(lead.status, 'Payment Pending');
   await api.updateInvoiceSubmission('customer', { invoiceStatus: 'Paid' });
   assert.equal(lead.status, 'Payment Received');
   lead.status = 'Completed';

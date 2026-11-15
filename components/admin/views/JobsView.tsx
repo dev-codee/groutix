@@ -65,7 +65,7 @@ export function JobsView() {
           ])
         )
       : role === "finance"
-      ? ["Job Done", "Invoice Sent", "Payment Pending", "Payment Received", "Warranty Sent", "Completed"]
+      ? ["Job Done", "Payment Pending", "Payment Received", "Warranty Sent", "Completed"]
       : role === "intake"
       ? ["New", "Contacted", "Inspection Booked", "Quote Pending", "Job Booked"]
       : boardStatuses;

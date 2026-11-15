@@ -198,9 +198,9 @@ test('finance button blocks rapid double clicks, shows errors and confirms a suc
   assert.deepEqual(JSON.parse(requests[0].body), { id: 'customer123' });
 });
 
-test('email send awaits shared sync bookkeeping and resending a linked invoice skips creation', async () => {
+test('email send and resend never sync QuickBooks automatically', async () => {
   const lead = { ...savedLead(), email: 'sam@example.com' };
-  let syncCalls = 0, release, completed = false;
+  let syncCalls = 0;
   const { POST } = loadTs('app/api/admin/invoice/send/route.ts', {
     '@/lib/customerInvoices': { getInvoiceSubmission: async () => lead, updateInvoiceSubmission: async () => true, appendInvoiceActivity: async () => {} },
     '@/lib/adminAuth': { verifyRequestSession: async () => ({ username: 'finance', role: 'finance' }) },
@@ -210,18 +210,14 @@ test('email send awaits shared sync bookkeeping and resending a linked invoice s
     '@/lib/quickbooks': { isQboConfigured: () => true },
     '@/lib/quickbooksInvoiceSync': { syncInvoiceToQuickbooks: async item => {
       syncCalls++; assert.equal(item.invoiceAmount, 1100); assert.equal(item.invoiceDraft.gst, 10);
-      await new Promise(resolve => { release = resolve; });
     } },
   });
   const request = () => ({ json: async () => ({ id: lead.id, price: 1100, gst: 10, extraCharge: 100 }) });
-  const pending = POST(request()).then(response => { completed = true; return response; });
-  await new Promise(setImmediate);
-  assert.equal(syncCalls, 1);
-  assert.equal(completed, false, 'sync result must be recorded before the request ends');
-  release(); assert.equal((await pending).status, 200);
+  assert.equal((await POST(request())).status, 200);
+  assert.equal(syncCalls, 0);
   lead.qboInvoiceId = 'already-synced';
   assert.equal((await POST(request())).status, 200);
-  assert.equal(syncCalls, 1, 'resending customer email must not create another QBO invoice');
+  assert.equal(syncCalls, 0, 'QuickBooks sync requires a manual button click');
 });
 
 test('finance and manager rows can choose a customer invoice without syncing the parent or duplicating clicks', async () => {

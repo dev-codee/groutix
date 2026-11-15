@@ -313,6 +313,7 @@ function recycleBinToJSON(doc: RecycleBinDoc): RecycleBinJSON {
   const { _id, createdAt, deletedAt, ...rest } = doc;
   return {
     ...rest,
+    status: rest.status?.trim().toLowerCase() === "invoice sent" ? "Payment Pending" : rest.status,
     id: _id ? _id.toString() : "",
     createdAt: (createdAt instanceof Date ? createdAt : new Date(createdAt)).toISOString(),
     deletedAt: (deletedAt instanceof Date ? deletedAt : new Date(deletedAt)).toISOString(),
@@ -562,6 +563,7 @@ export function toJSON(doc: SubmissionDoc): SubmissionJSON {
   const { _id, createdAt, ...rest } = doc;
   return {
     ...rest,
+    status: rest.status?.trim().toLowerCase() === "invoice sent" ? "Payment Pending" : rest.status,
     id: _id ? _id.toString() : "",
     createdAt: (createdAt instanceof Date ? createdAt : new Date(createdAt)).toISOString(),
   };
@@ -611,7 +613,7 @@ export function parseListParams(sp: URLSearchParams): ListParams {
 function buildFilter(params: ListParams): Filter<SubmissionDoc> {
   const filter: Filter<SubmissionDoc> = {};
   if (params.type) filter.type = params.type;
-  if (params.status) filter.status = params.status;
+  if (params.status) filter.status = ["Payment Pending", "Invoice Sent"].includes(params.status) ? { $in: ["Payment Pending", "Invoice Sent"] } : params.status;
   if (params.priority) filter.priority = params.priority;
   if (params.from || params.to) {
     filter.createdAt = {};
@@ -951,6 +953,7 @@ export async function updateSubmission(
       writeFilter[field] = current[field] === undefined ? { $exists: false } : current[field];
     }
   }
+  if (safeUpdates.status?.trim().toLowerCase() === "invoice sent") safeUpdates.status = "Payment Pending";
   normalizeApptFields(safeUpdates);
   // Every booking path resets reminders for a changed appointment, including Dispatch.
   if ("inspectionAt" in safeUpdates || "jobAt" in safeUpdates) {
@@ -980,7 +983,7 @@ export async function updateSubmission(
   if (safeUpdates.status && !["Inspection En Route", "Job En Route"].includes(safeUpdates.status)) {
     safeUpdates.customerTrackingEndedAt = new Date();
   }
-  if (options?.expectedStatus !== undefined) writeFilter.status = options.expectedStatus;
+  if (options?.expectedStatus !== undefined) writeFilter.status = options.expectedStatus === "Payment Pending" ? { $in: ["Payment Pending", "Invoice Sent"] } : options.expectedStatus;
   const res = await col.updateOne(writeFilter, { $set: safeUpdates });
   if (res.matchedCount) await syncPrimaryBookingStatus(id, safeUpdates.status);
   return res.matchedCount > 0;

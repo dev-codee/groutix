@@ -47,7 +47,6 @@ export const STAGES: Stage[] = [
   { key: "Job In Progress", label: "Job In Progress", owner: "technician", group: "job" },
   { key: "Job Done", label: "Job Done", owner: "finance", group: "finance" },
   // ── Finance / completion ──
-  { key: "Invoice Sent", label: "Invoice Sent", owner: "finance", group: "finance" },
   { key: "Payment Pending", label: "Payment Pending", owner: "finance", group: "finance" },
   { key: "Partial Payment", label: "Partial Payment", owner: "finance", group: "finance" },
   { key: "Payment Received", label: "Payment Received", owner: "finance", group: "finance" },
@@ -60,7 +59,7 @@ export const STAGES: Stage[] = [
 export const STATUS_KEYS: string[] = STAGES.map((s) => s.key);
 
 /** Document delivery must never rewind work that has already advanced. */
-export function statusAfterDocumentSend(current: string | undefined, target: "Quote Sent" | "Won" | "Invoice Sent" | "Warranty Sent"): string {
+export function statusAfterDocumentSend(current: string | undefined, target: "Quote Sent" | "Won" | "Payment Pending" | "Warranty Sent"): string {
   if (current === "Lost" || current === "Cancelled") return current;
   const canonical = current === "Paid" ? "Payment Received" : current === "Quote Accepted" ? "Won" : current;
   return STATUS_KEYS.indexOf(canonical || "") > STATUS_KEYS.indexOf(target) ? current! : target;
@@ -156,7 +155,6 @@ export const FIELD_STATUSES: string[] = [
 /** 4th Login (Finance / Completion): Job Done → Invoice → Payment → Warranty → Completed. */
 export const FINANCE_STATUSES: string[] = [
   "Job Done",
-  "Invoice Sent",
   "Payment Pending",
   "Partial Payment",
   "Payment Received",
@@ -239,7 +237,6 @@ export const INSPECTION_IN_PROGRESS_STATUSES: string[] = [
 /** Completed job statuses for technicians. */
 export const TECHNICIAN_COMPLETED_STATUSES: string[] = [
   "Job Done",
-  "Invoice Sent",
   "Payment Pending",
   "Payment Received",
   "Warranty Sent",
@@ -276,7 +273,6 @@ export function isFlowCompleted(
       "Job Started",
       "Job In Progress",
       "Job Done",
-      "Invoice Sent",
       "Payment Pending",
       "Payment Received",
       "Warranty Sent",

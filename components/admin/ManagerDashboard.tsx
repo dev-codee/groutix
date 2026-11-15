@@ -217,7 +217,7 @@ export function ManagerDashboard() {
     const revenueSum = paidLeads.reduce((acc, l) => acc + getLeadQuoteTotal(l), 0);
 
     const pendingLeads = (periodLeads.length > 0 ? periodLeads : scopedLeads).filter((l) =>
-      /invoice sent|payment pending|partial payment/i.test(l.status || "")
+      /payment pending|partial payment/i.test(l.status || "")
     );
     const pendingSum = pendingLeads.reduce((acc, l) => acc + getLeadQuoteTotal(l), 0);
 
@@ -878,15 +878,6 @@ export function ManagerDashboard() {
       statuses: ["Job Done"],
     },
     {
-      label: "Invoice Sent",
-      count: scopedLeads.filter((l) => l.status === "Invoice Sent").length,
-      icon: <FileSpreadsheet className="w-4 h-4 text-blue-600" />,
-      iconBg: "bg-blue-100",
-      cardBg: "bg-blue-50/80 border-blue-200/90 text-blue-800",
-      countColor: "text-blue-600",
-      statuses: ["Invoice Sent"],
-    },
-    {
       label: "Payment Pending",
       count: scopedLeads.filter((l) => l.status === "Payment Pending").length,
       icon: <ArrowRight className="w-4 h-4 text-rose-600" />,
@@ -1331,7 +1322,7 @@ export function ManagerDashboard() {
 
               {/* Pending Payments */}
               <div
-                onClick={() => openLeadsFiltered(["Invoice Sent", "Payment Pending", "Partial Payment"])}
+                onClick={() => openLeadsFiltered(["Payment Pending", "Partial Payment"])}
                 className="flex items-center justify-between p-2 rounded-xl bg-slate-50/60 hover:bg-slate-100/70 border border-slate-200/60 cursor-pointer transition-colors"
                 title="View invoices pending payment"
               >
