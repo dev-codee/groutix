@@ -934,7 +934,7 @@ export async function updateSubmission(
   const writeFilter: Filter<SubmissionDoc> = { _id: new ObjectId(id) };
   // A stale full-form save must not reset an established lead to New through
   // another API/automation. New belongs to intake, rather than rescheduling.
-  if (typeof safeUpdates.status === "string" && /^(new|new lead)$/i.test(safeUpdates.status.trim())) {
+  if (options?.expectedStatus === undefined && typeof safeUpdates.status === "string" && /^(new|new lead)$/i.test(safeUpdates.status.trim())) {
     const current = await col.findOne({ _id: new ObjectId(id) }, { projection: { status: 1 } });
     if (!current) return false;
     if (typeof current.status === "string" && current.status.trim() && !/^(new|new lead)$/i.test(current.status.trim())) {

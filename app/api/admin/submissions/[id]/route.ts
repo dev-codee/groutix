@@ -139,6 +139,11 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     return NextResponse.json({ error: "This lead's status changed in another account. Refresh to review its current status before saving." }, { status: 409 });
   }
 
+  // Modern dropdown/edit-form saves send the status the user actually saw.
+  // Once that matches, an intentional status selection must win over booking defaults.
+  const explicitStatusChange = expectedStatus !== undefined && typeof body.status === "string"
+    && normalizeStatus(body.status) !== normalizeStatus(before.status);
+
   // This stage is a result of invoice delivery/payment, never a manual shortcut.
   const recordingPartialPayment = body.paymentType === "partial" && Boolean(before.invoiceNumber)
     && Number(before.invoiceAmount) > 0 && Number(body.amountPaid) > Number(before.amountPaid || 0);
@@ -213,7 +218,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
 
   // A stale editor must never reset an established lead to the New queue,
   // including saves that clear the appointment or only edit its end/assignee.
-  if (typeof body.status === "string" && /^(new|new lead)$/i.test(body.status.trim()) &&
+  if (!explicitStatusChange && typeof body.status === "string" && /^(new|new lead)$/i.test(body.status.trim()) &&
       !/^(new|new lead)$/i.test((primary.status || "").trim())) {
     body.status = primary.status;
   }
@@ -320,7 +325,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     const intakeStatuses = new Set(["New", "New Lead", "Contacted", "Waiting for Info", "Waiting for Information", "Pending Info"]);
     for (const type of ["inspection", "job"] as const) {
       const field = type === "job" ? "jobAt" : "inspectionAt";
-      if (!body[field] || /^(lost|cancelled|closed|no response)/i.test(body.status || primary.status || "")) continue;
+      if (explicitStatusChange || !body[field] || /^(lost|cancelled|closed|no response)/i.test(body.status || primary.status || "")) continue;
       if (intakeStatuses.has(body.status)) {
         body.status = statusAfterBooking(type, primary.status) || primary.status;
       } else if (!body.status || body.status === primary.status) {
