@@ -352,11 +352,8 @@ export function FinanceLeadRow({ l }: { l: Lead }) {
             <div className="space-y-1">
               <button
                 type="button"
-                disabled={isPaymentPendingDone}
-                onClick={() => {
-                  if (isPaymentPendingDone) return;
-                  updateLeadField(l.id, { status: "Payment Pending" });
-                }}
+                disabled
+                title="Set automatically after sending an invoice or recording payment"
                 className={`py-1.5 px-2 text-center text-xs font-bold rounded-lg transition-colors truncate min-w-0 h-[34px] flex items-center justify-center w-full ${isPaymentPendingDone
                     ? "bg-amber-500 text-white shadow-2xs cursor-default select-none"
                     : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200 cursor-pointer"

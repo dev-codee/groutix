@@ -29,7 +29,7 @@ import {
   getLeadQuoteTotal, getFollowupPrompt, getWhatsAppLink,
   getManualStatusOptions, visitStepsFor, INSPECTION_STEPS,
   JOB_STEPS, getVisitStepActive, isVisitStepUnavailable, MANAGER_STATUS_OPTIONS_LIST, fmtDate, getStepActive,
-  isTerminalStatus, getEffectiveWorkflowStatus,
+  isTerminalStatus, getEffectiveWorkflowStatus, normalizeStatus,
 } from "@/lib/adminHelpers";
 import { formatApptDate, formatApptTime } from "@/lib/scheduling";
 import type { Lead } from "@/components/admin/types";
@@ -178,7 +178,7 @@ export function StandardLeadCard({ l }: { l: Lead }) {
                 : role === "manager" || role === "super_admin"
                   ? Array.from(new Set([...MANAGER_STATUS_OPTIONS_LIST, l.status])).filter(Boolean)
                   : Array.from(new Set([...getManualStatusOptions(role), "Payment Request", l.status])).filter(Boolean)
-              ).map((s) => (
+              ).filter(s => normalizeStatus(s) !== "Payment Pending" || s === l.status).map((s) => (
                 <option key={s} value={s} hidden={isProgressStatus(s)} disabled={isProgressStatus(s)}>
                   {s === "Completed" ? "Completed 🏆" : s === "Won" ? "Quote Accepted" : s === "Lost" ? "Lost / Closed" : s}
                 </option>
@@ -816,17 +816,13 @@ export function StandardLeadCard({ l }: { l: Lead }) {
                 <div className="space-y-1">
                   <button
                     type="button"
-                    disabled={isPaymentPendingDone}
-                    onClick={() => {
-                      if (isPaymentPendingDone) return;
-                      updateLeadField(l.id, { status: "Payment Pending" });
-                    }}
+                    disabled
+                    title="Set automatically after sending an invoice or recording payment"
                     className={`w-full px-2 py-2 rounded-lg text-xs font-semibold transition-colors text-center shadow-2xs ${
                       isPaymentPendingDone
                         ? "bg-amber-500 text-white cursor-default select-none shadow-2xs"
                         : "border border-slate-200 bg-slate-100 text-slate-700 hover:bg-slate-200 cursor-pointer"
                     }`}
-                    title="Pending Payment"
                   >
                     Pending Payment
                   </button>

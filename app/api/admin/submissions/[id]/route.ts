@@ -139,6 +139,14 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     return NextResponse.json({ error: "This lead's status changed in another account. Refresh to review its current status before saving." }, { status: 409 });
   }
 
+  // This stage is a result of invoice delivery/payment, never a manual shortcut.
+  const recordingPartialPayment = body.paymentType === "partial" && Boolean(before.invoiceNumber)
+    && Number(before.invoiceAmount) > 0 && Number(body.amountPaid) > Number(before.amountPaid || 0);
+  if (typeof body.status === "string" && normalizeStatus(body.status) === "Payment Pending"
+    && normalizeStatus(before.status) !== "Payment Pending" && !recordingPartialPayment) {
+    return NextResponse.json({ error: "Payment Pending is set automatically after sending an invoice or recording payment. Use Send Invoice first." }, { status: 409 });
+  }
+
   if (before.customerInvoiceCount && (body.paymentType || (body.status === "Payment Received" && Number(before.customerInvoiceOutstanding || 0) > 0))) {
     return NextResponse.json({ error: "Open Manage invoices and record payment against the specific invoice. Other invoices must keep their own payment status." }, { status: 409 });
   }

@@ -363,10 +363,10 @@ export function isProgressStatus(status: string): boolean {
 }
 
 export function getManualStatusOptions(role: Role, currentStatus?: string): string[] {
-  const options = getRoleStatusOptions(role, currentStatus).filter(s => !isProgressStatus(s));
+  const options = getRoleStatusOptions(role, currentStatus).filter(s => !isProgressStatus(s) && normalizeStatus(s) !== "Payment Pending");
   // Keep the existing value as a hidden, disabled option so editing another
   // field never silently changes a record that is already in progress.
-  return currentStatus && isProgressStatus(currentStatus) ? [currentStatus, ...options] : options;
+  return currentStatus && (isProgressStatus(currentStatus) || normalizeStatus(currentStatus) === "Payment Pending") ? [currentStatus, ...options] : options;
 }
 
 export function normalizeStatus(s?: string): string {

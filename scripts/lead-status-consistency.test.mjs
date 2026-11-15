@@ -60,3 +60,24 @@ test('stored Invoice Sent records serialize as Payment Pending and the retired s
     assert.equal(roleQueue(role).includes('Payment Pending'), true);
   }
 });
+
+
+test('manual pending shortcuts cannot advance an unsent job in either role', async () => {
+  const { getManualStatusOptions } = loadTs('lib/adminHelpers.ts');
+  for (const role of ['finance', 'manager']) {
+    assert.equal(getManualStatusOptions(role, 'Job Done').includes('Payment Pending'), false);
+    assert.equal(getManualStatusOptions(role, 'Payment Pending').includes('Payment Pending'), true);
+  }
+  const { PATCH } = loadTs('app/api/admin/submissions/[id]/route.ts', {
+    '@/lib/mongodb': { isMongoConfigured: () => true },
+    '@/lib/submissions': {
+      getSubmission: async () => ({ id: 'lead', status: 'Job Done' }),
+      updateSubmission: async () => assert.fail('Must not advance an unsent invoice manually'),
+    },
+  });
+  for (const status of ['Payment Pending', 'Invoice Sent', 'Payment Request']) {
+    const response = await PATCH({ json: async () => ({ status }) }, { params: Promise.resolve({ id: 'lead' }) });
+    assert.equal(response.status, 409);
+    assert.match((await response.json()).error, /automatically.*Send Invoice/);
+  }
+});
