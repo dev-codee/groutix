@@ -105,3 +105,38 @@ test('the actual lead save follows the confirmed status filter only after a succ
     assert.equal(records[0].status, filter);
   }
 });
+
+
+test('cancelled primary inspection and job timings stay empty after reopening, while other visits remain', () => {
+  const { leadBookings } = loadTs('lib/leadBookings.ts');
+  for (const type of ['inspection', 'job']) {
+    const field = type === 'job' ? 'jobAt' : 'inspectionAt';
+    const endField = type === 'job' ? 'jobEndAt' : 'inspectionEndAt';
+    const idField = type === 'job' ? 'primaryJobBookingId' : 'primaryInspectionBookingId';
+    const primary = { bookingId: 'cancelled', type, date: '2026-11-05', time: '11:15', status: 'Cancelled' };
+    const sibling = { ...primary, bookingId: 'active', date: '2026-11-20', status: type === 'job' ? 'Job Booked' : 'Inspection Booked' };
+    const lead = { id: 'lead', status: 'Contacted', [idField]: primary.bookingId,
+      [field]: '2026-11-05T11:15', [endField]: '2026-11-05T14:15', bookings: [primary, sibling] };
+    const canonical = canonicalLeadBookings(lead);
+    assert.equal(canonical[field], '');
+    assert.equal(canonical[endField], '');
+    assert.equal(canonicalLeadBookings(canonical)[field], '');
+    assert.deepEqual(Array.from(leadBookings(canonical).filter(b => b.status !== "Cancelled"), b => b.bookingId), ['active']);
+    const cleared = canonicalLeadBookings({ ...lead, [field]: '', bookings: [{ ...primary, status: sibling.status }, sibling] });
+    assert.equal(cleared[field], '', 'an explicitly cleared date cannot be restored from a stale booking');
+    assert.deepEqual(Array.from(leadBookings(cleared), b => b.bookingId), ['active']);
+  }
+});
+
+
+test('lead row inspection dates render nothing for cancelled or explicitly cleared visits', async () => {
+  const React = await import('react');
+  const { renderToStaticMarkup } = await import('react-dom/server');
+  const { InspectionBookingDates } = loadTs('components/admin/InspectionBookingDates.tsx');
+  for (const status of ['Cancelled', 'Inspection Booked']) {
+    const lead = { id: 'lead', status: 'Contacted', primaryInspectionBookingId: 'primary',
+      inspectionAt: status === 'Cancelled' ? '2026-11-06T17:00' : '',
+      bookings: [{ bookingId: 'primary', type: 'inspection', date: '2026-11-06', time: '17:00', status }] };
+    assert.equal(renderToStaticMarkup(React.createElement(InspectionBookingDates, { lead })), '');
+  }
+});

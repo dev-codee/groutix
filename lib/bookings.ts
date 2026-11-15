@@ -202,19 +202,12 @@ export async function releaseBookingSlot(leadId: string, type: "inspection" | "j
 }
 
 /** Release slots held by a lead (e.g. when lead is cancelled, lost, or appointment is cleared) */
-export async function deleteBooking(leadId: string, type?: "inspection" | "job", bookingId?: string, startAt?: string): Promise<void> {
+export async function deleteBooking(leadId: string, type?: "inspection" | "job"): Promise<void> {
   if (!isMongoConfigured()) return;
   try {
     const col = await collection();
     const query: Filter<BookingDoc> = { leadId };
     if (type) query.type = type;
-    if (bookingId || startAt) {
-      const rows = await col.find(query).toArray();
-      const booking = rows.find(row => bookingId && (row.bookingId || row._id?.toString()) === bookingId)
-        || rows.find(row => startAt && row.date + "T" + row.time.slice(0, 5) === startAt.slice(0, 16));
-      if (booking?._id) await col.deleteOne({ _id: booking._id, leadId });
-      return;
-    }
     await col.deleteMany(query);
   } catch (err) {
     console.error("deleteBooking failed:", err);

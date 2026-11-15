@@ -93,7 +93,7 @@ export function statusAfterBooking(
   currentStatus?: string
 ): string | null {
   const target = type === "inspection" ? "Inspection Booked" : "Job Booked";
-  const cur = STATUS_KEYS.indexOf(currentStatus || "New");
+  const cur = STATUS_KEYS.indexOf(currentStatus === "Invoice Sent" ? "Payment Pending" : currentStatus || "New");
   if (cur === -1) return target; // unrecognised status → treat as pre-booking
   return cur < STATUS_KEYS.indexOf(target) ? target : null;
 }

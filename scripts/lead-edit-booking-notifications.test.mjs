@@ -23,6 +23,8 @@ async function save(original, changes, response = {}) {
   const module = { exports: {} };
   vm.runInNewContext(compiled, {
     module, editingLead: { ...original, ...changes }, leadEditChanges,
+    leadReadVersion: { current: 0 }, publishCrmChange() {}, role: "manager",
+    setStatusFilter() {}, statusFilterAfterChange: value => value,
     statusAfterBooking: () => "Job Booked",
     fetch: async (_url, options) => {
       state.request = JSON.parse(options.body);
@@ -71,11 +73,12 @@ test("dashboard status saves retain the current view, filter and page", async ()
     let page = 2;
     vm.runInNewContext(compiled, {
       module, quoteModalOpen: false, leads: visible, role: "manager", statusFilter: filter, currentView, page,
+      leadReadVersion: { current: 0 }, statusFilterAfterChange: value => value,
       saveLeadChanges: async () => ({ ok: true, item }),
       setLeads: update => { visible = update(visible); },
       matchesQuoteStatusFilter: (lead, value) => lead.status === value,
       findJobsGroupForStatus: (_role, status) => ({ statuses: [status] }),
-      setStatusFilter: value => { filter = value; },
+      setStatusFilter: value => { filter = typeof value === "function" ? value(filter) : value; },
       navigateTo: value => { currentView = value; },
       setCurrentView: value => { currentView = value; },
       setPage: value => { page = value; },

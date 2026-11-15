@@ -28,7 +28,7 @@ import { validBookingStatus, combinedJobStatus } from "./bookingStatus";
 function normalizeApptFields<T extends { inspectionAt?: unknown; jobAt?: unknown }>(patch: T): T {
   for (const key of ["inspectionAt", "jobAt"] as const) {
     if (typeof patch[key] === "string") {
-      (patch as Record<string, unknown>)[key] = normalizeApptString(patch[key] as string);
+      (patch as Record<string, unknown>)[key] = normalizeApptString(patch[key] as string) ?? "";
     }
   }
   return patch;

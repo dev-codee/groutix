@@ -38,6 +38,14 @@ export function canonicalLeadBookings<T extends Lead>(lead: T): T {
   for (const type of ["inspection", "job"] as const) {
     const booking = lead.bookings?.find(item => item.type === type && isPrimaryBooking(lead, item));
     if (!booking) continue;
+    // An explicit clear is authoritative even if a stale reservation remains.
+    // Cancelled visit history must never become the lead's displayed timing.
+    if (booking.status === "Cancelled" || lead[type === "job" ? "jobAt" : "inspectionAt"] === "") {
+      result = { ...result, ...(type === "inspection" ? {
+        inspectionAt: "", inspectionEndAt: "", inspectionWorkSegments: [],
+      } : { jobAt: "", jobEndAt: "", jobWorkSegments: [] }) };
+      continue;
+    }
     result = { ...result, ...(type === "inspection" ? {
       inspectionAt: `${booking.date}T${booking.time}`, inspectionEndAt: booking.endAt ?? lead.inspectionEndAt, inspectionWorkSegments: booking.workSegments ?? lead.inspectionWorkSegments,
       assigned: booking.assigned ?? lead.assigned, inspectorId: booking.inspectorId ?? lead.inspectorId, inspectorUsername: booking.inspectorUsername ?? lead.inspectorUsername,
@@ -63,7 +71,8 @@ export function bookingLead(lead: Lead, booking: LeadBooking): Lead {
 }
 
 export function leadBookings(lead: Lead): LeadBooking[] {
-  const bookings = [...(lead.bookings || [])];
+  const bookings = (lead.bookings || []).filter(booking =>
+    booking.status === "Cancelled" || lead[booking.type === "job" ? "jobAt" : "inspectionAt"] !== "" || !isPrimaryBooking(lead, booking));
   for (const type of ["inspection", "job"] as const) {
     const start = type === "job" ? lead.jobAt : lead.inspectionAt;
     if (!start || bookings.some(b => b.type === type && isPrimaryBooking(lead, b))) continue;

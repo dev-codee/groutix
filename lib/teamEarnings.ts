@@ -102,7 +102,8 @@ export function earningsJob(lead: Lead, members: EarningsMember[], ledger: Earni
     ...leadBookings(lead).filter(b => b.type === "inspection" && b.status !== "Cancelled").map(b => resolveMember(members, [b.inspectorId], [b.inspectorUsername, b.assigned]))].filter((m): m is EarningsMember => !!m);
   const invoice = invoiceForEarnings(lead, ledger?.basis || "ex_gst");
   const hasJobVisits = leadBookings(lead).some(b => b.type === "job");
-  const completed = visits.length ? visits.every(b => b.status === "Job Done") : !hasJobVisits && ["Job Done", "Invoice Sent", "Payment Pending", "Payment Received", "Warranty Sent", "Completed"].includes(lead.status);
+  const incompleteSavedVisit = lead.bookings?.some(b => b.type === "job" && b.status && !["Job Done", "Cancelled"].includes(b.status));
+  const completed = incompleteSavedVisit ? false : visits.length ? visits.every(b => b.status === "Job Done") : !hasJobVisits && ["Job Done", "Invoice Sent", "Payment Pending", "Payment Received", "Warranty Sent", "Completed"].includes(lead.status);
   const unavailableReason = ["Cancelled", "Lost"].includes(lead.status) ? "Job is cancelled or lost." : !invoice ? "Save a valid invoice first." : !completed ? "Complete all active job visits first." : "";
   const safeDays = (value: unknown) => typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : 0;
   const memberWork = new Map<string, EarningsJob["memberWork"][number]>();

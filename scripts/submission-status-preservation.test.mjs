@@ -3,8 +3,8 @@ import test from 'node:test';
 import { BSON, ObjectId } from 'mongodb';
 import { loadTs } from './test-ts-loader.mjs';
 
-function database() {
-  let record = { _id: new ObjectId(), status: 'Inspection Completed', notes: 'Keep existing notes' };
+function database(initial = {}) {
+  let record = { _id: new ObjectId(), status: 'Inspection Completed', notes: 'Keep existing notes', ...initial };
   const writes = [];
   const collection = {
     findOne: async () => ({ ...record }),
@@ -131,4 +131,15 @@ test('a workflow advancement racing a stale New save is never overwritten', asyn
   assert.equal(await updateSubmission(id.toString(), { status: 'New', assigned: 'Alex' }), false);
   assert.equal(status, 'Job In Progress');
   assert.equal(writes, 0);
+});
+
+
+test('clearing appointment dates persists empty strings through MongoDB instead of silently retaining the old dates', async () => {
+  const db = database({ inspectionAt: '2026-11-06T17:00', jobAt: '2026-11-05T11:15' });
+  assert.equal(await db.updateSubmission(db.record()._id.toString(), { inspectionAt: '', jobAt: '' }), true);
+  assert.equal(db.writes[0].$set.inspectionAt, '');
+  assert.equal(db.writes[0].$set.jobAt, '');
+  assert.equal(db.record().inspectionAt, '');
+  assert.equal(db.record().jobAt, '');
+  assert.equal(db.record().status, 'Inspection Completed');
 });
