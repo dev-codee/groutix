@@ -179,7 +179,7 @@ export function StandardLeadCard({ l }: { l: Lead }) {
                   ? Array.from(new Set([...MANAGER_STATUS_OPTIONS_LIST, l.status])).filter(Boolean)
                   : Array.from(new Set([...getManualStatusOptions(role), "Payment Request", l.status])).filter(Boolean)
               ).filter(s => normalizeStatus(s) !== "Payment Pending" || s === l.status).map((s) => (
-                <option key={s} value={s} hidden={isProgressStatus(s)} disabled={isProgressStatus(s)}>
+                <option key={s} value={s} hidden={isProgressStatus(s) || s === "Quote Pending"} disabled={isProgressStatus(s) || s === "Quote Pending"}>
                   {s === "Completed" ? "Completed 🏆" : s === "Won" ? "Quote Accepted" : s === "Lost" ? "Lost / Closed" : s}
                 </option>
               ))}

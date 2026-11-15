@@ -267,7 +267,7 @@ export function IntakeLeadRow({ l }: { l: Lead }) {
                 className="w-full text-xs font-semibold text-slate-800 bg-white border border-slate-200 rounded-lg px-2 py-1.5 focus:outline-hidden focus:border-blue-500 cursor-pointer hover:border-blue-400 shadow-2xs truncate"
               >
                 {statusOptions.map((s) => (
-                  <option key={s} value={s} hidden={isProgressStatus(s)} disabled={isProgressStatus(s)}>{s}</option>
+                  <option key={s} value={s} hidden={isProgressStatus(s) || s === "Quote Pending"} disabled={isProgressStatus(s) || s === "Quote Pending"}>{s}</option>
                 ))}
               </select>
             </div>

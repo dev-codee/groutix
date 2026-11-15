@@ -206,7 +206,7 @@ export function LeadEditModal({
                 className="mt-1 min-w-0 w-full bg-white p-2.5 border border-slate-200 rounded-xl"
               >
                 {getManualStatusOptions(role, editingLead?.status).map((s) => (
-                  <option key={s} value={s} hidden={isProgressStatus(s)} disabled={isProgressStatus(s)}>
+                  <option key={s} value={s} hidden={isProgressStatus(s) || s === "Quote Pending"} disabled={isProgressStatus(s) || s === "Quote Pending"}>
                     {s}
                   </option>
                 ))}

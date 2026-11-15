@@ -23,7 +23,7 @@ export const STATUS_LIST: string[] = STATUS_KEYS;
 // short. Leads that happen to sit in one of those hidden statuses are still
 // counted under "All statuses" and can still be reached via links elsewhere
 // in the app (e.g. dashboard cards) — they're just not offered as a filter.
-const MANAGER_STATUS_FILTER_HIDDEN = new Set(["Negotiation", "Won", "Scheduled", "Job Started"]);
+const MANAGER_STATUS_FILTER_HIDDEN = new Set(["Quote Pending", "Negotiation", "Won", "Scheduled", "Job Started"]);
 export const MANAGER_STATUS_FILTER_LIST: string[] = STATUS_LIST.filter(
   (s) => !MANAGER_STATUS_FILTER_HIDDEN.has(s)
 );
@@ -363,10 +363,10 @@ export function isProgressStatus(status: string): boolean {
 }
 
 export function getManualStatusOptions(role: Role, currentStatus?: string): string[] {
-  const options = getRoleStatusOptions(role, currentStatus).filter(s => !isProgressStatus(s) && normalizeStatus(s) !== "Payment Pending");
+  const options = getRoleStatusOptions(role, currentStatus).filter(s => !isProgressStatus(s) && s !== "Quote Pending" && normalizeStatus(s) !== "Payment Pending");
   // Keep the existing value as a hidden, disabled option so editing another
   // field never silently changes a record that is already in progress.
-  return currentStatus && (isProgressStatus(currentStatus) || normalizeStatus(currentStatus) === "Payment Pending") ? [currentStatus, ...options] : options;
+  return currentStatus && (isProgressStatus(currentStatus) || currentStatus === "Quote Pending" || normalizeStatus(currentStatus) === "Payment Pending") ? [currentStatus, ...options] : options;
 }
 
 export function normalizeStatus(s?: string): string {
