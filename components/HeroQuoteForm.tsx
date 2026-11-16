@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
-import { CheckCircle2, Paperclip, X, AlertCircle, Plus, Trash2, Users, ChevronDown } from "lucide-react";
+import { CheckCircle2, Paperclip, X, AlertCircle, Plus, Trash2, Users, ChevronDown, ImagePlus } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Turnstile, type TurnstileInstance } from "@marsidev/react-turnstile";
 import { formatBytes, MAX_TOTAL_BYTES, MAX_FILE_SIZE_BYTES, MAX_PHOTO_COUNT } from "@/lib/imageCompression";
@@ -114,6 +114,10 @@ export default function HeroQuoteForm({ defaultService = "" }: { defaultService?
 
   const [photos, setPhotos] = useState<File[]>([]);
   const [photoError, setPhotoError] = useState("");
+  const [photoAsk, setPhotoAsk] = useState(false);
+  const photoAskBtnRef = useRef<HTMLButtonElement>(null);
+  const photoSkipRef = useRef(false);
+  const formRef = useRef<HTMLFormElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -448,6 +452,14 @@ export default function HeroQuoteForm({ defaultService = "" }: { defaultService?
     });
   };
 
+  useEffect(() => {
+    if (!photoAsk) return;
+    photoAskBtnRef.current?.focus();
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setPhotoAsk(false); };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [photoAsk]);
+
   const scrollToFirstError = (id: string) => {
     const el = document.getElementById(id);
     if (!el) return;
@@ -566,6 +578,13 @@ export default function HeroQuoteForm({ defaultService = "" }: { defaultService?
       if (firstErrorId) scrollToFirstError(firstErrorId);
       return;
     }
+
+    // No photos yet: ask once (upload or skip) before sending.
+    if (!photos.length && !photoSkipRef.current) {
+      setPhotoAsk(true);
+      return;
+    }
+    photoSkipRef.current = false;
 
     if (TURNSTILE_SITE_KEY && !captchaToken) {
       setSubmitError("Please complete the verification below.");
@@ -759,6 +778,7 @@ export default function HeroQuoteForm({ defaultService = "" }: { defaultService?
             </motion.div>
           ) : (
             <motion.form
+              ref={formRef}
               key="form"
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -1559,6 +1579,31 @@ export default function HeroQuoteForm({ defaultService = "" }: { defaultService?
             </motion.form>
           )}
         </AnimatePresence>
+
+        {/* Photo reminder: shown when they submit without photos. */}
+        {photoAsk && typeof document !== "undefined" && createPortal(
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-[#0A123F]/45 p-4 backdrop-blur-[2px]" onClick={() => setPhotoAsk(false)}>
+            <div role="dialog" aria-modal="true" aria-label="Please upload photos" onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-[380px] rounded-2xl bg-white p-5 text-center shadow-[0_20px_50px_rgba(0,0,0,0.35)]">
+              <span className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-[#EEF3FF]">
+                <ImagePlus className="h-6 w-6 text-[#1A2A8C]" aria-hidden="true" />
+              </span>
+              <h3 className="text-lg font-bold text-[#001F97]">Please upload photos</h3>
+              <p className="mt-1.5 text-sm text-slate-600">
+                A few photos of the shower, grout or leak help us understand the problem and give you an accurate quote faster.
+              </p>
+              <button ref={photoAskBtnRef} type="button" onClick={() => { setPhotoAsk(false); document.getElementById("section-photos")?.scrollIntoView({ behavior: "smooth", block: "center" }); fileInputRef.current?.click(); }}
+                className="mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-b from-[#2F63CC] to-[#001F97] text-[15px] font-bold text-white">
+                <ImagePlus className="h-4 w-4" aria-hidden="true" /> Upload photos
+              </button>
+              <button type="button" onClick={() => { photoSkipRef.current = true; setPhotoAsk(false); formRef.current?.requestSubmit(); }}
+                className="mt-2 h-10 w-full rounded-xl border-[1.5px] border-[#DBE3F0] text-sm font-semibold text-neutral-600 hover:border-[#2F63CC] hover:text-neutral-900">
+                Skip &amp; submit without photos
+              </button>
+            </div>
+          </div>,
+          document.body
+        )}
       </div>
     </div>
   );
