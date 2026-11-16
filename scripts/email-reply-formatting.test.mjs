@@ -21,6 +21,13 @@ test('nested pasted emphasis remains formatted in previews and sent replies', ()
  assert.match(html, /<u[^>]*>underlined<\/u>/);
 });
 
+test('template blank lines use paragraph spacing without stacking empty spacer blocks', () => {
+ const html = formatEmailReplyToHtml('Thank you for choosing GROUTIX.\n\nBooking details:\n\nDate: 16 November\n\nArrival Time: 9 am\n\nKind regards,\n\nGroutix');
+ assert.equal((html.match(/<p\b/g) || []).length, 6);
+ assert.doesNotMatch(html, /height:12px|<p[^>]*>\s*<\/p>/);
+ assert.match(html, /margin:0 0 12px/);
+});
+
 test('pasted text cannot execute HTML or break link attributes', () => {
  const html = formatEmailReplyToHtml('<img src=x onerror=alert(1)> <script>alert(1)</script> [link](https://example.com/"test)');
  assert.doesNotMatch(html, /<img|<script|href="[^"]*"test/);

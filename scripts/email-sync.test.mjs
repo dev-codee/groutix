@@ -85,11 +85,26 @@ test("read and archived replies with large attachments are imported using UIDs w
   assert.equal(f.calls.searches[0].options.uid, true);
   assert.ok(f.calls.fetches.every(call => call.options.uid && call.uid === "40"));
   assert.equal(f.leads[0].messages[0].attachments[0].size, 6000000);
-  assert.equal(f.leads[0].status, "In Progress");
+  assert.equal(f.leads[0].status, "Quote Sent");
   assert.equal(f.leads[0].messages[0].read, false);
   assert.equal(f.calls.flags, 0);
   assert.equal((await f.sync()).syncedCount, 0);
   assert.equal(f.leads[0].messages.length, 1);
+});
+
+test("customer and tenant replies preserve workflow and leave Start unhighlighted before a job starts", async () => {
+  const { getVisitStepActive } = loadTs("lib/adminHelpers.ts");
+  for (const status of ["Quote Sent", "Job Booked", "Job Arrived"]) {
+    for (const from of ["customer@example.com", "tenant@example.com"]) {
+      const lead = customer("lead-1", { status, tenants: [{ email: "tenant@example.com" }] });
+      const f = fixture({ leads: [lead], messages: [mail(1, { from })] });
+      assert.equal((await f.sync()).syncedCount, 1);
+      assert.equal(lead.status, status);
+      assert.equal(getVisitStepActive(lead, "job", "Job In Progress"), false);
+      assert.equal(lead.activity[0].action, "Customer replied via Email");
+      assert.equal(f.calls.notifications, 1);
+    }
+  }
 });
 
 test("more than 20 replies drain oldest first across bounded batches", async () => {

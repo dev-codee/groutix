@@ -158,9 +158,9 @@ async function syncEmails(): Promise<EmailSyncResult> {
                 });
                 if (saved.modifiedCount) {
                   syncedCount++;
-                  const isCustomerSender = lead.email?.toLowerCase() === fromEmail
-                    || lead.tenants?.some(tenant => tenant.email?.toLowerCase() === fromEmail);
-                  if (isCustomerSender) await col.updateOne({ _id: lead._id, status: "Quote Sent" }, { $set: { status: "In Progress" } });
+                  // A reply is conversation activity, not a job-start action.
+                  // "In Progress" is a legacy alias for "Job In Progress".
+                  // Preserve the workflow until an explicit workflow action.
                   // Alerts are best effort; a failure cannot block later replies.
                   try {
                     if (Date.now() < deadline) await bounded(sendReplyNotification({ leadName: lead.name, leadEmail: fromEmail, subject: parsed.subject, snippet: text, leadId: lead._id.toString() }), Math.min(5000, deadline - Date.now()));

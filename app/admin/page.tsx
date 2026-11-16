@@ -6462,7 +6462,7 @@ export default function CrmDashboardPage() {
                                 {isCustomerEmail && msg.channel === "email" ? (
                                   <EmailMessageText text={cleanText} attachments={msg.attachments} />
                                 ) : !isCustomer && msg.channel === "email" ? (
-                                  <div className="leading-relaxed [&_ul]:list-disc [&_ol]:list-decimal" dangerouslySetInnerHTML={{ __html: formatEmailReplyToHtml(cleanText) }} />
+                                  <div className="leading-relaxed [&_ul]:list-disc [&_ol]:list-decimal [&_*]:text-inherit! [&_p:last-child]:mb-0" dangerouslySetInnerHTML={{ __html: formatEmailReplyToHtml(cleanText) }} />
                                 ) : <div className="whitespace-pre-wrap leading-relaxed">{cleanText}</div>}
                                 {hasQuoted && (
                                   <details className="mt-1 text-[10px] text-slate-400">

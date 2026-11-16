@@ -641,7 +641,9 @@ export function formatEmailContentToHtml(text: string): string {
       }
 
       if (trimmed === "") {
-        result.push('<div style="height:12px;"></div>');
+        // The preceding paragraph already supplies the paragraph gap. Adding
+        // a spacer doubles it and grows again after a rich-editor round trip.
+        continue;
       } else if (trimmed.startsWith("<h2") || trimmed.startsWith("<h3") || trimmed.startsWith("<hr")) {
         result.push(trimmed);
       } else {
