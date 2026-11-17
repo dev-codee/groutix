@@ -16,6 +16,20 @@ import { useContact } from "@/components/SiteContentProvider";
 import { useGoogleRating } from "@/components/useGoogleRating";
 
 /* ─── Hero badge icons (match service page style) ─── */
+// Renders plain text with [label](/path) links, same convention as the guides.
+function renderLinkedText(text: string) {
+  const parts = text.split(/(\[[^\]]+\]\([^)]+\))/g);
+  return parts.map((part, i) => {
+    const m = part.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
+    if (!m) return <span key={i}>{part}</span>;
+    return (
+      <Link key={i} href={m[2]} className="font-bold text-accent underline">
+        {m[1]}
+      </Link>
+    );
+  });
+}
+
 const LocationIcon = () => (
   <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
     <rect width="32" height="32" rx="4" fill="#EEF2FF" />
@@ -554,7 +568,7 @@ export default function MelbourneHubClient({
               >
                 {serviceAreaText.split("\n\n").map((para, i) => (
                   <p key={i} className="text-base sm:text-lg text-neutral-600 leading-relaxed font-normal">
-                    {para}
+                    {renderLinkedText(para)}
                   </p>
                 ))}
                 <p className="text-base leading-relaxed text-neutral-600">For worn grout in kitchens, laundries and floors, see our <Link href="/tile-regrouting/" className="font-bold text-accent underline">kitchen and laundry regrouting</Link> service.</p>
