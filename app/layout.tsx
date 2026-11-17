@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Roboto } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
-import { SITE_URL, OG_IMAGE, localBusinessJsonLd } from "@/lib/seo";
+import { SITE_URL, OG_IMAGE, OG_SHARE_IMAGE, localBusinessJsonLd } from "@/lib/seo";
 import { getBusinessRating } from "@/lib/reviews";
 import { formatRating, formatReviewCount } from "@/lib/googleRating";
 import { getSiteContent } from "@/lib/siteContentServer";
@@ -68,13 +68,13 @@ export async function generateMetadata(): Promise<Metadata> {
       description: DESCRIPTION,
       url: SITE_URL,
       locale: "en_AU",
-      images: [{ url: OG_IMAGE, width: 1200, height: 630, alt: "Groutix shower regrouting and grout repair services" }],
+      images: [{ url: OG_SHARE_IMAGE, width: 1920, height: 1440, alt: "Groutix shower regrouting and grout repair services" }],
     },
     twitter: {
       card: "summary_large_image",
       title: TITLE_DEFAULT,
       description: DESCRIPTION,
-      images: [OG_IMAGE],
+      images: [OG_SHARE_IMAGE],
     },
     robots: {
       index: true,
