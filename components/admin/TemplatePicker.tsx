@@ -263,52 +263,29 @@ export function TemplatePicker({
           <span>{buttonLabel}</span>
         </button>
       ) : (
-        <div
+        <button
+          type="button"
           onClick={() => setIsOpen(true)}
-          className={`group flex items-center justify-between gap-2 p-2 rounded-lg border transition-all cursor-pointer ${
+          aria-label="Select item template"
+          title={currentTemplate ? `${currentTemplate.code} — ${currentTemplate.service}` : "Select item template"}
+          className={`group flex h-8 w-full min-w-0 max-w-36 items-center justify-between gap-1.5 rounded-md border px-2 text-left transition-colors cursor-pointer ${
             currentTemplate
               ? "bg-blue-50/50 border-blue-200 hover:border-blue-400"
               : "bg-white border-slate-200 hover:border-slate-300"
           }`}
         >
-          <div className="flex items-center gap-2 min-w-0 flex-1">
-            <Search className="w-3.5 h-3.5 text-slate-400 group-hover:text-blue-600 shrink-0" />
-            <div className="truncate">
-              {currentTemplate ? (
-                <div className="flex items-center gap-1.5 truncate">
-                  <span className={`font-mono font-bold text-[11px] px-1.5 py-0.5 rounded shrink-0 ${
-                    currentTemplate.isCustom ? "bg-amber-100 text-amber-900 border border-amber-300" : "bg-blue-100 text-blue-800"
-                  }`}>
-                    {currentTemplate.code}
-                  </span>
-                  <span className="font-semibold text-slate-800 text-xs truncate">
-                    {currentTemplate.service}
-                  </span>
-                  {currentTemplate.isCustom && (
-                    <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-50 text-amber-700 border border-amber-200">
-                      Saved
-                    </span>
-                  )}
-                </div>
-              ) : (
-                <span className="text-slate-500 text-xs italic">
-                  Manual / Custom Description (Click to search {allTemplates.length} templates)
-                </span>
-              )}
-            </div>
-          </div>
-          <div className="flex items-center gap-1 shrink-0 text-slate-400 group-hover:text-slate-600">
-            <span className="text-[11px] font-medium hidden sm:inline">Change</span>
-            <ChevronDown className="w-3.5 h-3.5" />
-          </div>
-        </div>
+          <span className={`min-w-0 truncate text-[11px] font-semibold ${currentTemplate ? "font-mono text-blue-800" : "text-slate-500"}`}>
+            {currentTemplate?.code || "Select item"}
+          </span>
+          <ChevronDown className="h-3 w-3 shrink-0 text-slate-400 group-hover:text-slate-600" />
+        </button>
       )}
 
       {/* Full-Featured Search & Selection Modal */}
       {isOpen && (
         <div className="fixed inset-0 z-60 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-150">
           <div
-            className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[88vh] overflow-y-auto border border-slate-200"
+            className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[80vh] overflow-y-auto border border-slate-200"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
@@ -570,7 +547,7 @@ export function TemplatePicker({
             </div>
 
             {/* Template List */}
-            <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-2.5 bg-slate-50/50 max-h-[55vh]">
+            <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-2.5 bg-slate-50/50 max-h-[42vh]">
               {/* Option to clear / use manual */}
               <div
                 onClick={() => handleSelect(null)}

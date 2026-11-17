@@ -44,7 +44,7 @@ function handler({ tenants = null, preparationError = false, save, saving = fals
     quoteScope: "Scope", quoteTerms: "Terms", quoteLeadDetails: preparationError ? () => { throw new Error("Invalid lead data"); } : quoteLeadDetails,
     setQuoteSaving: value => { state.saving = value; context.quoteSaving = value; }, setQuoteSaveError: value => { state.error = value; },
     setQuoteModalOpen: value => { state.closed = !value; },
-    clearQuoteDrag() {}, setQuoteOrderNotice() {}, setQuoteFullscreen() {},
+    clearQuoteDrag() {}, setQuoteOrderNotice() {}, setQuoteFullscreen() {}, setQuoteViewTab() {},
     DEFAULT_QUOTE_CONDITIONS: "Terms", getMatchedQuoteItemsForLead: () => context.quoteItems,
     setActiveQuoteLead: value => { context.activeQuoteLead = value; },
     setQuoteItems: value => { context.quoteItems = value; },

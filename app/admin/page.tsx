@@ -501,7 +501,7 @@ export default function CrmDashboardPage() {
   const quoteSaveInFlight = useRef<number | null>(null);
   const [quoteSaveError, setQuoteSaveError] = useState("");
   const [quoteFullscreen, setQuoteFullscreen] = useState(true);
-  const [quoteViewTab, setQuoteViewTab] = useState<"split" | "form" | "preview">("split");
+  const [quoteViewTab, setQuoteViewTab] = useState<"split" | "form" | "preview">("form");
   const [activeQuoteLead, setActiveQuoteLead] = useState<Lead | null>(null);
   const [customerQuotes, setCustomerQuotes] = useState<CustomerQuote[]>([]);
   const [activeCustomerQuote, setActiveCustomerQuote] = useState<CustomerQuote | null>(null);
@@ -1948,6 +1948,7 @@ export default function CrmDashboardPage() {
     setQuoteSaveError("");
     clearQuoteDrag();
     setQuoteOrderNotice("");
+    setQuoteViewTab("form");
     setActiveQuoteLead(lead);
 
     // If existing quote items were saved, use them; otherwise auto-match templates based on customer choices
@@ -5439,7 +5440,7 @@ export default function CrmDashboardPage() {
                         <table className="w-full table-fixed border-collapse text-xs" style={{ minWidth: 820 }}>
                           <colgroup>
                             <col style={{ width: 36 }} />
-                            <col style={{ width: 160 }} />
+                            <col style={{ width: 136 }} />
                             <col />
                             <col style={{ width: 56 }} />
                             <col style={{ width: 95 }} />
@@ -5863,10 +5864,10 @@ export default function CrmDashboardPage() {
                       {quoteViewTab === "preview" && (
                         <button
                           type="button"
-                          onClick={() => setQuoteViewTab("split")}
+                          onClick={() => setQuoteViewTab("form")}
                           className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-lg cursor-pointer transition-colors"
                         >
-                          <span>← Back to Split View</span>
+                          <span>← Back to Form Editor</span>
                         </button>
                       )}
                     </div>
@@ -6051,7 +6052,7 @@ export default function CrmDashboardPage() {
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={() => setQuoteViewTab(quoteViewTab === "preview" ? "split" : "preview")}
+                    onClick={() => setQuoteViewTab(quoteViewTab === "preview" ? "form" : "preview")}
                     className="flex items-center gap-1.5 px-3.5 py-2 border border-blue-200 bg-blue-50/80 hover:bg-blue-100 rounded-xl font-bold text-blue-800 text-xs cursor-pointer shadow-2xs transition-colors"
                   >
                     <Eye className="w-4 h-4 text-blue-600" />
