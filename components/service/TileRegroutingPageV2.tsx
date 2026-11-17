@@ -222,7 +222,7 @@ export default function TileRegroutingPageV2({ rating, reviews }: { rating: Busi
             <div>
               <p className={eyebrow}>Free Quote</p>
               <h2 className={h2}>Get Your Free Tile Regrouting Quote</h2>
-              <p className={`${lead} mt-3.5`}>Tell us which room is wearing out and add photos of the grout lines. Photos are required, so we can see the tiles and joints before we quote.</p>
+              <p className={`${lead} mt-3.5`}>Tell us which room is wearing out and add photos of the grout lines. Photos help us see the tiles and joints before we quote.</p>
               <ul className="mt-6 space-y-2.5">
                 {["Free quote, no obligation", "10 year warranty on eligible waterproof work", "Grout colour matched to your tiles"].map((x) => (
                   <li key={x} className="flex items-center gap-3 text-base font-semibold text-slate-800">
