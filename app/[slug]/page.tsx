@@ -51,8 +51,8 @@ const services: Record<string, {
 
   "shower-regrouting": {
     title: "Shower Regrouting",
-    metaTitle: "Shower Regrouting Melbourne | 10 Year Warranty",
-    metaDesc: "Shower regrouting in Melbourne by grout specialists. Old grout removed, waterproof epoxy applied, tiles stay in place. 10 year warranty. Free quote.",
+    metaTitle: "Shower Regrouting Melbourne | Epoxy Grout, No Tile Removal",
+    metaDesc: "Shower regrouting in Melbourne with epoxy grout. Cracked, mouldy grout replaced, no tile removal, most jobs done in one visit. Rated 5.0 from 296 reviews, 10 year warranty. Free quote.",
     h1Desc: "Groutix removes failed shower grout and rebuilds it with waterproof epoxy. Your tiles stay in place. Every complete shower regrout comes with a 10 year waterproof warranty.",
     failHeading: "When Shower Grout Fails,",
     failHeadingBlue: "Leaks Follow",
@@ -143,8 +143,8 @@ const services: Record<string, {
 
   "tile-regrouting": {
     title: "Tile Regrouting",
-    metaTitle: "Tile Regrouting Melbourne | Floors, Kitchens & Baths | Groutix",
-    metaDesc: "Tile regrouting in Melbourne for floors, kitchens, laundries and bathrooms. Old grout removed, new grout colour matched. Free quote.",
+    metaTitle: "Tile Regrouting Melbourne | Floors, Kitchens & Bathrooms | Free Quote",
+    metaDesc: "Tile regrouting in Melbourne for floors, kitchens, laundries and bathrooms. Cracked, mouldy grout replaced with colour matched grout, tiles stay in place. Rated 5.0 from 296 reviews. Free quote.",
     h1Desc: "Old grout doesn't just look dated, crumbling, staining, and letting moisture through to the surfaces underneath. Our tile regrouting service covers bathrooms, kitchens, laundries and any tiled area in your home, giving worn tiles a like-new finish. We carefully remove deteriorated grout lines and apply fresh, colour-matched grout for a clean, uniform result that's easier to keep clean and far more resistant to future cracking.",
     failHeading: "Stained & Cracked Grout",
     failHeadingBlue: "Ruins the Look of Your Tiles",
@@ -430,7 +430,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const dedicatedService = ["tile-regrouting", "silicone-recaulking", "small-tiling-jobs", "balcony-leak-repairs"].includes(slug);
   const rating = dedicatedService ? await getBusinessRating() : null;
   const description = slug === "tile-regrouting"
-    ? `Tile regrouting in Melbourne for floors, kitchens, laundries and bathrooms. Old grout removed, new grout colour matched. ${rating!.value.toFixed(1)} stars, ${formatReviewCount(rating!.count)} reviews. Free quote.`
+    ? `Tile regrouting in Melbourne for floors, kitchens, laundries and bathrooms. Cracked, mouldy grout replaced with colour matched grout, tiles stay in place. ${rating!.value.toFixed(1)} stars, ${formatReviewCount(rating!.count)} reviews. Free quote.`
     : slug === "silicone-recaulking"
       ? `Silicone replacement and recaulking in Melbourne. Mouldy, peeling silicone fully removed and resealed. ${rating!.value.toFixed(1)} stars, ${formatReviewCount(rating!.count)} reviews. Free quote.`
       : slug === "small-tiling-jobs"

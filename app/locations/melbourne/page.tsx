@@ -6,12 +6,12 @@ import type { SuburbGroup } from "@/app/locations/MelbourneHubClient";
 import { getReviews, getBusinessRating } from "@/lib/reviews";
 
 export const metadata: Metadata = {
-  title: "Shower Regrouting Melbourne | 10 Year Warranty",
+  title: "Shower & Balcony Regrouting Melbourne | Free Quote",
   description:
     "Shower regrouting, grout repair and leaking shower repairs across Melbourne. Rated 5.0 from 296 Google reviews, with a 10 year waterproof warranty and free quotes.",
   alternates: { canonical: "/locations/melbourne" },
   openGraph: {
-    title: "Shower Regrouting Melbourne | 10 Year Warranty",
+    title: "Shower & Balcony Regrouting Melbourne | Free Quote",
     description:
       "Melbourne shower regrouting, grout repair and leaking shower services. Rated 5.0 from 296 Google reviews, 10 year waterproof warranty, free quotes.",
     url: "/locations/melbourne",
