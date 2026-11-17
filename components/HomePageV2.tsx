@@ -182,7 +182,7 @@ export default function HomePageV2({ reviews, rating }: { reviews: Review[]; rat
                 #1 Shower Regrouting &amp; Leak Repairs in Melbourne
               </h1>
               <p className="mx-auto mb-6 max-w-[560px] text-[15px] lg:mx-0 leading-relaxed text-[#D6DCF5] sm:text-base">
-                We remove failed grout and rebuild it with waterproof epoxy, so your shower or balcony stops leaking. Most jobs are finished in a single visit.
+                We remove failed grout and rebuild it with waterproof epoxy, so your shower or balcony <Link href="/leaking-shower-repair" className="font-bold text-white underline">stops leaking</Link>. Most jobs are finished in a single visit.
               </p>
               <div className="mb-7 flex flex-wrap justify-center gap-3 lg:justify-start [&>a[href^='tel:']]:hidden md:[&>a[href^='tel:']]:inline-flex">
                 <HeroContactBadges rating={rating} />
@@ -219,7 +219,7 @@ export default function HomePageV2({ reviews, rating }: { reviews: Review[]; rat
                 <p className={eyebrow}>Groutix at a glance</p>
                 <h2 className="mb-3 text-[26px] font-bold text-slate-900">What Does Groutix Do?</h2>
                 <p className="max-w-[62ch] leading-[1.7] text-slate-600">
-                  Groutix is a Melbourne wet area specialist that repairs failed grout and silicone in showers, bathrooms and balconies. We regrout with waterproof epoxy instead of retiling, finish most jobs in one visit, and back complete shower regrouts with a 10 year waterproof warranty.
+                  Groutix is a Melbourne wet area specialist that repairs failed grout and silicone in showers, bathrooms and balconies. We regrout with <Link href="/epoxy-grout" className="font-bold text-[#001F97] underline">waterproof epoxy grout</Link> instead of retiling, finish most jobs in one visit, and back complete shower regrouts with a 10 year waterproof warranty.
                 </p>
               </div>
               <dl className="grid grid-cols-2 gap-x-6 gap-y-4">
