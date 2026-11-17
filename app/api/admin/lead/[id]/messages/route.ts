@@ -14,19 +14,31 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   try { body = await req.json(); } catch { return NextResponse.json({ error: "Invalid JSON." }, { status: 400 }); }
   if (!body || typeof body !== "object") return NextResponse.json({ error: "Invalid message update." }, { status: 400 });
   const hasReadIds = Array.isArray(body.readIds) && body.readIds.length > 0 && body.readIds.length <= 1000 && body.readIds.every((id: unknown) => typeof id === "string");
+  const validIds = (ids: unknown) => Array.isArray(ids) && ids.length > 0 && ids.length <= 1000 && ids.every(id => typeof id === "string" && id.length > 0);
+  const hasUnreadIds = validIds(body.unreadIds);
+  const hasDeleteIds = validIds(body.deleteIds);
   const message = body.message as CustomerMessage | undefined;
   const hasMessage = message && typeof message.id === "string" && message.id.length > 0 &&
     typeof message.text === "string" && message.text.trim() &&
     (message.from === "customer" || message.from === "groutix") &&
     (message.channel === "email" || message.channel === "sms") &&
     typeof message.time === "string" && Number.isFinite(Date.parse(message.time));
-  if (Boolean(hasReadIds) === Boolean(hasMessage)) return NextResponse.json({ error: "Provide readIds or a message." }, { status: 400 });
+  if ([hasReadIds, hasUnreadIds, hasDeleteIds, hasMessage].filter(Boolean).length !== 1 || ["readIds", "unreadIds", "deleteIds", "message"].filter(key => key in body).length !== 1) return NextResponse.json({ error: "Provide readIds, unreadIds, deleteIds or a message." }, { status: 400 });
 
   try {
     const col = (await getDb()).collection<SubmissionDoc>("submissions");
     const _id = new ObjectId(id);
     if (!await col.findOne({ _id }, { projection: { _id: 1 } })) return NextResponse.json({ error: "Lead not found." }, { status: 404 });
-    if (hasReadIds) {
+    if (hasDeleteIds) {
+      // Retain the imported ID so email sync cannot import a deleted email again.
+      await col.updateOne({ _id }, { $set: { "messages.$[message].deletedAt": new Date().toISOString(), "messages.$[message].read": true } }, {
+        arrayFilters: [{ "message.id": { $in: body.deleteIds }, "message.initial": { $ne: true }, $or: [{ "message.channel": "email" }, { "message.channel": { $exists: false } }] }],
+      });
+    } else if (hasUnreadIds) {
+      await col.updateOne({ _id }, { $set: { "messages.$[message].read": false } }, {
+        arrayFilters: [{ "message.id": { $in: body.unreadIds }, "message.from": "customer", "message.deletedAt": { $exists: false }, "message.initial": { $ne: true }, $or: [{ "message.channel": "email" }, { "message.channel": { $exists: false } }] }],
+      });
+    } else if (hasReadIds) {
       await col.updateOne({ _id }, { $set: { "messages.$[message].read": true } }, {
         arrayFilters: [{ "message.id": { $in: body.readIds }, "message.from": "customer" }],
       });

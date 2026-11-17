@@ -176,14 +176,14 @@ export async function listUsers(): Promise<UserJSON[]> {
 /** Active staff for a role, as { username, name } — used for auto-assignment. */
 export async function getActiveUsersByRole(
   role: Role
-): Promise<{ username: string; name: string }[]> {
+): Promise<{ id: string; username: string; name: string }[]> {
   if (!isMongoConfigured()) return [];
   try {
     const col = await collection();
     const docs = await col
       .find({ role, active: true }, { projection: { username: 1, name: 1 } })
       .toArray();
-    return docs.map((d) => ({ username: d.username, name: d.name || d.username }));
+    return docs.map((d) => ({ id: d._id!.toString(), username: d.username, name: d.name || d.username }));
   } catch (err) {
     console.error("getActiveUsersByRole failed:", err);
     return [];

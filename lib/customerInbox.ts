@@ -48,7 +48,7 @@ export function mergeConversationLead(current: Lead, latest?: Lead): Lead {
 }
 
 export function getLeadConversation(lead: Lead): CustomerMessage[] {
-  const list = Array.isArray(lead.messages) ? [...lead.messages] : [];
+  const list = Array.isArray(lead.messages) ? lead.messages.filter(message => !message.deletedAt) : [];
 
   // Synthesize past On The Way / Arrived dispatch notifications from lead.activity if not yet in messages
   if (Array.isArray(lead.activity)) {

@@ -1,4 +1,5 @@
 "use client";
+import { MailMessageActions } from "@/components/admin/MailMessageActions";
 import { conversationRecipient } from "@/lib/conversationRecipient";
 import { EmailBodyEditor, type EmailBodyEditorHandle } from "@/components/admin/EmailBodyEditor";
 import { formatEmailReplyToHtml } from "@/lib/emailReplyFormatting";
@@ -6448,6 +6449,16 @@ export default function CrmDashboardPage() {
                               {isCustomer && msg.fromEmail && <button type="button" className="ml-2 underline font-semibold" onClick={() => { setReplyToEmail(msg.fromEmail!); setMessageChannel("email"); setReplySubject(/^re:/i.test(msg.subject || "") ? msg.subject! : `Re: ${msg.subject || "Your Groutix enquiry"}`); }}>Reply to sender</button>}
                             </div>
                           )}
+                          <MailMessageActions leadId={activeMessageLead.id} message={msg} onUpdated={patch => {
+                            const patchLead = (lead: Lead) => {
+                              const messages = lead.messages?.map(message => message.id === msg.id ? { ...message, ...patch } : message);
+                              return { ...lead, messages, hasCustomerUnread: messages?.some(message => !message.deletedAt && message.from === "customer" && message.read === false) };
+                            };
+                            ++leadReadVersion.current;
+                            setLeads(items => items.map(lead => lead.id === activeMessageLead.id ? patchLead(lead) : lead));
+                            setActiveMessageLead(lead => lead ? patchLead(lead) : lead);
+                            publishCrmChange(patchLead(activeMessageLeadLive || activeMessageLead));
+                          }} />
                           {msg.subject && (
                             <div className={`font-bold ${isOtw ? "text-sm text-white font-black" : ""}`}>
                               {msg.subject}

@@ -3,7 +3,7 @@ import test from "node:test";
 import { loadTs } from "./test-ts-loader.mjs";
 
 const json = (body, options = {}) => ({ body, status: options.status || 200 });
-function patchApi({ conflict = false, conflictType, updateFails = false, appointments = [], before = {}, messaging = false, smsFails = false } = {}) {
+function patchApi({ conflict = false, conflictType, updateFails = false, appointments = [], before = {}, messaging = false, smsFails = false, inspectors = [] } = {}) {
   const calls = [];
   const lead = { id: "lead", status: "New", name: "Customer", ...before };
   const noop = async () => {};
@@ -12,6 +12,7 @@ function patchApi({ conflict = false, conflictType, updateFails = false, appoint
     "@/lib/mongodb": { isMongoConfigured: () => true },
     "@/lib/submissions": {
       getSubmission: async () => lead,
+      pickAssigneeForRole: async () => inspectors[0]?.name || "Unassigned",
       updateSubmission: async (...args) => { calls.push(["update", ...args]); if (updateFails) throw new Error("write failed"); return true; },
       appendActivity: noop, deleteSubmission: noop,
     },
@@ -27,7 +28,7 @@ function patchApi({ conflict = false, conflictType, updateFails = false, appoint
     "@/lib/email": { sendEmail: async args => { calls.push(["email", args]); }, sendInternalAlert: noop, getEmailLogoUrl: noop, wrapEmailHtml: value => value, isEmailConfigured: () => messaging },
     "@/lib/sms": { isSmsConfigured: () => messaging, prepareSinglePartSms: value => value, sendSms: async args => { calls.push(["sms", args]); return { ok: !smsFails }; } },
     "@/lib/zoneRulesServer": { getZoneRules: async () => loadTs("lib/zoneRules.ts").DEFAULT_ZONE_RULES },
-    "@/lib/technicians": {}, "@/lib/users": {},
+    "@/lib/technicians": {}, "@/lib/users": { getActiveUsersByRole: async () => inspectors },
   });
   return { calls, patch: (body) => api.PATCH({ json: async () => body, cookies: { get: () => ({ value: "token" }) } }, { params: Promise.resolve({ id: "lead" }) }) };
 }
@@ -373,4 +374,32 @@ test("moving the primary inspection after reassignment saves a stable identity a
   const saved = calls.find(call => call[0] === "update")[2];
   assert.equal(saved.inspectionAt, "2026-11-15T10:00");
   assert.equal(saved.primaryInspectionBookingId, "primary-inspection");
+});
+
+const inspectorRoster = [{ id: "inspector-1", username: "sam", name: "Sam Inspector" }, { id: "inspector-2", username: "alex", name: "Alex Inspector" }];
+test("admin inspection bookings save the automatic inspector on both lead and booking", async () => {
+  const { patch, calls } = patchApi({ inspectors: inspectorRoster, before: { assigned: "Intake Staff" } });
+  assert.equal((await patch({ inspectionAt: "2026-11-20T10:00" })).status, 200);
+  for (const value of [calls.find(c => c[0] === "reserve")[1], calls.find(c => c[0] === "update")[2]]) {
+    assert.equal(value.assigned, "Sam Inspector");
+    assert.equal(value.inspectorId, "inspector-1");
+    assert.equal(value.inspectorUsername, "sam");
+  }
+});
+test("booking preserves an explicitly selected inspector and does not assign on unrelated edits", async () => {
+  const { patch, calls } = patchApi({ inspectors: inspectorRoster, before: { inspectorId: "inspector-2", assigned: "Alex Inspector" } });
+  assert.equal((await patch({ inspectionAt: "2026-11-20T10:00" })).status, 200);
+  assert.equal(calls.find(c => c[0] === "reserve")[1].inspectorId, "inspector-2");
+  for (const body of [{ jobAt: "2026-11-20T10:00" }, { inspectionAt: "" }, { notes: "Keep this note" }]) {
+    const h = patchApi({ inspectors: inspectorRoster });
+    assert.equal((await h.patch(body)).status, 200);
+    const saved = h.calls.find(c => c[0] === "update")[2];
+    assert.equal(saved.inspectorId, undefined);
+    assert.equal(saved.assigned, undefined);
+  }
+});
+test("a rejected inspection reservation never saves the automatic assignment", async () => {
+  const { patch, calls } = patchApi({ inspectors: inspectorRoster, conflict: true });
+  assert.equal((await patch({ inspectionAt: "2026-11-20T10:00" })).status, 409);
+  assert.equal(calls.some(c => c[0] === "update"), false);
 });

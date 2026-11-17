@@ -29,6 +29,8 @@ import {
   type TemplateCategory
 } from "@/lib/serviceMatching";
 import type { QuoteTemplateJSON } from "@/lib/quoteTemplates";
+import { ItemCodeChecklist } from "@/components/admin/ItemCodeChecklist";
+import { matchesItemCodeChecklist, type ItemCodeSelection } from "@/lib/itemCodeChecklist";
 
 interface TemplatePickerProps {
   selectedTemplateNo?: string | number;
@@ -49,6 +51,7 @@ export function TemplatePicker({
 }: TemplatePickerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [itemCodeSelection, setItemCodeSelection] = useState<ItemCodeSelection>({});
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
   const [expandedScopeNo, setExpandedScopeNo] = useState<string | null>(null);
 
@@ -109,6 +112,7 @@ export function TemplatePicker({
       }, 50);
     } else {
       setSearchQuery("");
+      setItemCodeSelection({});
       setSelectedCategory("All");
       setExpandedScopeNo(null);
       setIsCreatingNew(false);
@@ -206,6 +210,7 @@ export function TemplatePicker({
     const queryWords = query.split(/\s+/).filter(Boolean);
 
     return allTemplates.filter((template) => {
+      if (!matchesItemCodeChecklist(template.code || "", itemCodeSelection)) return false;
       const code = (template.code || "").toLowerCase();
       const service = (template.service || "").toLowerCase();
       const scope = (template.scope || "").toLowerCase();
@@ -235,7 +240,7 @@ export function TemplatePicker({
 
       return true;
     });
-  }, [allTemplates, searchQuery, selectedCategory]);
+  }, [allTemplates, searchQuery, selectedCategory, itemCodeSelection]);
 
   function handleSelect(template: ServiceTemplate | null) {
     onSelectTemplate(template);
@@ -303,7 +308,7 @@ export function TemplatePicker({
       {isOpen && (
         <div className="fixed inset-0 z-60 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-150">
           <div
-            className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[88vh] flex flex-col overflow-hidden border border-slate-200"
+            className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[88vh] overflow-y-auto border border-slate-200"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
@@ -453,6 +458,7 @@ export function TemplatePicker({
 
             {/* Search Controls */}
             <div className="p-4 space-y-3 border-b border-slate-100 bg-white">
+              <ItemCodeChecklist selection={itemCodeSelection} onChange={setItemCodeSelection} />
               <div className="relative">
                 <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                 <input
@@ -549,7 +555,7 @@ export function TemplatePicker({
               </div>
 
               <div className="flex items-center justify-between text-[11px] text-slate-500 pt-0.5">
-                <span>
+                <span role="status" aria-live="polite">
                   Showing <b>{filteredTemplates.length}</b> of {allTemplates.length} templates
                   {customTemplatesCount > 0 && ` (${customTemplatesCount} custom saved)`}
                 </span>
@@ -602,7 +608,7 @@ export function TemplatePicker({
                   </div>
                   <div className="font-bold text-slate-700 text-sm">No templates matched your search</div>
                   <div className="text-xs text-slate-400 max-w-sm mx-auto">
-                    Try searching with simpler terms or click "+ Add to Library" to create one.
+                    Try clearing checklist options, search text, or category filters, or click "+ Add to Library" to create one.
                   </div>
                 </div>
               ) : (

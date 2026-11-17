@@ -113,3 +113,10 @@ test("Intake inbox includes only leads assigned to the current account by name, 
   leads[0].assigned = "Bob Smith";
   assert.equal(getInboxLeads(leads, "intake", "intake.a", staff).length, 2, "reassignment removes the conversation");
 });
+
+test("deleted emails disappear from conversation, folders, search and unread counts", () => {
+  const deleted = { ...lead, messages: lead.messages.map(message => message.channel === "email" ? { ...message, deletedAt: "2026-11-17T10:00:00Z" } : message) };
+  assert.equal(getLeadConversation(deleted).length, 1);
+  for (const folder of ["inbox", "unread", "sent", "all"]) assert.equal(getInboxThreads([deleted], folder, "email").length, 0);
+  assert.equal(getInboxThreads([deleted], "all", "sms").length, 1);
+});

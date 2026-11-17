@@ -56,6 +56,7 @@ export interface QuoteItem {
 }
 
 export interface CustomerMessage {
+  deletedAt?: string;
   toEmail?: string;
   fromEmail?: string;
   emailMessageId?: string;

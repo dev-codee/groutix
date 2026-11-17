@@ -25,6 +25,7 @@ import { validScheduleDate } from "@/lib/scheduleRoutes";
 import { getZoneRules } from "@/lib/zoneRulesServer";
 import { getTechnician } from "@/lib/technicians";
 import { getStaffMemberByUsername } from "@/lib/users";
+import { inspectionAssignmentOnBooking } from "@/lib/inspectionAssignment";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -241,6 +242,16 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
   }
   if ("technicianId" in body && body.technicianId !== before.technicianId && !("technicianUsername" in body)) body.technicianUsername = "";
   if ("inspectorId" in body && body.inspectorId !== before.inspectorId && !("inspectorUsername" in body)) body.inspectorUsername = "";
+  // Resolve the booking handoff before reserving the visit, so its saved
+  // snapshot and the inspector's lead queue agree. Other edits do not assign.
+  if (typeof body.inspectionAt === "string" && body.inspectionAt.trim()) {
+    const inspector = await inspectionAssignmentOnBooking({
+      assigned: body.assigned ?? before.assigned,
+      inspectorId: body.inspectorId ?? before.inspectorId,
+      inspectorUsername: body.inspectorUsername ?? before.inspectorUsername,
+    });
+    if (inspector) Object.assign(body, inspector);
+  }
   const inspectorChanged = ["inspectorId", "assigned", "inspectorUsername"].some(key => key in body && body[key] !== before[key as keyof typeof before]);
   if (inspectorChanged && before.inspectionAt && !("inspectionAt" in body)) body.inspectionAt = before.inspectionAt;
   const assignmentChanged = ["technicianId", "technician", "technicianUsername"].some((key) => key in body && body[key] !== before[key as keyof typeof before]);
