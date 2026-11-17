@@ -37,7 +37,7 @@ function harness(options = {}) {
         const key = parsed.searchParams.get('requestid');
         if (!requests.has(key)) {
           const body = JSON.parse(request.body);
-          const created = { Id: String(invoices.length + 1), DocNumber: body.DocNumber, TotalAmt: body.Line.reduce((sum, line) => sum + line.Amount, 0) + body.TxnTaxDetail.TotalTax };
+          const created = { Id: String(invoices.length + 1), DocNumber: body.DocNumber, PrivateNote: body.PrivateNote, TotalAmt: body.Line.reduce((sum, line) => sum + line.Amount, 0) + body.TxnTaxDetail.TotalTax };
           invoices.push(created); requests.set(key, created);
         }
         if (lostResponse) { lostResponse = false; throw new Error('Response lost after QBO created invoice'); }
@@ -245,4 +245,16 @@ test('finance and manager rows can choose a customer invoice without syncing the
     release(); await pending;
     assert.equal(render().find(node => node.type === 'button').props.disabled, false);
   }
+});
+
+test('job-based numbers never attach a different internal invoice to an existing QuickBooks record', async () => {
+  const h = harness();
+  const first = invoice({ documentReference: 'customer~invoice~first' });
+  assert.equal(await h.qbo.pushInvoiceToQbo(first), '1');
+  assert.equal(await h.qbo.pushInvoiceToQbo(first), '1');
+  await assert.rejects(h.qbo.pushInvoiceToQbo(invoice({ documentReference: 'customer~invoice~second' })), /different QuickBooks invoice/);
+  assert.equal(h.invoices.length, 1);
+  const lost = harness({ lostResponse: true });
+  await assert.rejects(lost.qbo.pushInvoiceToQbo(first), /Response lost/);
+  assert.equal(await lost.qbo.pushInvoiceToQbo(first), '1');
 });

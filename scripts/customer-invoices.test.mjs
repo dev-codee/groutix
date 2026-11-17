@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { loadTs } from './test-ts-loader.mjs';
 
 function setup() {
-  const leads = new Map([['customer', { id: 'customer', createdAt: '2026-01-01', type: 'lead', name: 'Sam', email: 'sam@example.com', status: 'Job Done',
+  const leads = new Map([['customer', { id: 'customer', createdAt: '2026-01-01', type: 'lead', jobNo: 'JOBNO-1111', name: 'Sam', email: 'sam@example.com', status: 'Job Done',
     invoiceNumber: 'OLD-1', invoiceAmount: 500, invoiceStatus: 'Paid', qboInvoiceId: 'old-qbo', invoiceOpenedAt: 'old-open',
     paymentReceipt: { number: 'old-receipt' }, paymentType: 'full', amountPaid: 500 }], ['other', { id: 'other', createdAt: '2026-01-01', name: 'Other' }]]);
   const quotes = ['a', 'b', 'draft', 'declined'].map(key => ({ _id: `customer~${key}`, leadId: 'customer', state: key === 'draft' || key === 'declined' ? key : 'accepted', values: {
@@ -40,7 +40,9 @@ test('multiple accepted quotes get distinct invoices and isolate legacy invoice/
   const api = setup();
   const a = await api.createQuoteInvoice('customer', 'customer~a');
   const b = await api.createQuoteInvoice('customer', 'customer~b');
-  assert.notEqual(a.id, b.id); assert.notEqual(a.invoiceNumber, b.invoiceNumber);
+  assert.notEqual(a.id, b.id);
+  assert.equal(a.invoiceNumber, 'INV-1111'); assert.equal(b.invoiceNumber, 'INV-1111');
+  assert.equal(a.sourceQuoteNumber, 'QT-1111');
   assert.equal(a.invoiceAmount, 275); assert.equal(b.invoiceAmount, 250);
   assert.equal(a.invoiceDraft.gst, 10); assert.equal(b.invoiceDraft.gst, 0);
   for (const invoice of [a, b]) {
@@ -93,7 +95,7 @@ test('quote snapshots and amounts are preserved after a source quote changes; le
   assert.equal(again.invoiceAmount, a.invoiceAmount);
   assert.equal(api.docs.get(a.id).sourceQuoteSnapshot.quoteItems[0].price, 100);
   api.leads.get('customer').quoteReference = 'customer~b';
-  assert.equal((await api.createQuoteInvoice('customer', 'customer~b')).invoiceNumber, 'OLD-1');
+  assert.equal((await api.createQuoteInvoice('customer', 'customer~b')).invoiceNumber, 'INV-1111');
 });
 
 test('quote-linked commercial fields cannot be changed, while payment and bank details can', async () => {
@@ -151,10 +153,12 @@ test('PDF, email, QuickBooks and receipt endpoints operate on the selected invoi
   assert.match(emails[1].html, new RegExp(`tracking:${b.id}`));
   const sync = loadTs('lib/quickbooksInvoiceSync.ts', {
     './customerInvoices': api,
-    './quickbooks': { isQboConfigured: () => true, pushInvoiceToQbo: async input => { pushes.push(input); await input.onCustomerResolved('shared-customer'); return `qbo-${input.invoiceNumber}`; } },
+    './quickbooks': { isQboConfigured: () => true, pushInvoiceToQbo: async input => { pushes.push(input); await input.onCustomerResolved('shared-customer'); return `qbo-${input.documentReference}`; } },
   }, { Error });
   await sync.syncInvoiceToQuickbooks(await api.getInvoiceSubmission(a.id), 'manager');
   await sync.syncInvoiceToQuickbooks(await api.getInvoiceSubmission(b.id), 'manager');
+  assert.equal(pushes[0].documentReference, a.id);
+  assert.equal(pushes[1].documentReference, b.id);
   assert.equal(pushes[1].customerId, 'shared-customer');
   assert.equal(pushes[0].items.length, 1);
   assert.equal(pushes[0].items[0].amount, 275);
@@ -368,4 +372,12 @@ test('legacy invoice delivery advances the same customer pipeline without changi
   lead.status = 'Completed';
   await api.updateInvoiceSubmission('customer', { invoiceSentAt: 'resent' });
   assert.equal(lead.status, 'Completed');
+});
+
+test('existing GX invoices resolve to the job number in both list and selected-invoice views', async () => {
+  const api = setup();
+  const invoice = await api.createQuoteInvoice('customer', 'customer~a');
+  api.docs.get(invoice.id).values.invoiceNumber = 'GX-I-26-0099';
+  assert.equal((await api.getInvoiceSubmission(invoice.id)).invoiceNumber, 'INV-1111');
+  assert.equal((await api.listCustomerInvoices('customer')).find(item => item.id === invoice.id).invoiceNumber, 'INV-1111');
 });

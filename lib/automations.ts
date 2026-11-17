@@ -1,3 +1,4 @@
+import { invoiceNumberForJob } from "./documentNumbers";
 // Server-side automation helpers fired on pipeline transitions (see the
 // submissions PATCH route). Each is idempotent and best-effort — it logs and
 // returns rather than throwing, so an email/SMS hiccup can never break the
@@ -72,7 +73,7 @@ export async function autoSendInvoice(leadId: string): Promise<void> {
     const subtotal = total / (1 + gstRate / 100);
     const gst = total - subtotal;
     const service = lead.service || "Regrouting & waterproof resealing";
-    const invoiceNumber = lead.invoiceNumber || `INV-${leadId.slice(-6).toUpperCase()}`;
+    const invoiceNumber = invoiceNumberForJob(lead);
 
     const html = `
       <h2 style="margin:0 0 4px;color:#001f97;font-size:24px;">Your Groutix Tax Invoice</h2>

@@ -16,6 +16,7 @@ export async function syncInvoiceToQuickbooks(lead: SubmissionJSON, actor: strin
   }
   try {
     const qboInvoiceId = await pushInvoiceToQbo({
+      documentReference: lead.id,
       invoiceNumber: lead.invoiceNumber, gstRate: draft.gst,
       customerId: lead.qboCustomerId,
       onCustomerResolved: id => saveInvoiceCustomerId(lead.id, id),

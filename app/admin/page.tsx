@@ -1,4 +1,6 @@
 "use client";
+
+import { invoiceNumberForJob } from "@/lib/documentNumbers";
 import { MailMessageActions } from "@/components/admin/MailMessageActions";
 import { conversationRecipient } from "@/lib/conversationRecipient";
 import { EmailBodyEditor, type EmailBodyEditorHandle } from "@/components/admin/EmailBodyEditor";
@@ -8410,7 +8412,7 @@ export default function CrmDashboardPage() {
                       <div>info@groutix.com</div>
                       <div className="pt-2 font-bold text-base text-[#d4af37]">Tax Invoice</div>
                       <div className="font-bold text-slate-900">ACN: 687 415 005</div>
-                      <div className="pt-1.5 text-slate-900">Invoice # {activeInvoiceLead.invoiceNumber || `INV-${activeInvoiceLead.id.slice(-6).toUpperCase()}`}</div>
+                      <div className="pt-1.5 text-slate-900">Invoice # {invoiceNumberForJob(activeInvoiceLead)}</div>
                       <div className="text-slate-600">{new Date().toLocaleDateString("en-AU", { timeZone: "Australia/Sydney", day: "2-digit", month: "short", year: "numeric" })}</div>
                     </div>
                   </div>

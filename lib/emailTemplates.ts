@@ -99,7 +99,7 @@ export const SAMPLE_TEMPLATE_CONTEXT: TemplateContext = {
   assigned: "Marco Rossi",
   technician: "Marco Rossi",
   technicianName: "Marco Rossi",
-  quoteNumber: "GX-9402",
+  quoteNumber: "QT-9402",
   quoteAmount: 580,
   depositAmount: 58,
   invoiceNumber: "INV-9402",

@@ -2,13 +2,11 @@
 
 import { QuoteCuringNotice } from "@/components/QuoteCuringNotice";
 import { useEffect, useState, useRef, use } from "react";
+import { QuoteScopeDetails, QuoteConditions } from "@/components/QuoteReviewDetails";
 import { useSearchParams } from "next/navigation";
-import Link from "next/link";
 import { quoteUnitPriceExGst } from "@/lib/quotePricing";
 import {
   CheckCircle2,
-  FileText,
-  ShieldCheck,
   Calendar,
   PenTool,
   RotateCcw,
@@ -37,6 +35,9 @@ interface QuoteData {
   email?: string;
   service?: string;
   jobDescription?: string;
+  specialNotes?: string;
+  terms?: string;
+  issuedAt?: string;
   items: QuoteItem[];
   taxMode?: "inclusive" | "exclusive" | "none";
   taxRate?: number;
@@ -324,7 +325,7 @@ export default function QuoteSignPage({ params }: { params: Promise<{ id: string
         </header>
 
         {/* Success Screen if Already Signed */}
-        {success ? (
+        {success && (
           <div className="bg-white rounded-3xl p-8 sm:p-10 shadow-lg border border-emerald-100 text-center space-y-6">
             <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto ring-8 ring-emerald-50">
               <CheckCircle2 className="w-9 h-9" />
@@ -368,10 +369,9 @@ export default function QuoteSignPage({ params }: { params: Promise<{ id: string
               </div>
             )}
           </div>
-        ) : (
-          <>
+        )}
             {/* Quote Summary Card */}
-            <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-200 space-y-6">
+            <div className="bg-white rounded-3xl p-4 sm:p-8 shadow-sm border border-slate-200 space-y-6">
               {/* Top Meta Bar */}
               <div className="flex flex-wrap items-start justify-between gap-4 pb-6 border-b border-slate-100">
                 <div>
@@ -384,6 +384,7 @@ export default function QuoteSignPage({ params }: { params: Promise<{ id: string
                   <p className="text-xs text-slate-400 mt-0.5">
                     Issued by Groutix Australia Pty Ltd • ACN: 687 415 005
                   </p>
+                  {quote.issuedAt && <p className="text-xs text-slate-500 mt-1">Issued: {new Date(quote.issuedAt).toLocaleDateString("en-AU", { timeZone: "Australia/Sydney", day: "2-digit", month: "short", year: "numeric" })}</p>}
                 </div>
 
                 <div className="text-right">
@@ -391,7 +392,7 @@ export default function QuoteSignPage({ params }: { params: Promise<{ id: string
                   <div className="text-2xl sm:text-3xl font-black text-[#001f97]">
                     ${quote.total.toFixed(2)}
                   </div>
-                  <div className="text-[11px] text-slate-500 font-medium">Includes 10% GST</div>
+                  <div className="text-[11px] text-slate-500 font-medium">{quote.taxMode === "none" ? "No GST" : `Includes ${quote.taxRate ?? 10}% GST`}</div>
                 </div>
               </div>
 
@@ -416,17 +417,7 @@ export default function QuoteSignPage({ params }: { params: Promise<{ id: string
                 </div>
               </div>
 
-              {/* Job Scope / Description */}
-              {quote.jobDescription && (
-                <div className="space-y-1.5">
-                  <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                    Scope of Works
-                  </h3>
-                  <div className="p-4 rounded-xl bg-white border border-slate-200 text-xs text-slate-700 leading-relaxed whitespace-pre-line font-medium">
-                    {quote.jobDescription}
-                  </div>
-                </div>
-              )}
+              <QuoteScopeDetails jobDescription={quote.jobDescription} items={quote.items} />
 
               <QuoteCuringNotice />
 
@@ -436,65 +427,62 @@ export default function QuoteSignPage({ params }: { params: Promise<{ id: string
                   Itemized Quotation Breakdown
                 </h3>
                 <div className="border border-slate-200 rounded-xl overflow-hidden text-xs">
-                  <table className="w-full text-left border-collapse">
+                  <table className="w-full text-left border-collapse table-fixed sm:table-auto">
                     <thead className="bg-white text-slate-500 font-bold border-b border-slate-200 text-[11px] uppercase">
                       <tr>
-                        <th className="py-2.5 px-3.5">Description</th>
-                        <th className="py-2.5 px-3 text-center">Qty</th>
-                        <th className="py-2.5 px-3 text-right">Unit Price{quote.taxMode !== "none" ? " (ex GST)" : ""}</th>
-                        <th className="py-2.5 px-3.5 text-right">Total{quote.taxMode !== "none" ? " (ex GST)" : ""}</th>
+                        <th className="w-[34%] sm:w-auto py-2.5 px-1.5 sm:px-3.5">Service</th>
+                        <th className="w-[10%] sm:w-auto py-2.5 px-1 sm:px-3 text-center">Qty</th>
+                        <th className="py-2.5 px-1 sm:px-3 text-right">Unit Price{quote.taxMode !== "none" ? " (ex GST)" : ""}</th>
+                        <th className="py-2.5 px-1.5 sm:px-3.5 text-right">Total{quote.taxMode !== "none" ? " (ex GST)" : ""}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                       {quote.items.length > 0 ? (
                         quote.items.map((it, idx) => (
                           <tr key={idx}>
-                            <td className="py-3 px-3.5">
-                              <div className="font-bold text-slate-800">{it.service || "Restoration Work"}</div>
-                              {it.description && (
-                                <div className="text-[11px] text-slate-500 mt-0.5">{it.description}</div>
-                              )}
+                            <td className="py-3 px-1.5 sm:px-3.5">
+                              <div className="font-bold text-slate-800 break-words">{it.service || "Restoration Work"}</div>
                             </td>
-                            <td className="py-3 px-3 text-center text-slate-600">{it.qty || 1}</td>
-                            <td className="py-3 px-3 text-right text-slate-600">
+                            <td className="py-3 px-1 sm:px-3 text-center text-slate-600">{it.qty || 1}</td>
+                            <td className="py-3 px-1 sm:px-3 text-right text-slate-600">
                               ${quoteUnitPriceExGst(it.price, quote.taxMode, quote.taxRate ?? 10).toFixed(2)}
                             </td>
-                            <td className="py-3 px-3.5 text-right font-bold text-slate-900">
+                            <td className="py-3 px-1.5 sm:px-3.5 text-right font-bold text-slate-900">
                               ${(quoteUnitPriceExGst(it.price, quote.taxMode, quote.taxRate ?? 10) * Number(it.qty || 1)).toFixed(2)}
                             </td>
                           </tr>
                         ))
                       ) : (
                         <tr>
-                          <td className="py-3 px-3.5 font-bold text-slate-800">{quote.service}</td>
-                          <td className="py-3 px-3 text-center text-slate-600">1</td>
-                          <td className="py-3 px-3 text-right text-slate-600">${quote.subtotal.toFixed(2)}</td>
-                          <td className="py-3 px-3.5 text-right font-bold text-slate-900">${quote.subtotal.toFixed(2)}</td>
+                          <td className="py-3 px-1.5 sm:px-3.5 font-bold text-slate-800">{quote.service}</td>
+                          <td className="py-3 px-1 sm:px-3 text-center text-slate-600">1</td>
+                          <td className="py-3 px-1 sm:px-3 text-right text-slate-600">${quote.subtotal.toFixed(2)}</td>
+                          <td className="py-3 px-1.5 sm:px-3.5 text-right font-bold text-slate-900">${quote.subtotal.toFixed(2)}</td>
                         </tr>
                       )}
                     </tbody>
                     <tfoot className="bg-white border-t border-slate-200 font-medium">
                       <tr>
-                        <td colSpan={3} className="py-2 px-3.5 text-right text-slate-500">
+                        <td colSpan={3} className="py-2 px-1.5 sm:px-3.5 text-right text-slate-500">
                           Subtotal:
                         </td>
-                        <td className="py-2 px-3.5 text-right text-slate-800 font-bold">
+                        <td className="py-2 px-1.5 sm:px-3.5 text-right text-slate-800 font-bold">
                           ${quote.subtotal.toFixed(2)}
                         </td>
                       </tr>
                       <tr>
-                        <td colSpan={3} className="py-1.5 px-3.5 text-right text-slate-500">
+                        <td colSpan={3} className="py-1.5 px-1.5 sm:px-3.5 text-right text-slate-500">
                           {quote.taxMode === "none" ? "No GST:" : `GST (${quote.taxRate ?? 10}%):`}
                         </td>
-                        <td className="py-1.5 px-3.5 text-right text-slate-800">
+                        <td className="py-1.5 px-1.5 sm:px-3.5 text-right text-slate-800">
                           ${quote.gst.toFixed(2)}
                         </td>
                       </tr>
                       <tr className="border-t border-slate-200 text-sm">
-                        <td colSpan={3} className="py-3 px-3.5 text-right font-black text-[#001f97]">
+                        <td colSpan={3} className="py-3 px-1.5 sm:px-3.5 text-right font-black text-[#001f97]">
                           Total Payable (AUD):
                         </td>
-                        <td className="py-3 px-3.5 text-right font-black text-[#001f97]">
+                        <td className="py-3 px-1.5 sm:px-3.5 text-right font-black text-[#001f97]">
                           ${quote.total.toFixed(2)}
                         </td>
                       </tr>
@@ -503,20 +491,11 @@ export default function QuoteSignPage({ params }: { params: Promise<{ id: string
                 </div>
               </div>
 
-              {/* Warranty Notice */}
-              <div className="flex items-start gap-3 p-4 rounded-xl bg-white border border-slate-200 text-xs">
-                <ShieldCheck className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
-                <div>
-                  <div className="font-bold text-slate-900">Groutix 10-Year Waterproof Warranty Included</div>
-                  <div className="text-slate-600 mt-0.5 leading-relaxed">
-                    Full shower restoration and epoxy regrouting works are backed by our comprehensive 10-year written warranty certificate upon completion.
-                  </div>
-                </div>
-              </div>
+              <QuoteConditions specialNotes={quote.specialNotes} terms={quote.terms} />
             </div>
 
             {/* E-SIGNATURE SECTION */}
-            <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-md border-2 border-[#001f97]/30 space-y-6">
+            {!success && <div className="bg-white rounded-3xl p-4 sm:p-8 shadow-md border-2 border-[#001f97]/30 space-y-6">
               <div className="space-y-1">
                 <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-[#001f97]">
                   <Sparkles className="w-4 h-4" /> Official Digital Signature &amp; Acceptance
@@ -528,7 +507,7 @@ export default function QuoteSignPage({ params }: { params: Promise<{ id: string
               </div>
 
               {/* Mode Toggle: Stylish Font vs Draw */}
-              <div className="flex items-center gap-2 border-b border-slate-100 pb-4">
+              <div className="flex flex-wrap items-center gap-2 border-b border-slate-100 pb-4">
                 <button
                   type="button"
                   onClick={() => setMode("font")}
@@ -655,9 +634,7 @@ export default function QuoteSignPage({ params }: { params: Promise<{ id: string
                   <span className="text-xs text-slate-700 leading-relaxed">
                     I have reviewed the quotation details above and agree to the{" "}
                     <a
-                      href="https://groutix.com/terms-conditions"
-                      target="_blank"
-                      rel="noreferrer"
+                      href="#quote-terms"
                       className="text-[#001f97] font-bold underline"
                     >
                       Groutix Official Terms &amp; Conditions
@@ -690,9 +667,7 @@ export default function QuoteSignPage({ params }: { params: Promise<{ id: string
               <div className="text-center text-[11px] text-slate-400">
                 🔒 Protected by 256-bit SSL encryption. Once signed, an official copy will be sent to your email.
               </div>
-            </div>
-          </>
-        )}
+            </div>}
 
         {/* Footer */}
         <footer className="text-center text-xs text-slate-400 pt-6 pb-12 space-y-1">

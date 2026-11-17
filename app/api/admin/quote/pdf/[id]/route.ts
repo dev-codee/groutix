@@ -1,3 +1,4 @@
+import { quoteNumberForJob } from "@/lib/documentNumbers";
 import { getQuoteSubmission as getSubmission, quoteLeadId } from "@/lib/customerQuotes";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -38,7 +39,7 @@ export async function GET(req: NextRequest, { params }: Ctx) {
     lead.quoteAmount
   );
 
-  const quoteNumber = lead.quoteNumber || (lead.jobNo ? lead.jobNo.replace(/^(?:JOBNO|Job No)-/i, "QT-") : "DRAFT");
+  const quoteNumber = quoteNumberForJob(lead);
   const jobDescription =
     sp.get("scope") ||
     lead.quoteScope ||

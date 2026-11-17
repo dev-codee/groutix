@@ -46,13 +46,14 @@ function fixture() {
   return { api, docs, leads, leadId, submissions, activities };
 }
 
-test("multiple drafts keep independent items, totals, numbers and titles without changing the first quote", async () => {
+test("multiple drafts keep independent items, totals and titles while sharing the job-based quote number", async () => {
   const { api, leadId, leads } = fixture();
   const original = (await api.listCustomerQuotes(leadId))[0];
   const second = await api.createCustomerQuote(leadId, original._id);
   const third = await api.createCustomerQuote(leadId);
   assert.notEqual(second._id, third._id);
-  assert.notEqual(second.values.quoteNumber, third.values.quoteNumber);
+  assert.equal(second.values.quoteNumber, "QT-1618");
+  assert.equal(third.values.quoteNumber, "QT-1618");
   assert.equal(second.values.quoteSentAt, undefined);
   assert.equal(second.values.quoteSignature, undefined);
   assert.equal(third.values.quoteItems.length, 0);
@@ -241,4 +242,14 @@ test("accepted amount and signature survive sending or accepting another quote a
   assert.equal(unchanged.quoteItems.length, 1);
   assert.equal(unchanged.quoteSignature, saved.quoteSignature);
   assert.equal(await api.updateQuoteSubmission(original._id, { quoteDeclinedAt: "decline" }), false);
+});
+
+test('existing GX quotes use the job number in lists and previously emailed customer links', async () => {
+  const { api, leadId, docs, leads } = fixture();
+  const original = (await api.listCustomerQuotes(leadId))[0];
+  docs.get(original._id).values.quoteNumber = 'GX-Q-26-0099';
+  leads.get(leadId).quoteNumber = 'GX-Q-26-0099';
+  assert.equal((await api.listCustomerQuotes(leadId))[0].values.quoteNumber, 'QT-1618');
+  assert.equal((await api.getQuoteSubmission(leadId)).quoteNumber, 'QT-1618');
+  assert.equal((await api.getQuoteSubmission(original._id)).quoteNumber, 'QT-1618');
 });

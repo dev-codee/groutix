@@ -1,8 +1,9 @@
+import { quoteNumberForJob } from "@/lib/documentNumbers";
 import { quoteUnitPriceExGst } from "@/lib/quotePricing";
 import { getQuoteSubmission as getSubmission, updateQuoteSubmission as updateSubmission, appendQuoteActivity as appendActivity, quoteLeadId, listCustomerQuotes, reserveCustomerQuoteSend, releaseCustomerQuoteSend } from "@/lib/customerQuotes";
 import { quoteTrackingPixel } from "@/lib/quoteOpenTracking";
 import { NextRequest, NextResponse } from "next/server";
-import { getNextSequence, formatDocNumber, getSubmission as getCustomer } from "@/lib/submissions";
+import { getSubmission as getCustomer } from "@/lib/submissions";
 import { verifySession, SESSION_COOKIE } from "@/lib/adminAuth";
 import { sendEmail, isEmailConfigured, wrapEmailHtml, getEmailLogoUrl, type EmailAttachment } from "@/lib/email";
 import { sendSms } from "@/lib/sms";
@@ -56,7 +57,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Automatic step: mint a sequential quote number the first time it's sent.
-  const quoteNumber = lead.quoteNumber || (lead.jobNo ? lead.jobNo.replace(/^(?:JOBNO|Job No)-/i, "QT-") : formatDocNumber("GX-Q", await getNextSequence("quote")));
+  const quoteNumber = quoteNumberForJob(lead);
 
   const items = Array.isArray(lead.quoteItems) ? lead.quoteItems : [];
   const { subtotal, gst, total } = computeQuoteTotals(

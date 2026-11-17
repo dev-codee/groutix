@@ -1,3 +1,4 @@
+import { quoteNumberForJob, invoiceNumberForJob } from "./documentNumbers";
 import { savedWorkSegments } from "./bookingSpan";
 import { isPrimaryBooking, canonicalLeadBookings } from "./leadBookings";
 import { withBookingCalendarLock } from "./bookingCalendarLock";
@@ -567,6 +568,8 @@ export function toJSON(doc: SubmissionDoc): SubmissionJSON {
   const { _id, createdAt, ...rest } = doc;
   return {
     ...rest,
+    ...(rest.quoteNumber ? { quoteNumber: quoteNumberForJob({ ...rest, id: _id?.toString() || "" }) } : {}),
+    ...(rest.invoiceNumber ? { invoiceNumber: invoiceNumberForJob({ ...rest, id: _id?.toString() || "" }) } : {}),
     status: rest.status?.trim().toLowerCase() === "invoice sent" ? "Payment Pending" : rest.status,
     id: _id ? _id.toString() : "",
     createdAt: (createdAt instanceof Date ? createdAt : new Date(createdAt)).toISOString(),

@@ -1,3 +1,4 @@
+import { invoiceNumberForJob } from "./documentNumbers";
 import { invoiceAccountNumber } from "./invoicePayment";
 
 export interface InvoiceDraft {
@@ -61,6 +62,6 @@ export function invoiceChanges(lead: InvoiceLead, input: InvoiceInput) {
     invoiceDraft.lines = defaults.lines;
   }
   return { invoiceDraft, invoiceAmount: Math.round(total * 100) / 100,
-    invoiceNumber: lead.invoiceNumber || (lead.jobNo ? lead.jobNo.replace(/^(?:JOBNO|Job No)-/i, "INV-") : `INV-${lead.id.slice(-6).toUpperCase()}`),
+    invoiceNumber: invoiceNumberForJob(lead),
     invoiceStatus: desiredStatus === "Paid" ? "Paid" : Number(lead.amountPaid || 0) > 0 ? "Partially Paid" : "Unpaid" };
 }

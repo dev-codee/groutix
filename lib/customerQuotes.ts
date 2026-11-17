@@ -1,7 +1,8 @@
+import { quoteNumberForJob } from "./documentNumbers";
 import { changesAcceptedQuote } from "./quoteIntegrity";
 import { randomUUID } from "node:crypto";
 import { getDb } from "./mongodb";
-import { getSubmission, updateSubmission, appendActivity, getNextSequence, formatDocNumber, type SubmissionDoc, type SubmissionJSON } from "./submissions";
+import { getSubmission, updateSubmission, appendActivity, type SubmissionDoc, type SubmissionJSON } from "./submissions";
 import { statusAfterDocumentSend } from "./pipeline";
 import { quoteDeliveryTimes } from "./quoteDelivery";
 
@@ -39,10 +40,11 @@ export async function listCustomerQuotes(leadId: string): Promise<CustomerQuote[
   const sentAt = quoteDeliveryTimes(lead).sentAt;
   await col.updateOne({ _id: originalReference(leadId) }, { $setOnInsert: {
     leadId, title: "Original quote", state: lead.quoteSignedAt || lead.quoteAcceptedAt ? "accepted" : lead.quoteDeclinedAt ? "declined" : sentAt || ["Quote Sent", "Negotiation"].includes(lead.status || "") ? "sent" : "draft",
-    values: { ...valuesFrom(lead), ...(sentAt ? { quoteSentAt: sentAt } : {}), quoteNumber: lead.quoteNumber || (lead.jobNo ? lead.jobNo.replace(/^(?:JOBNO|Job No)-/i, "QT-") : undefined) },
+    values: { ...valuesFrom(lead), ...(sentAt ? { quoteSentAt: sentAt } : {}), quoteNumber: quoteNumberForJob(lead) },
     createdAt: now, updatedAt: now,
   } }, { upsert: true });
-  return col.find({ leadId, state: { $ne: "deleted" } }).sort({ createdAt: 1, _id: 1 }).toArray();
+  const quotes = await col.find({ leadId, state: { $ne: "deleted" } }).sort({ createdAt: 1, _id: 1 }).toArray();
+  return quotes.map(quote => ({ ...quote, values: { ...quote.values, quoteNumber: quoteNumberForJob({ ...lead, ...quote.values }) } }));
 }
 
 export async function createCustomerQuote(leadId: string, copyId?: string): Promise<CustomerQuote | null> {
@@ -59,7 +61,7 @@ export async function createCustomerQuote(leadId: string, copyId?: string): Prom
     values.quoteItems = []; values.quoteScope = ""; values.quoteAmount = 0;
     values.quoteTerms = ""; values.quoteTaxMode = "inclusive"; values.quoteTaxRate = 10;
   }
-  values.quoteNumber = formatDocNumber("GX-Q", await getNextSequence("quote"));
+  values.quoteNumber = quoteNumberForJob(lead);
   const now = new Date().toISOString();
   const quote: CustomerQuote = { _id: `${leadId}~${randomUUID()}`, leadId,
     title: copy ? `${copy.title} (copy)`.slice(0, 120) : `Quote ${list.length + 1}`, state: "draft", values, createdAt: now, updatedAt: now };
@@ -100,13 +102,13 @@ export async function getQuoteSubmission(reference: string, allowDraft = false):
   const lead = await getSubmission(leadId);
   if (!lead) return null;
   const quote = await (await collection()).findOne({ _id: reference.includes("~") ? reference : originalReference(leadId), leadId });
-  if (!quote) return reference.includes("~") ? null : lead;
+  if (!quote) return reference.includes("~") ? null : { ...lead, quoteNumber: quoteNumberForJob(lead) };
   if (quote.state === "deleted") return null;
   if (!allowDraft && (quote.state === "draft" || quote.state === "sending")) return null;
   // Never inherit a signature, total or response belonging to a different quote.
   const base = { ...lead };
   for (const field of valueFields) delete base[field];
-  return { ...base, ...quote.values, id: reference, status: quote.state === "accepted" ? "Won" : quote.state === "declined" ? "Lost" : "Quote Sent" };
+  return { ...base, ...quote.values, quoteNumber: quoteNumberForJob({ ...lead, ...quote.values }), id: reference, status: quote.state === "accepted" ? "Won" : quote.state === "declined" ? "Lost" : "Quote Sent" };
 }
 
 export async function updateQuoteSubmission(reference: string, updates: Partial<SubmissionDoc>): Promise<boolean> {

@@ -251,6 +251,8 @@ async function findOrCreateCustomer(
 }
 
 export interface QboInvoiceInput {
+  /** Internal identity; different invoice records can share a job-based number. */
+  documentReference?: string;
   customerId?: string;
   onCustomerResolved?: (id: string) => Promise<void>;
   invoiceNumber: string;
@@ -307,6 +309,12 @@ export async function pushInvoiceToQbo(input: QboInvoiceInput): Promise<string> 
   }
   const existing = await qboGet(`query?query=${encodeURIComponent(`SELECT * FROM Invoice WHERE DocNumber = '${escapeQueryValue(input.invoiceNumber)}' MAXRESULTS 2`)}`);
   const invoices = existing.QueryResponse?.Invoice || [];
+  const documentNote = input.documentReference ? `Groutix invoice reference: ${input.documentReference}` : undefined;
+  if (documentNote) {
+    const matching = invoices.filter((invoice: { PrivateNote?: string }) => invoice.PrivateNote === documentNote);
+    if (matching.length === 1) return String(matching[0].Id);
+    if (invoices.length) throw new Error("This job's invoice number is already used by a different QuickBooks invoice. Review the existing invoice before syncing this record.");
+  }
   if (invoices.length > 1) throw new Error("Multiple QuickBooks invoices use this invoice number. Review them before retrying sync.");
   if (invoices[0]) return String(invoices[0].Id);
 
@@ -334,11 +342,12 @@ export async function pushInvoiceToQbo(input: QboInvoiceInput): Promise<string> 
   });
   const result = await qboPost("invoice", {
     DocNumber: input.invoiceNumber, CustomerRef: { value: customerId },
+    ...(documentNote ? { PrivateNote: documentNote } : {}),
     DueDate: new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10),
     Line: lines, GlobalTaxCalculation: "TaxInclusive",
     TxnTaxDetail: { TotalTax: (grossTotal - netTotal) / 100 },
     ...(input.customerEmail ? { BillEmail: { Address: input.customerEmail } } : {}),
-  }, requestId("invoice", input.invoiceNumber));
+  }, requestId("invoice", input.documentReference || input.invoiceNumber));
   return String(result.Invoice.Id);
 }
 

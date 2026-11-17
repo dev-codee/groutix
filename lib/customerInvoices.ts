@@ -1,5 +1,6 @@
+import { invoiceNumberForJob, quoteNumberForJob } from "./documentNumbers";
 import { getDb } from "./mongodb";
-import { getSubmission, updateSubmission, appendActivity, getNextSequence, formatDocNumber, type SubmissionJSON, type SubmissionDoc, type ActivityEntry } from "./submissions";
+import { getSubmission, updateSubmission, appendActivity, type SubmissionJSON, type SubmissionDoc, type ActivityEntry } from "./submissions";
 import { listCustomerQuotes } from "./customerQuotes";
 import { invoiceDraftForLead, invoiceChanges } from "./invoiceDraft";
 import { computeQuoteTotals } from "./quotePdf";
@@ -24,14 +25,17 @@ const invoiceFields = ["invoiceDraft", "invoiceAmount", "invoiceNumber", "invoic
 function invoiceView(lead: SubmissionJSON, doc: CustomerInvoice): SubmissionJSON {
   const base = { ...lead };
   for (const field of invoiceFields) delete base[field];
-  const invoice = { ...base, ...doc.values, id: doc._id, sourceQuoteId: doc.sourceQuoteId, sourceQuoteNumber: doc.sourceQuoteNumber,
+  const invoice = { ...base, ...doc.values, invoiceNumber: invoiceNumberForJob({ ...lead, ...doc.values }), id: doc._id, sourceQuoteId: doc.sourceQuoteId, sourceQuoteNumber: quoteNumberForJob({ ...lead, quoteNumber: doc.sourceQuoteNumber }),
     invoiceParentId: doc.leadId, createdAt: lead.createdAt, status: doc.values.invoiceStatus === "Paid" || doc.values.paymentReceipt ? "Payment Received"
       : Number(doc.values.amountPaid) > 0 ? "Payment Pending" : doc.values.invoiceSentAt ? "Payment Pending" : "Job Done" };
   if (invoice.invoiceDraft) invoice.invoiceDraft = invoiceDraftForLead(invoice);
   return invoice;
 }
 export async function getInvoiceSubmission(id: string): Promise<SubmissionJSON | null> {
-  if (!isCustomerInvoice(id)) return getSubmission(id);
+  if (!isCustomerInvoice(id)) {
+    const lead = await getSubmission(id);
+    return lead && lead.invoiceNumber ? { ...lead, invoiceNumber: invoiceNumberForJob(lead) } : lead;
+  }
   const lead = await getSubmission(invoiceLeadId(id));
   if (!lead) return null;
   const doc = await (await collection()).findOne({ _id: id, leadId: lead.id });
@@ -41,7 +45,7 @@ export async function listCustomerInvoices(leadId: string) {
   const lead = await getSubmission(leadId);
   if (!lead) return null;
   const docs = await (await collection()).find({ leadId }).sort({ createdAt: 1, _id: 1 }).toArray();
-  const legacy = { ...lead, invoiceStatus: lead.invoiceStatus || (lead.paymentReceipt || lead.paymentType === "full" || lead.status === "Payment Received" ? "Paid" : "Unpaid") };
+  const legacy = { ...lead, invoiceNumber: invoiceNumberForJob(lead), invoiceStatus: lead.invoiceStatus || (lead.paymentReceipt || lead.paymentType === "full" || lead.status === "Payment Received" ? "Paid" : "Unpaid") };
   return [...(lead.invoiceNumber ? [legacy] : []), ...docs.map(doc => invoiceView(lead, doc))];
 }
 export async function createQuoteInvoice(leadId: string, quoteId: string): Promise<SubmissionJSON> {
@@ -55,7 +59,7 @@ export async function createQuoteInvoice(leadId: string, quoteId: string): Promi
   const col = await collection();
   const existing = await col.findOne({ _id: id, leadId });
   if (existing) return invoiceView(lead, existing);
-  if (lead.invoiceNumber && (lead.quoteReference === quoteId || (!lead.quoteReference && quoteId === `${leadId}~original`))) return lead;
+  if (lead.invoiceNumber && (lead.quoteReference === quoteId || (!lead.quoteReference && quoteId === `${leadId}~original`))) return { ...lead, invoiceNumber: invoiceNumberForJob(lead) };
   if (quote.state !== "accepted") throw new Error("Only an accepted quote can be invoiced. Alternative and draft quotes must not be billed.");
   const source = quote.values;
   const rate = source.quoteTaxMode === "none" ? 0 : source.quoteTaxRate ?? 10;
@@ -76,9 +80,9 @@ export async function createQuoteInvoice(leadId: string, quoteId: string): Promi
     return { description: [item.service || item.code, item.description || item.scope, `Quantity: ${item.qty || 1}`].filter(Boolean).join(" — "), amount: cents / 100 };
   }) : [{ description: source.quoteScope || source.service || "Quoted work", amount: total }];
   draft.description = "";
-  const doc: CustomerInvoice = { _id: id, leadId, sourceQuoteId: quoteId, sourceQuoteNumber: source.quoteNumber,
+  const doc: CustomerInvoice = { _id: id, leadId, sourceQuoteId: quoteId, sourceQuoteNumber: quoteNumberForJob({ ...lead, ...source }),
     sourceQuoteSnapshot: { ...source }, createdAt: new Date().toISOString(), values: {
-      invoiceDraft: draft, invoiceAmount: total, invoiceStatus: "Unpaid", invoiceNumber: formatDocNumber("GX-I", await getNextSequence("invoice")),
+      invoiceDraft: draft, invoiceAmount: total, invoiceStatus: "Unpaid", invoiceNumber: invoiceNumberForJob(lead),
     } };
   try { await col.updateOne({ _id: id }, { $setOnInsert: doc }, { upsert: true }); }
   catch (error) { if ((error as { code?: number }).code !== 11000) throw error; }

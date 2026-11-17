@@ -1,3 +1,4 @@
+import { quoteNumberForJob } from "@/lib/documentNumbers";
 import { getQuoteSubmission as getSubmission, updateQuoteSubmission as updateSubmission, appendQuoteActivity as appendActivity, quoteLeadId } from "@/lib/customerQuotes";
 import { recordQuoteOpen } from "@/lib/quoteOpenTracking";
 import { NextRequest, NextResponse } from "next/server";
@@ -35,7 +36,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Quote not found." }, { status: 404 });
   }
 
-  const quoteNumber = lead.quoteNumber || (lead.jobNo ? lead.jobNo.replace(/^(?:JOBNO|Job No)-/i, "QT-") : `Job No-${lead.id.slice(-6).toUpperCase()}`);
+  const quoteNumber = quoteNumberForJob(lead);
   const items = Array.isArray(lead.quoteItems) ? lead.quoteItems : [];
   const { subtotal, gst, total } = computeQuoteTotals(
     items,
@@ -67,6 +68,11 @@ export async function GET(req: NextRequest) {
       email: lead.email || "",
       service: lead.service || "Tile & Grout Restoration",
       jobDescription,
+      specialNotes: lead.quoteTerms?.trim() && !/^Groutix terms/i.test(lead.quoteTerms.trim())
+        ? lead.quoteTerms
+        : DEFAULT_QUOTE_CONDITIONS,
+      terms: GROUTIX_OFFICIAL_TERMS,
+      issuedAt: lead.quoteSentAt,
       items,
       subtotal,
       gst,
@@ -106,11 +112,11 @@ export async function POST(req: NextRequest) {
     if (lead.quoteSignedAt) {
       const rules = await getBookingRules();
       const customerJobBookingEnabled = rules.job.days.some(day => day.open) || (rules.job.changeovers || []).some(period => period.days.some(day => day.open));
-      return NextResponse.json({ ok: true, quoteNumber: lead.quoteNumber, customerJobBookingEnabled, ...(customerJobBookingEnabled ? { bookingUrl: buildBookingUrl(quoteLeadId(id), "job") } : {}) });
+      return NextResponse.json({ ok: true, quoteNumber: quoteNumberForJob(lead), customerJobBookingEnabled, ...(customerJobBookingEnabled ? { bookingUrl: buildBookingUrl(quoteLeadId(id), "job") } : {}) });
     }
     if (lead.quoteDeclinedAt) return NextResponse.json({ error: "This quotation was declined. Please contact us for a new quote." }, { status: 409 });
 
-    const quoteNumber = lead.quoteNumber || (lead.jobNo ? lead.jobNo.replace(/^(?:JOBNO|Job No)-/i, "QT-") : `Job No-${lead.id.slice(-6).toUpperCase()}`);
+    const quoteNumber = quoteNumberForJob(lead);
     const items = Array.isArray(lead.quoteItems) ? lead.quoteItems : [];
     const { subtotal, gst, total } = computeQuoteTotals(
       items,
