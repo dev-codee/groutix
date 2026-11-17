@@ -206,7 +206,7 @@ export default function LeakingShowerPageV2({ reviews }: { reviews: Review[] }) 
             <div>
               <p className={eyebrow}>Free Quote</p>
               <h2 className={h2}>Get Your Free Leaking Shower Repair Quote</h2>
-              <p className={`${lead} mt-3.5`}>Tell us where the water is showing up and add photos of the stains, grout and silicone. Photos are required, so we can see the problem before we quote.</p>
+              <p className={`${lead} mt-3.5`}>Tell us where the water is showing up and add photos of the stains, grout and silicone. Photos help us see the problem before we quote.</p>
               <ul className="mt-6 space-y-2.5">
                 {["Free quote, no obligation", "10 year waterproof warranty on eligible completed repairs", "We find the cause before we repair it"].map((x) => (
                   <li key={x} className="flex items-center gap-3 text-base font-semibold text-slate-800">

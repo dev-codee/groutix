@@ -11,6 +11,9 @@ export const SITE_URL = (
 // Default social-share image (swap for a branded 1200×630 image when you have one).
 export const OG_IMAGE = "/new_logo.jpeg";
 
+// Social share image (Open Graph / Twitter) — a real job photo, not the logo.
+export const OG_SHARE_IMAGE = "/dark-grey-shower-floor-regrouting.webp";
+
 // Shared marketing review count; keep every badge and metadata label consistent.
 export const GOOGLE_REVIEW_COUNT = 296;
 export const GOOGLE_REVIEW_COUNT_LABEL = `${GOOGLE_REVIEW_COUNT}+`;

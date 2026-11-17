@@ -220,7 +220,7 @@ export default function SiliconeRecaulkingPageV2({ rating, reviews }: { rating: 
             <div>
               <p className={eyebrow}>Free Quote</p>
               <h2 className={h2}>Get Your Free Silicone Replacement Quote</h2>
-              <p className={`${lead} mt-3.5`}>Tell us where the silicone is peeling or mouldy and add photos of the joints. Photos are required, so we can see the bead and the surfaces before we quote.</p>
+              <p className={`${lead} mt-3.5`}>Tell us where the silicone is peeling or mouldy and add photos of the joints. Photos help us see the bead and the surfaces before we quote.</p>
               <ul className="mt-6 space-y-2.5">
                 {["Free quote, no obligation", "Old silicone fully removed, never laid over", "Mould resistant silicone finish"].map((x) => (
                   <li key={x} className="flex items-center gap-3 text-base font-semibold text-slate-800">

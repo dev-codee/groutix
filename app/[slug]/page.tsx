@@ -13,7 +13,7 @@ import { SILICONE_META_TITLE, siliconeFaqs } from "@/lib/siliconeRecaulkingConte
 // Old layout kept in components/TileRegroutingPage.tsx; point this import back there to roll back.
 import TileRegroutingPage from "@/components/service/TileRegroutingPageV2";
 import { tileRegroutingFaqs } from "@/lib/tileRegroutingContent";
-import { abs, SITE_URL } from "@/lib/seo";
+import { abs, SITE_URL, OG_SHARE_IMAGE } from "@/lib/seo";
 // Old layout kept in components/BalconyLeakRepairsPage.tsx; point this import back there to roll back.
 import BalconyLeakRepairsPage from "@/components/service/BalconyLeakRepairsPageV2";
 import { BALCONY_META_TITLE, BALCONY_META_DESCRIPTION, balconyFaqs } from "@/lib/balconyLeakContent";
@@ -446,6 +446,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       description,
       url: canonical,
       type: "website",
+      images: [{ url: OG_SHARE_IMAGE, width: 1920, height: 1440, alt: "Shower regrouting in Melbourne by Groutix" }],
     },
   };
 }

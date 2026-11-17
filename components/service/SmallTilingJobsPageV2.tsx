@@ -172,7 +172,7 @@ export default function SmallTilingJobsPageV2({ rating, reviews }: { rating: Bus
             <div>
               <p className={eyebrow}>Free Quote</p>
               <h2 className={h2}>Get Your Free Small Tiling Quote</h2>
-              <p className={`${lead} mt-3.5`}>Tell us which tile is cracked, loose or missing and add photos of the area. Photos are required, so we can see the tile and the match before we quote.</p>
+              <p className={`${lead} mt-3.5`}>Tell us which tile is cracked, loose or missing and add photos of the area. Photos help us see the tile and the match before we quote.</p>
               <ul className="mt-6 space-y-2.5">
                 {["Free quote, no obligation", "Tile and grout matched as closely as possible", "Most small jobs finished in a single visit"].map((x) => (
                   <li key={x} className="flex items-center gap-3 text-base font-semibold text-slate-800">

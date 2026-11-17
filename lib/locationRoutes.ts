@@ -9,7 +9,7 @@
 export const MELBOURNE_SUBURB_SLUGS = [
   "carnegie", "carlton", "carlton-north", "collingwood", "docklands", "east-melbourne", "fitzroy",
   "fitzroy-north", "footscray", "melbourne-cbd", "north-melbourne", "parkville", "richmond", "south-melbourne",
-  "south-yarra", "southbank", "west-melbourne", "abbotsford", "camberwell", "canterbury", "caulfield",
+  "south-yarra", "southbank", "west-melbourne", "abbotsford", "camberwell", "canterbury", "caulfield", "armadale",
   "cremorne", "glen-iris", "hawthorn", "hawthorn-east", "kew", "kew-east",
   "malvern", "malvern-east", "toorak", "windsor", "brunswick", "brunswick-east",
   "brunswick-west", "coburg", "coburg-north", "northcote", "princes-hill", "thornbury",

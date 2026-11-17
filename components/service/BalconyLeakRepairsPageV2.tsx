@@ -187,7 +187,7 @@ export default function BalconyLeakRepairsPageV2({ rating, reviews }: { rating: 
             <div>
               <p className={eyebrow}>Free Quote</p>
               <h2 className={h2}>Get Your Free Balcony Leak Repair Quote</h2>
-              <p className={`${lead} mt-3.5`}>Tell us what your balcony is doing and add photos of the stains, grout lines and drainage. Photos are required, so we can see the problem before we quote.</p>
+              <p className={`${lead} mt-3.5`}>Tell us what your balcony is doing and add photos of the stains, grout lines and drainage. Photos help us see the problem before we quote.</p>
               <ul className="mt-6 space-y-2.5">
                 {["Free inspection, no obligation", "10 year waterproof warranty on eligible waterproof work", "Fixed written quote before work starts"].map((x) => (
                   <li key={x} className="flex items-center gap-3 text-base font-semibold text-slate-800">
