@@ -244,7 +244,7 @@ export default function ShowerRegroutingPageV2({ reviews }: { reviews: Review[] 
             <div>
               <p className={eyebrow}>Free Quote</p>
               <h2 className={h2}>Get Your Free Shower Regrouting Quote</h2>
-              <p className={`${lead} mt-3.5`}>Tell us what your shower is doing and add photos of the problem. Photos are required, so we can see the grout, silicone and tiles before we quote.</p>
+              <p className={`${lead} mt-3.5`}>Tell us what your shower is doing and add photos of the problem. Photos help us see the grout, silicone and tiles before we quote.</p>
               <ul className="mt-6 space-y-2.5">
                 {["Free quote, no obligation", "10 year waterproof warranty on complete regrouts", "Most jobs finished in a single visit"].map((x) => (
                   <li key={x} className="flex items-center gap-3 text-base font-semibold text-slate-800">
