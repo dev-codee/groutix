@@ -263,7 +263,7 @@ export default function EpoxyGroutPageV2({ reviews = [], rating }: { reviews?: R
             <div>
               <p className={eyebrow}>Free Quote</p>
               <h2 className={h2}>Get Your Free Epoxy Grout Quote</h2>
-              <p className={`${lead} mt-3.5`}>Tell us where the old grout is failing and add photos of the joints. Photos are required, so we can check the tiles and grout colour before we quote.</p>
+              <p className={`${lead} mt-3.5`}>Tell us where the old grout is failing and add photos of the joints. Photos help us check the tiles and grout colour before we quote.</p>
               <ul className="mt-6 space-y-2.5">
                 {["Free quote, no obligation", "10 year warranty on eligible completed work", "Grout colour matched to your tiles"].map((x) => (
                   <li key={x} className="flex items-center gap-3 text-base font-semibold text-slate-800">
