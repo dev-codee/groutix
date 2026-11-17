@@ -35,6 +35,7 @@ import RingwoodPage from "@/components/RingwoodPage";
 import GlenWaverleyPage from "@/components/GlenWaverleyPage";
 import ToorakPage from "@/components/ToorakPage";
 import CaulfieldPage from "@/components/CaulfieldPage";
+import ArmadalePage from "@/components/ArmadalePage";
 import SouthMelbournePage from "@/components/SouthMelbournePage";
 import HawthornPage from "@/components/HawthornPage";
 import BalaclavaPage from "@/components/BalaclavaPage";
@@ -260,6 +261,7 @@ export default async function SuburbPage({ params }: Props) {
   if (suburb === "glen-waverley") {  return <GlenWaverleyPage reviews={reviews} rating={rating} />;}
   if (suburb === "toorak") {  return <ToorakPage reviews={reviews} rating={rating} />;}
   if (suburb === "caulfield") {  return <CaulfieldPage reviews={reviews} rating={rating} />;}
+if (suburb === "armadale") {  return <ArmadalePage reviews={reviews} rating={rating} />;}
   if (suburb === "south-melbourne") {  return <SouthMelbournePage reviews={reviews} rating={rating} />;}
   if (suburb === "hawthorn") {  return <HawthornPage reviews={reviews} rating={rating} />;}
   if (suburb === "balaclava") {  return <BalaclavaPage reviews={reviews} rating={rating} />;}
