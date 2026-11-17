@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 // Old layout kept in components/LeakingShowerPage.tsx; point this import back there to roll back.
 import LeakingShowerPage from "@/components/service/LeakingShowerPageV2";
 import { getReviews } from "@/lib/reviews";
-import { faqJsonLd } from "@/lib/seo";
+import { faqJsonLd, OG_SHARE_IMAGE } from "@/lib/seo";
 import { LEAKING_SHOWER_FAQS, LEAKING_SHOWER_META } from "@/lib/leakingShowerContent";
 
 export const metadata: Metadata = {
@@ -14,6 +14,7 @@ export const metadata: Metadata = {
     description: LEAKING_SHOWER_META.description,
     url: "/leaking-shower-repair",
     type: "website",
+    images: [{ url: OG_SHARE_IMAGE, width: 1920, height: 1440, alt: "Shower regrouting in Melbourne by Groutix" }],
   },
   twitter: { card: "summary_large_image", title: LEAKING_SHOWER_META.title, description: LEAKING_SHOWER_META.description },
 };
