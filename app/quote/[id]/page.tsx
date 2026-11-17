@@ -36,7 +36,6 @@ interface QuoteData {
   service?: string;
   jobDescription?: string;
   specialNotes?: string;
-  terms?: string;
   issuedAt?: string;
   items: QuoteItem[];
   taxMode?: "inclusive" | "exclusive" | "none";
@@ -91,7 +90,7 @@ export default function QuoteSignPage({ params }: { params: Promise<{ id: string
       return;
     }
 
-    fetch(`/api/quote/sign?id=${id}&token=${token}`)
+    fetch(`/api/quote/sign?id=${id}&token=${token}`, { cache: "no-store" })
       .then((res) => res.json())
       .then((data) => {
         if (!data.ok || !data.quote) {
@@ -491,7 +490,7 @@ export default function QuoteSignPage({ params }: { params: Promise<{ id: string
                 </div>
               </div>
 
-              <QuoteConditions specialNotes={quote.specialNotes} terms={quote.terms} />
+              <QuoteConditions specialNotes={quote.specialNotes} />
             </div>
 
             {/* E-SIGNATURE SECTION */}
@@ -634,7 +633,9 @@ export default function QuoteSignPage({ params }: { params: Promise<{ id: string
                   <span className="text-xs text-slate-700 leading-relaxed">
                     I have reviewed the quotation details above and agree to the{" "}
                     <a
-                      href="#quote-terms"
+                      href="/terms-conditions"
+                      target="_blank"
+                      rel="noreferrer"
                       className="text-[#001f97] font-bold underline"
                     >
                       Groutix Official Terms &amp; Conditions

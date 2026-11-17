@@ -116,7 +116,7 @@ test("sending two quotes produces separate customer links and the selected PDF t
   const { api, leadId, submissions } = fixture();
   const original = (await api.listCustomerQuotes(leadId))[0];
   const second = await api.createCustomerQuote(leadId, original._id);
-  await api.saveCustomerQuote(leadId, second._id, { quoteItems: [{ service: "Both showers", price: 200, qty: 2 }], quoteAmount: 440 });
+  await api.saveCustomerQuote(leadId, second._id, { quoteItems: [{ service: "Both showers", scope: "• Remove failed grout\n• Prepare and regrout both showers", description: "Use the agreed grout colour", price: 200, qty: 2 }], quoteAmount: 440 });
   const emails = [], texts = [], pdfs = [];
   const tokens = loadTs("lib/quoteToken.ts");
   const pdf = { computeQuoteTotals: (items) => { const subtotal = items.reduce((sum, item) => sum + item.price * item.qty, 0); return { subtotal, gst: subtotal * .1, total: subtotal * 1.1 }; },
@@ -134,6 +134,8 @@ test("sending two quotes produces separate customer links and the selected PDF t
   }
   assert.equal(Math.round(pdfs[0].total), 110);
   assert.equal(Math.round(pdfs[1].total), 440);
+  assert.equal(pdfs[1].items[0].scope, "• Remove failed grout\n• Prepare and regrout both showers");
+  assert.equal((await api.getQuoteSubmission(second._id)).quoteItems[0].description, "Use the agreed grout colour");
   assert.ok(emails[0].html.includes(tokens.buildQuoteSignUrl(original._id)));
   assert.ok(emails[1].html.includes(tokens.buildQuoteSignUrl(second._id)));
   assert.ok(texts[1].body.includes(tokens.buildQuoteSignUrl(second._id)));
@@ -252,4 +254,24 @@ test('existing GX quotes use the job number in lists and previously emailed cust
   assert.equal((await api.listCustomerQuotes(leadId))[0].values.quoteNumber, 'QT-1618');
   assert.equal((await api.getQuoteSubmission(leadId)).quoteNumber, 'QT-1618');
   assert.equal((await api.getQuoteSubmission(original._id)).quoteNumber, 'QT-1618');
+});
+
+test('Send Quote refuses a title-only custom item before any email or SMS is sent', async () => {
+  const { api, leadId } = fixture();
+  const draft = await api.createCustomerQuote(leadId);
+  await api.saveCustomerQuote(leadId, draft._id, {
+    quoteScope: 'Silicone Replacement', quoteItems: [{ service: 'Silicone Replacement', scope: '', price: 45, qty: 1 }], quoteAmount: 45,
+  });
+  let deliveries = 0;
+  const { POST } = loadTs('app/api/admin/quote/send/route.ts', {
+    '@/lib/customerQuotes': api,
+    '@/lib/adminAuth': { SESSION_COOKIE: 'session', verifySession: async () => ({ username: 'manager' }) },
+    '@/lib/email': { isEmailConfigured: () => true, sendEmail: async () => { deliveries++; } },
+    '@/lib/sms': { sendSms: async () => { deliveries++; } },
+  });
+  const response = await POST({ cookies: { get: () => ({ value: 'session' }) }, json: async () => ({ id: leadId, quoteId: draft._id }) });
+  assert.equal(response.status, 400);
+  assert.match((await response.json()).error, /detailed scope of work.*Silicone Replacement/);
+  assert.equal(deliveries, 0);
+  assert.equal((await api.listCustomerQuotes(leadId)).find(quote => quote._id === draft._id).state, 'draft');
 });

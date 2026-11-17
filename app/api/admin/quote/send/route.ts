@@ -1,4 +1,5 @@
 import { quoteNumberForJob } from "@/lib/documentNumbers";
+import { quoteScopeValidationError } from "@/lib/quoteScope";
 import { quoteUnitPriceExGst } from "@/lib/quotePricing";
 import { getQuoteSubmission as getSubmission, updateQuoteSubmission as updateSubmission, appendQuoteActivity as appendActivity, quoteLeadId, listCustomerQuotes, reserveCustomerQuoteSend, releaseCustomerQuoteSend } from "@/lib/customerQuotes";
 import { quoteTrackingPixel } from "@/lib/quoteOpenTracking";
@@ -56,10 +57,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: lead ? "This lead has no email address." : "Lead not found." }, { status: 400 });
   }
 
-  // Automatic step: mint a sequential quote number the first time it's sent.
+  // The quote reference shares its job's number.
   const quoteNumber = quoteNumberForJob(lead);
 
   const items = Array.isArray(lead.quoteItems) ? lead.quoteItems : [];
+  const scopeError = quoteScopeValidationError(items, lead.quoteScope);
+  if (scopeError) {
+    await releaseCustomerQuoteSend(reference);
+    return NextResponse.json({ error: scopeError }, { status: 400 });
+  }
   const { subtotal, gst, total } = computeQuoteTotals(
     items,
     lead.quoteTaxMode,

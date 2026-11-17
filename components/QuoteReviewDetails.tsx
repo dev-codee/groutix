@@ -1,4 +1,13 @@
-import { isQuoteScopeHeading } from "@/lib/quoteScope";
+import { isQuoteScopeHeading, quoteItemDetailTexts } from "@/lib/quoteScope";
+
+function inlineText(text: string) {
+  return text.split(/(\*\*[^*]+\*\*|<u>.*?<\/u>|\*[^*]+\*)/g).map((part, index) => {
+    if (part.startsWith("**") && part.endsWith("**")) return <strong key={index}>{part.slice(2, -2)}</strong>;
+    if (part.startsWith("<u>") && part.endsWith("</u>")) return <u key={index}>{part.slice(3, -4)}</u>;
+    if (part.startsWith("*") && part.endsWith("*")) return <em key={index}>{part.slice(1, -1)}</em>;
+    return part;
+  });
+}
 
 /** Render saved text safely while preserving headings, bullets and line breaks. */
 export function QuoteText({ text }: { text: string }) {
@@ -6,7 +15,7 @@ export function QuoteText({ text }: { text: string }) {
   let bullets: string[] = [];
   function flushBullets() {
     if (!bullets.length) return;
-    blocks.push(<ul key={`list-${blocks.length}`} className="list-disc pl-5 space-y-1.5">{bullets.map((line, index) => <li key={index}>{line}</li>)}</ul>);
+    blocks.push(<ul key={`list-${blocks.length}`} className="list-disc pl-5 space-y-1.5">{bullets.map((line, index) => <li key={index}>{inlineText(line)}</li>)}</ul>);
     bullets = [];
   }
   for (const raw of text.split(/\r?\n/)) {
@@ -17,8 +26,8 @@ export function QuoteText({ text }: { text: string }) {
     flushBullets();
     const heading = isQuoteScopeHeading(line) || /^\d+\s+[A-Z]/.test(line) || /^Groutix terms and conditions$/i.test(line);
     blocks.push(heading
-      ? <h4 key={blocks.length} className="font-bold text-slate-900 pt-3 first:pt-0">{line}</h4>
-      : <p key={blocks.length}>{line}</p>);
+      ? <h4 key={blocks.length} className="font-bold text-slate-900 pt-3 first:pt-0">{inlineText(line)}</h4>
+      : <p key={blocks.length}>{inlineText(line)}</p>);
   }
   flushBullets();
   return <div className="space-y-2 text-sm text-slate-700 leading-relaxed break-words [overflow-wrap:anywhere]">{blocks}</div>;
@@ -33,15 +42,7 @@ export function QuoteScopeDetails({ jobDescription, items }: { jobDescription?: 
     <h2 id="quote-scope-heading" className="text-sm font-bold text-slate-600 uppercase tracking-wider">Scope of Works</h2>
     {summary && !repeatsItem && <div className="p-4 rounded-xl border border-slate-200"><QuoteText text={summary} /></div>}
     {items.map((item, index) => {
-      // Both fields can contain customer-specific information; retain distinct text.
-      const title = item.service?.trim();
-      const candidates = [item.scope, item.description].map(text => {
-        const lines = (text || "").trim().split(/\r?\n/);
-        if (lines[0]?.trim() === title) lines.shift();
-        return lines.join("\n").trim();
-      });
-      const unique = [...new Set(candidates.filter(Boolean))];
-      const details = unique.filter(text => !unique.some(other => other !== text && other.includes(text)));
+      const details = quoteItemDetailTexts(item);
       return <article key={index} className="p-4 rounded-xl border border-slate-200 space-y-3">
         <h3 className="text-base font-bold text-slate-900">{item.service || `Restoration Work ${index + 1}`}</h3>
         {details.map((text, detailIndex) => <QuoteText key={detailIndex} text={text} />)}
@@ -50,15 +51,9 @@ export function QuoteScopeDetails({ jobDescription, items }: { jobDescription?: 
   </section>;
 }
 
-export function QuoteConditions({ specialNotes, terms }: { specialNotes?: string; terms?: string }) {
-  return <>
-    {specialNotes && <section className="space-y-3" aria-labelledby="quote-notes-heading">
+export function QuoteConditions({ specialNotes }: { specialNotes?: string }) {
+  return specialNotes ? <section className="space-y-3" aria-labelledby="quote-notes-heading">
       <h2 id="quote-notes-heading" className="text-sm font-bold text-slate-600 uppercase tracking-wider">Quote Notes &amp; Conditions</h2>
       <div className="p-4 rounded-xl border border-slate-200"><QuoteText text={specialNotes} /></div>
-    </section>}
-    {terms && <section id="quote-terms" className="space-y-3 scroll-mt-6" aria-labelledby="quote-terms-heading">
-      <h2 id="quote-terms-heading" className="text-sm font-bold text-slate-600 uppercase tracking-wider">Terms &amp; Conditions</h2>
-      <div className="p-4 sm:p-5 rounded-xl border border-slate-200"><QuoteText text={terms} /></div>
-    </section>}
-  </>;
+    </section> : null;
 }

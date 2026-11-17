@@ -25,19 +25,19 @@ function renderPage(data, signed = false) {
   return renderToStaticMarkup(React.createElement(Page, { params: { id: 'test' } }));
 }
 
-test('review page shows every service scope, distinct description, notes, terms and pricing before signing', () => {
+test('review page shows every service scope, distinct description, notes and pricing without inline legal terms', () => {
   const html = renderPage(quote);
-  for (const text of ['Customer', 'Site address', 'QT-100', 'Bathroom restoration', 'Silicone Replacement', 'Remove old silicone', 'Apply new silicone', 'Colour: white', 'Repair two loose tiles', 'Access via side gate.', 'Payment on completion.', '20.1 Victorian law applies.', '$245.00', 'Includes 10% GST', 'Issued:']) assert.ok(html.includes(text), text);
+  for (const text of ['Customer', 'Site address', 'QT-100', 'Bathroom restoration', 'Silicone Replacement', 'Remove old silicone', 'Apply new silicone', 'Colour: white', 'Repair two loose tiles', 'Access via side gate.', 'Payment on completion.', '$245.00', 'Includes 10% GST', 'Issued:']) assert.ok(html.includes(text), text);
   assert.match(html, /<ul[^>]*><li>Remove old silicone<\/li>/);
-  assert.match(html, /href="#quote-terms"/);
-  assert.ok(html.indexOf('20.1 Victorian law applies.') < html.indexOf('Confirm &amp; Sign Quotation'));
+  assert.match(html, /href="\/terms-conditions"/);
+  assert.doesNotMatch(html, /20.1 Victorian law applies.|quote-terms-heading/);
 });
 
 test('quote remains readable after signing and tax labels reflect the quote settings', () => {
   const signed = renderPage(quote, true);
   assert.match(signed, /Quotation Accepted &amp; Signed/);
   assert.match(signed, /Remove old silicone/);
-  assert.match(signed, /20.1 Victorian law applies./);
+  assert.doesNotMatch(signed, /20.1 Victorian law applies./);
   assert.doesNotMatch(signed, /Confirm &amp; Sign Quotation/);
   const noTax = renderPage({ ...quote, taxMode: 'none', taxRate: 0 });
   assert.match(noTax, /No GST/);
@@ -53,9 +53,9 @@ test('legacy description-only and amount-only quotes still display, and saved te
   assert.doesNotMatch(html, /<script>/);
 });
 
-test('signing API exposes full saved scopes, notes and the same official terms supplied to PDFs', async () => {
+test('signing API exposes full saved scopes and notes without returning the legal terms', async () => {
   const lead = { id: 'test', quoteNumber: 'QT-100', quoteItems: items, quoteScope: quote.jobDescription, quoteTerms: quote.specialNotes, quoteSentAt: quote.issuedAt };
-  const { GROUTIX_OFFICIAL_TERMS, DEFAULT_QUOTE_CONDITIONS } = loadTs('lib/serviceTemplates.ts');
+  const { DEFAULT_QUOTE_CONDITIONS } = loadTs('lib/serviceTemplates.ts');
   const { GET } = loadTs('app/api/quote/sign/route.ts', {
     '@/lib/customerQuotes': { getQuoteSubmission: async () => lead, quoteLeadId: id => id },
     '@/lib/quoteToken': { verifyQuoteToken: (_id, token) => token === 'valid' },
@@ -67,7 +67,7 @@ test('signing API exposes full saved scopes, notes and the same official terms s
   const data = await (await get('valid')).json();
   assert.deepEqual(data.quote.items, items);
   assert.equal(data.quote.specialNotes, quote.specialNotes);
-  assert.equal(data.quote.terms, GROUTIX_OFFICIAL_TERMS);
+  assert.equal(data.quote.terms, undefined);
   assert.equal(data.quote.issuedAt, quote.issuedAt);
   lead.quoteTerms = 'A long custom condition. '.repeat(30);
   assert.equal((await (await get('valid')).json()).quote.specialNotes, lead.quoteTerms);
@@ -80,4 +80,21 @@ test('catalog descriptions that include the title and scope show work bullets on
   const html = renderPage({ ...quote, items: [{ service: 'Silicone Replacement', scope, description: `Silicone Replacement\n${scope}`, price: 45 }] });
   assert.equal(html.split('Remove old silicone').length - 1, 1);
   assert.equal(html.split('Apply new silicone').length - 1, 1);
+});
+
+test('saved editor formatting renders as bold, italic and underline without executing HTML', () => {
+  const { QuoteText } = loadTs('components/QuoteReviewDetails.tsx');
+  const html = renderToStaticMarkup(React.createElement(QuoteText, { text: '• **Remove** *old* <u>silicone</u>\n<script>alert(1)</script>' }));
+  assert.match(html, /<strong>Remove<\/strong>/);
+  assert.match(html, /<em>old<\/em>/);
+  assert.match(html, /<u>silicone<\/u>/);
+  assert.doesNotMatch(html, /<script>/);
+});
+
+test('the exact title-only QT-1707 item cannot be sent as a complete scope', () => {
+  const { quoteScopeValidationError } = loadTs('lib/quoteScope.ts');
+  const savedItem = { templateNo: '', code: '', service: 'Silicone Replacement', scope: '', price: 45, qty: 1, matchedFrom: 'Silicone Replacement' };
+  assert.match(quoteScopeValidationError([savedItem], 'Silicone Replacement'), /Add the detailed scope/);
+  assert.equal(quoteScopeValidationError([{ ...savedItem, scope: '• Remove existing silicone from agreed joints' }], 'Silicone Replacement'), undefined);
+  assert.equal(quoteScopeValidationError([{ ...savedItem, description: '• Prepare joints and apply new silicone' }]), undefined);
 });

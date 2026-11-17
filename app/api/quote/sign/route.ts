@@ -71,7 +71,6 @@ export async function GET(req: NextRequest) {
       specialNotes: lead.quoteTerms?.trim() && !/^Groutix terms/i.test(lead.quoteTerms.trim())
         ? lead.quoteTerms
         : DEFAULT_QUOTE_CONDITIONS,
-      terms: GROUTIX_OFFICIAL_TERMS,
       issuedAt: lead.quoteSentAt,
       items,
       subtotal,
@@ -87,7 +86,7 @@ export async function GET(req: NextRequest) {
       bookingUrl,
       customerJobBookingEnabled,
     },
-  });
+  }, { headers: { "Cache-Control": "private, no-store" } });
 }
 
 // POST: Sign, confirm, generate signed PDF, email copies, and update CRM
