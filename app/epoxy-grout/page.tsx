@@ -4,14 +4,14 @@ import EpoxyGroutPage from "@/components/service/EpoxyGroutPageV2";
 import { getBusinessRating, getReviews } from "@/lib/reviews";
 
 export const metadata: Metadata = {
-  title: "Epoxy Grout Melbourne | Showers & Balconies",
+  title: "Epoxy Grouting Melbourne | Non Porous, Mould & Stain Resistant",
   description:
-    "Epoxy versus cement grout explained for Melbourne bathrooms and balconies: lifespan, stain resistance, cost drivers. Free quote.",
+    "Epoxy grouting in Melbourne for showers, bathrooms and balconies. Non porous, mould and stain resistant, never needs sealing. Rated 5.0 from 296 reviews, 10 year warranty. Free quote.",
   alternates: { canonical: "/epoxy-grout" },
   openGraph: {
-    title: "Epoxy Grout Melbourne | Showers & Balconies",
+    title: "Epoxy Grouting Melbourne | Non Porous, Mould & Stain Resistant",
     description:
-      "Epoxy versus cement grout explained for Melbourne bathrooms and balconies: lifespan, stain resistance, cost drivers. Free quote.",
+      "Epoxy grouting in Melbourne for showers, bathrooms and balconies. Non porous, mould and stain resistant, never needs sealing. Rated 5.0 from 296 reviews, 10 year warranty. Free quote.",
     url: "/epoxy-grout",
     type: "website",
   },
