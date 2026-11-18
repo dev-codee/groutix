@@ -128,21 +128,20 @@ const PROCESS = [
   { title: "Inspect and Match", desc: "Check the joints, tiles and colour." },
   { title: "Remove the Old Grout", desc: "All old grout is taken out, not covered." },
   { title: "Apply the Epoxy", desc: "Small batches, applied and cleaned off the same day, before it sets." },
-  { title: "Cure and Recheck", desc: "The epoxy cures before water. We tell you the exact wait before we start." },
+  { title: "Cure and Recheck", desc: "The epoxy needs 4 days to cure after completion before the area is used. We confirm the timing before we start." },
 ];
 
-const CARE = ["Wait for the cure.", "Use gentle cleaners.", "Wipe dirt off the surface early."];
+const CARE = ["Allow 4 days curing time after the work is completed.", "Use gentle cleaners.", "Wipe dirt off the surface early."];
 
 const COST_FACTORS: Array<[string, string]> = [
   ["Area", "More area means more joints and more product."],
   ["Tile size and joint width", "Small tiles and wide joints use more epoxy."],
-  ["Colour and product", "Some colours and products cost more."],
   ["Condition of the old grout", "Hard, deep old grout takes longer to remove."],
 ];
 
 const WHY: { Icon: Icon; title: string; desc?: string }[] = [
   { Icon: Search, title: "Honest Advice", desc: "Including where epoxy is not right." },
-  { Icon: Layers, title: "Full Removal" },
+  { Icon: Layers, title: "Removal" },
   { Icon: ClipboardCheck, title: "Colour Matched" },
   { Icon: ShieldCheck, title: "10 Year Warranty", desc: "On eligible work." },
 ];
@@ -423,8 +422,15 @@ export default function EpoxyGroutPageV2({ reviews = [], rating }: { reviews?: R
               </ol>
               <p className="mt-6 border-l-[3px] border-[#FBBC04] pl-3 font-semibold text-slate-700">Eligible work is backed by our 10 year waterproof warranty.</p>
             </div>
-            <div className="relative aspect-[4/3] w-full overflow-hidden rounded-lg border border-slate-200 bg-slate-200">
-              <Image src="/shower-regrouting-in-progress-close-up.webp" alt="Epoxy grout being applied to shower floor tiles during regrouting" fill sizes="(min-width:1024px) 40vw, 100vw" className="object-cover" />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="relative aspect-[4/5] w-full overflow-hidden rounded-lg border border-slate-200 bg-slate-200">
+                <Image src="/shower-regrouting-in-progress-close-up.webp" alt="Epoxy grout being applied to shower floor tiles during regrouting" fill sizes="(min-width:1024px) 20vw, 50vw" className="object-cover" />
+                <span className="pointer-events-none absolute left-3 top-3 rounded bg-black/75 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider text-white">In Progress</span>
+              </div>
+              <div className="relative aspect-[4/5] w-full overflow-hidden rounded-lg border border-slate-200 bg-slate-200">
+                <Image src="/epoxy-grout-floor-after.webp" alt="Shower floor after epoxy grout regrouting in Melbourne, fresh even joints and a bright finish" fill sizes="(min-width:1024px) 20vw, 50vw" className="object-cover" />
+                <span className="pointer-events-none absolute right-3 top-3 rounded bg-[#001F97]/90 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider text-white">After</span>
+              </div>
             </div>
           </div>
         </section>
@@ -450,7 +456,7 @@ export default function EpoxyGroutPageV2({ reviews = [], rating }: { reviews?: R
           <SectionHead k="Pricing" title="What Does Epoxy Grout Cost?">
             <p className={lead}>Epoxy costs more upfront than cement because the material and the application are more demanding. We quote after we see the job.</p>
           </SectionHead>
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {COST_FACTORS.map(([title, desc]) => (
               <div key={title} className={`${box} border-t-4 border-t-[#001F97] p-6`}>
                 <h3 className={cardTitle}>{title}</h3>
@@ -606,7 +612,7 @@ export default function EpoxyGroutPageV2({ reviews = [], rating }: { reviews?: R
           <div className={`${wrap} relative text-center`}>
             <h2 className="mx-auto max-w-[720px] text-[clamp(28px,3.4vw,44px)] font-black leading-[1.12] [text-wrap:balance]">Get Your Free Quote Today</h2>
             <p className="mx-auto mt-4 max-w-[640px] text-[17px] leading-relaxed text-[#D6DCF5]">Honest advice and workmanship you can rely on.</p>
-            <p className="mt-2 text-[15px] font-semibold text-[#FBBC04]">Full removal · Colour matched · 10 year warranty on eligible work</p>
+            <p className="mt-2 text-[15px] font-semibold text-[#FBBC04]">Removal · Colour matched · 10 year warranty on eligible work</p>
             <div className="mt-8 flex flex-wrap justify-center gap-3.5">
               <Link href="#quote-form" className={btnGold}>Get a Free Quote →</Link>
               <a href={tel} className={btnGhost}><Phone className="h-4 w-4" aria-hidden="true" />{phone}</a>
