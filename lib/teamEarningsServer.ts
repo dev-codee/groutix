@@ -37,7 +37,7 @@ async function sourceLead(id: string, session?: ClientSession): Promise<Earnings
   const doc = await db.collection("submissions").findOne({ _id: new ObjectId(id) }, { projection: leadProjection, session });
   if (!doc) return null;
   const visits = await db.collection("bookings").find({ leadId: id }, { session }).toArray();
-  const invoices = await db.collection("customer_invoices").find({ leadId: id }, { session }).toArray();
+  const invoices = await db.collection("customer_invoices").find({ leadId: id }, { session }).sort({ _id: 1 }).toArray();
   return { ...doc, earningsInvoices: invoices.map(invoice => invoice.values), id, createdAt: String(doc.createdAt || ""), bookings: visits.map(b => ({ ...b, bookingId: b.bookingId || b._id.toString() })) } as unknown as EarningsSourceLead;
 }
 function missingLead(ledger: EarningsLedger): Lead {
@@ -45,7 +45,7 @@ function missingLead(ledger: EarningsLedger): Lead {
 }
 export async function listTeamEarnings(): Promise<EarningsData> {
   const { db, ledgers } = await collections();
-  const [roster, docs, sources, visits, invoices] = await Promise.all([members(), ledgers.find({}).toArray(), db.collection("submissions").find({}, { projection: leadProjection }).toArray(), db.collection("bookings").find({}).toArray(), db.collection("customer_invoices").find({}).toArray()]);
+  const [roster, docs, sources, visits, invoices] = await Promise.all([members(), ledgers.find({}).toArray(), db.collection("submissions").find({}, { projection: leadProjection }).toArray(), db.collection("bookings").find({}).toArray(), db.collection("customer_invoices").find({}).sort({ _id: 1 }).toArray()]);
   const byLead = new Map<string, typeof visits>();
   for (const visit of visits) { const rows = byLead.get(visit.leadId) || []; rows.push(visit); byLead.set(visit.leadId, rows); }
   const invoicesByLead = new Map<string, typeof invoices>();

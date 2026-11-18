@@ -13,6 +13,7 @@ Managers and super admins can open **Team Earnings** in the CRM sidebar (`?view=
 ## Calculation and work rules
 
 - Percentages have two decimal places and monetary calculations use integer cents. Shared-job rounding uses largest remainders with a stable member-ID tie-break, so totals reconcile to whole cents.
+- Percentages apply once per lead to all saved customer invoices, including invoices created from accepted quotes. Each invoice uses its own GST rate; the job detail lists the individual invoice amounts. Inspection and job visit details show worker names, dates, status and recorded job days. Each approved member share has a button to record payment to that worker.
 - Percentages apply to the whole saved invoice once per lead. Quotes and unsaved invoice defaults never become payable earnings. No automatic deductions for materials, tax withholding, fees or other costs are applied.
 - The saved invoice's GST rate is used. Legacy invoices without a saved rate use the CRM's existing 10% default. A zero GST rate is supported.
 - Job completion checks all active visits, including additional bookings, rather than trusting only the lead summary. Lost/cancelled jobs and unavailable sources cannot be approved.
