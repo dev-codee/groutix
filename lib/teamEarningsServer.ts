@@ -3,12 +3,12 @@ import { ObjectId, type ClientSession } from "mongodb";
 import { getDb, getMongoClient } from "@/lib/mongodb";
 import { listTechnicians } from "@/lib/technicians";
 import type { Lead } from "@/components/admin/types";
-import { EarningsError, calculateEarnings, earningsBody, earningsId, earningsInteger, earningsJob, earningsText, invoiceForEarnings, parseEarningsShares, sameEarningsInvoice, type EarningsData, type EarningsLedger, type EarningsMember, type EarningsPayment, type EarningsEvent } from "./teamEarnings";
+import { EarningsError, calculateEarnings, earningsBody, earningsId, earningsInteger, earningsJob, earningsText, invoiceForEarnings, parseEarningsShares, sameEarningsInvoice, type EarningsData, type EarningsLedger, type EarningsMember, type EarningsPayment, type EarningsEvent, type EarningsSourceLead } from "./teamEarnings";
 
 type LedgerDoc = Omit<EarningsLedger, "id"> & { _id: string };
 type PaymentDoc = Omit<EarningsPayment, "id"> & { _id: string; leadId: string };
 type EventDoc = Omit<EarningsEvent, "id"> & { _id: string; leadId: string; requestHash: string; snapshot: LedgerDoc };
-const leadProjection = { name: 1, jobNo: 1, service: 1, status: 1, type: 1, createdAt: 1, assigned: 1, technician: 1, technicianId: 1, technicianUsername: 1, inspectorId: 1, inspectorUsername: 1, jobAt: 1, inspectionAt: 1, jobTotalDays: 1, jobDaysDone: 1, invoiceAmount: 1, invoiceNumber: 1, "invoiceDraft.gst": 1, invoiceStatus: 1, paymentType: 1 };
+const leadProjection = { name: 1, jobNo: 1, service: 1, status: 1, type: 1, createdAt: 1, assigned: 1, technician: 1, technicianId: 1, technicianUsername: 1, inspectorId: 1, inspectorUsername: 1, jobAt: 1, inspectionAt: 1, jobTotalDays: 1, jobDaysDone: 1, invoiceAmount: 1, invoiceNumber: 1, "invoiceDraft.gst": 1, invoiceStatus: 1, paymentType: 1, primaryJobBookingId: 1, primaryInspectionBookingId: 1, jobEndAt: 1, inspectionEndAt: 1, jobWorkSegments: 1, inspectionWorkSegments: 1 };
 let indexes: Promise<unknown> | undefined;
 async function collections() {
   const db = await getDb();
@@ -32,25 +32,28 @@ async function members(): Promise<EarningsMember[]> {
   }
   return result.sort((a, b) => a.name.localeCompare(b.name));
 }
-async function sourceLead(id: string, session?: ClientSession): Promise<Lead | null> {
+async function sourceLead(id: string, session?: ClientSession): Promise<EarningsSourceLead | null> {
   const db = await getDb();
   const doc = await db.collection("submissions").findOne({ _id: new ObjectId(id) }, { projection: leadProjection, session });
   if (!doc) return null;
   const visits = await db.collection("bookings").find({ leadId: id }, { session }).toArray();
-  return { ...doc, id, createdAt: String(doc.createdAt || ""), bookings: visits.map(b => ({ ...b, bookingId: b.bookingId || b._id.toString() })) } as unknown as Lead;
+  const invoices = await db.collection("customer_invoices").find({ leadId: id }, { session }).toArray();
+  return { ...doc, earningsInvoices: invoices.map(invoice => invoice.values), id, createdAt: String(doc.createdAt || ""), bookings: visits.map(b => ({ ...b, bookingId: b.bookingId || b._id.toString() })) } as unknown as EarningsSourceLead;
 }
 function missingLead(ledger: EarningsLedger): Lead {
   return { id: ledger.id, status: "Source unavailable", createdAt: "", name: ledger.customer, jobNo: ledger.jobLabel };
 }
 export async function listTeamEarnings(): Promise<EarningsData> {
   const { db, ledgers } = await collections();
-  const [roster, docs, sources, visits] = await Promise.all([members(), ledgers.find({}).toArray(), db.collection("submissions").find({}, { projection: leadProjection }).toArray(), db.collection("bookings").find({}).toArray()]);
+  const [roster, docs, sources, visits, invoices] = await Promise.all([members(), ledgers.find({}).toArray(), db.collection("submissions").find({}, { projection: leadProjection }).toArray(), db.collection("bookings").find({}).toArray(), db.collection("customer_invoices").find({}).toArray()]);
   const byLead = new Map<string, typeof visits>();
   for (const visit of visits) { const rows = byLead.get(visit.leadId) || []; rows.push(visit); byLead.set(visit.leadId, rows); }
+  const invoicesByLead = new Map<string, typeof invoices>();
+  for (const invoice of invoices) { const rows = invoicesByLead.get(invoice.leadId) || []; rows.push(invoice); invoicesByLead.set(invoice.leadId, rows); }
   const records = new Map(docs.map(doc => [doc._id, serialize(doc)]));
   const jobs = sources.filter(doc => doc.type !== "support_ticket").map(doc => {
     const id = doc._id.toString();
-    const lead = { ...doc, id, createdAt: String(doc.createdAt || ""), bookings: (byLead.get(id) || []).map(b => ({ ...b, bookingId: b.bookingId || b._id.toString() })) } as unknown as Lead;
+    const lead = { ...doc, earningsInvoices: (invoicesByLead.get(id) || []).map(invoice => invoice.values), id, createdAt: String(doc.createdAt || ""), bookings: (byLead.get(id) || []).map(b => ({ ...b, bookingId: b.bookingId || b._id.toString() })) } as unknown as EarningsSourceLead;
     return earningsJob(lead, roster, records.get(id) || null);
   });
   const present = new Set(jobs.map(job => job.id));

@@ -9,7 +9,7 @@ const member = { id: memberId, name: "Alex", role: "technician", active: true, a
 const second = { ...member, id: secondId, name: "Sam" };
 const baseLead = { id: leadId, name: "Customer", jobNo: "Job-100", status: "Completed", createdAt: "2026-01-01", technicianId: memberId, technician: "Alex", invoiceNumber: "INV-100", invoiceAmount: 1100, invoiceDraft: { gst: 10 }, jobAt: "2026-01-01T08:00", jobTotalDays: 2, jobDaysDone: 2 };
 function fixture() {
-  let state = { submissions: [{ ...baseLead, _id: new ObjectId(leadId) }], bookings: [], admin_users: [], team_earnings: [], team_earnings_payments: [], team_earnings_events: [] };
+  let state = { submissions: [{ ...baseLead, _id: new ObjectId(leadId) }], bookings: [], customer_invoices: [], admin_users: [], team_earnings: [], team_earnings_payments: [], team_earnings_events: [] };
   let failEvents = false, queue = Promise.resolve();
   const copy = value => structuredClone(value);
   const get = (obj, key) => key.split(".").reduce((a, k) => a?.[k], obj);
@@ -168,4 +168,34 @@ test("member work totals follow each visit's worker rather than the lead owner",
   assert.equal(job.memberWork.find(w => w.memberId === memberId).daysDone, 2);
   assert.equal(job.memberWork.find(w => w.memberId === secondId).daysDone, 1);
   assert.equal(job.memberWork.find(w => w.memberId === secondId).completedVisits, 1);
+});
+
+
+test("completed legacy visits are payable and show each worker with days", () => {
+  const job = rules.earningsJob({ ...baseLead, inspectionAt: "2025-12-30T09:00", inspectorId: secondId, assigned: "Sam", bookings: [
+    { type: "job", date: "2026-01-01", time: "08:00", technicianId: memberId, status: "Job Booked", jobDaysDone: 2, jobTotalDays: 2 },
+  ] }, [member, second], null);
+  assert.equal(job.eligible, true);
+  assert.equal(job.workVisits.find(v => v.type === "job").name, "Alex");
+  assert.equal(job.workVisits.find(v => v.type === "job").daysDone, 2);
+  assert.equal(job.workVisits.find(v => v.type === "inspection").name, "Sam");
+});
+test("separately saved customer invoices appear, approve, and detect later invoice changes", async () => {
+  const f = fixture();
+  delete f.state.submissions[0].invoiceNumber;
+  delete f.state.submissions[0].invoiceAmount;
+  f.state.customer_invoices.push({ _id: leadId + "~invoice~one", leadId, values: { invoiceNumber: "INV-A", invoiceAmount: 1100, invoiceDraft: { gst: 10 }, invoiceStatus: "Paid" } },
+    { _id: leadId + "~invoice~two", leadId, values: { invoiceNumber: "INV-B", invoiceAmount: 500, invoiceDraft: { gst: 0 }, invoiceStatus: "Unpaid" } });
+  let job = (await f.api.listTeamEarnings()).jobs[0];
+  assert.equal(job.invoice.totalCents, 160000);
+  assert.equal(job.invoice.baseCents, 150000);
+  assert.equal(job.invoicePaid, false);
+  assert.equal(job.eligible, true);
+  const d = await draft(f);
+  const a = await f.mutate("approve", d.version, { invoice: job.invoice });
+  assert.equal(a.shares[0].earnedCents, 45000);
+  f.state.customer_invoices[1].values.invoiceAmount = 600;
+  job = (await f.api.listTeamEarnings()).jobs[0];
+  assert.equal(job.changed, true);
+  await assert.rejects(f.mutate("pay", a.version, pay()), /changed after approval/);
 });
