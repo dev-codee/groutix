@@ -521,13 +521,7 @@ export default function Navbar() {
                   >
                     Contact Us
                   </Link>
-                  <Link
-                    href="/about#team"
-                    onClick={closeDesktopMenu}
-                    className="block px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-accent/10 hover:text-accent rounded-lg transition-colors"
-                  >
-                    Meet the Team
-                  </Link>
+                
                   <Link
                     href="/careers"
                     onClick={closeDesktopMenu}
@@ -786,13 +780,7 @@ export default function Navbar() {
                           >
                             Contact Us
                           </Link>
-                          <Link
-                            href="/about#team"
-                            onClick={closeMenu}
-                            className="block py-2 text-base font-medium text-neutral-600 hover:text-accent"
-                          >
-                            Meet the Team
-                          </Link>
+                        
                           <Link
                             href="/careers"
                             onClick={closeMenu}
