@@ -39,10 +39,12 @@ import { Phone, Star, ChevronDown } from "lucide-react";
 import { motion } from "framer-motion";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import TrustedMarquee from "@/components/TrustedMarquee";
 import AnimatedSection from "@/components/AnimatedSection";
 import HeroContactBadges from "@/components/HeroContactBadges";
 import QuoteFormV2 from "@/components/home/QuoteFormV2";
 import { useGoogleRating } from "@/components/useGoogleRating";
+import { BUSINESS } from "@/lib/seo";
 import type { Review, BusinessRating } from "@/lib/reviews";
 
 /* ─── FAQ accordion item (matches site pattern) ─── */
@@ -61,33 +63,66 @@ function FaqItem({ q, a }: { q: string; a: string }) {
 }
 
 
-/* ─── Before / after drag slider, real job pairs only ─── */
-function PairSlider({ before, after, beforeAlt, afterAlt, caption }: { before: string; after: string; beforeAlt: string; afterAlt: string; caption: string }) {
-  const [pos, setPos] = useState(50);
+/* ─── Homepage style helpers (copied from HomePageV2 so this page matches the home sections) ─── */
+const hpWrap = "mx-auto w-full max-w-[1440px] px-5 sm:px-10 lg:px-20 xl:px-28";
+const hpEyebrow = "mb-2.5 text-[13px] font-bold uppercase tracking-[2px] text-[#2F63CC]";
+const hpH2 = "text-[clamp(28px,3.2vw,42px)] font-bold leading-[1.15] tracking-[-0.01em] text-slate-900 [text-wrap:balance]";
+const hpLead = "mt-3 text-[17px] leading-relaxed text-slate-600";
+const hpBox = "rounded-lg border border-slate-200 bg-white";
+const hpBtn = "inline-flex min-h-12 items-center justify-center gap-2 whitespace-nowrap rounded-lg px-6 text-base font-bold transition-colors";
+
+function SectionHead({ k, title, sub }: { k: string; title: React.ReactNode; sub?: string }) {
   return (
-    <figure className="mx-auto w-full max-w-[520px]">
-      <div className="relative aspect-[4/5] w-full select-none overflow-hidden rounded-sm">
-        <Image src={after} alt={afterAlt} fill sizes="(min-width: 1024px) 520px, 100vw" className="object-cover" />
-        <div className="absolute inset-0" style={{ clipPath: `inset(0 ${100 - pos}% 0 0)` }}>
-          <Image src={before} alt={beforeAlt} fill sizes="(min-width: 1024px) 520px, 100vw" className="object-cover" />
-        </div>
-        <span className="absolute left-3 top-3 rounded-full bg-black/60 px-3 py-1 text-xs font-bold text-white">Before</span>
-        <span className="absolute right-3 top-3 rounded-full bg-black/60 px-3 py-1 text-xs font-bold text-white">After</span>
-        <div className="absolute inset-y-0 z-10 w-0.5 bg-white shadow" style={{ left: `${pos}%` }} />
+    <div className="mx-auto mb-10 max-w-[760px] text-left md:text-center">
+      <p className={hpEyebrow}>{k}</p>
+      <h2 className={hpH2}>{title}</h2>
+      {sub && <p className={hpLead}>{sub}</p>}
+    </div>
+  );
+}
+
+function Stars({ n = 5, className = "" }: { n?: number; className?: string }) {
+  return <span className={`tracking-[1px] text-[#FBBC04] ${className}`} aria-label={`${n} out of 5 stars`}>{"\u2605".repeat(Math.round(n))}</span>;
+}
+
+/* Drag-to-compare slider, same component as the homepage Real Work strip. */
+function BeforeAfter({ before, after, title }: { before: string; after: string; title: string }) {
+  const [pos, setPos] = useState(100);
+  const handle = Math.min(96, Math.max(4, pos));
+  const layer = (src: string) => (
+    <div className="absolute inset-0">
+      <Image src={src} alt="" fill sizes="(min-width:768px) 33vw, 100vw" className="object-cover" />
+    </div>
+  );
+  return (
+    <figure className="m-0">
+      <div className="relative aspect-square select-none overflow-hidden rounded-lg border border-slate-200 bg-slate-200 sm:aspect-[4/4.2]">
+        <div className="absolute inset-0 overflow-hidden" role="img" aria-label={`${title}, before`}>{layer(before)}</div>
+        <div className="absolute inset-0 overflow-hidden" style={{ clipPath: `inset(0 0 0 ${pos}%)` }} role="img" aria-label={`${title}, after`}>{layer(after)}</div>
+        <span className="pointer-events-none absolute left-3 top-3 rounded bg-black/75 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider text-white">Before</span>
+        <span className="pointer-events-none absolute right-3 top-3 rounded bg-[#001F97]/90 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider text-white">After</span>
+        <span className="pointer-events-none absolute inset-y-0 w-[3px] -translate-x-1/2 bg-white shadow-[0_0_6px_rgba(0,0,0,0.35)]" style={{ left: `${handle}%` }} aria-hidden="true" />
+        <span className="pointer-events-none absolute top-1/2 flex h-10 w-10 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-white text-lg font-black text-[#001F97] shadow-[0_2px_10px_rgba(0,0,0,0.3)]" style={{ left: `${handle}%` }} aria-hidden="true">\u2194</span>
         <input
           type="range"
           min={0}
           max={100}
           value={pos}
           onChange={(e) => setPos(Number(e.target.value))}
-          aria-label="Slide to compare before and after"
-          className="absolute inset-0 z-20 h-full w-full cursor-ew-resize opacity-0"
+          aria-label={`Drag to compare before and after: ${title}`}
+          className="absolute inset-0 h-full w-full cursor-ew-resize appearance-none bg-transparent opacity-0"
         />
       </div>
-      <figcaption className="mt-2 text-center text-sm text-neutral-500">{caption}</figcaption>
+      <figcaption className="mt-3 font-bold text-slate-900">{title}</figcaption>
     </figure>
   );
 }
+
+const REAL_JOBS = [
+  { before: "/ballarat-shower-floor-regrouting-before.webp", after: "/ballarat-shower-floor-regrouting-after.webp", title: "Shower floor regrout" },
+  { before: "/tile-regrouting-floor-before.webp", after: "/tile-regrouting-floor-after.webp", title: "Floor regrout" },
+  { before: "/leaking-shower-base-leak-before.webp", after: "/leaking-shower-base-resealed-after.webp", title: "Leaking shower repair" },
+];
 
 const FAQS = [
   {
@@ -224,6 +259,7 @@ export default function BallaratHubPage({
             </div>
           </div>
         </section>
+        <TrustedMarquee />
 
         {/* ═════════ 2. STATS STRIP ═════════ */}
         <AnimatedSection className="bg-white py-12 lg:py-16">
@@ -318,13 +354,6 @@ export default function BallaratHubPage({
                   ))}
                 </ol>
               </div>
-              <PairSlider
-                before="/ballarat-shower-floor-regrouting-before.webp"
-                after="/ballarat-shower-floor-regrouting-after.webp"
-                beforeAlt="Shower floor before regrouting, dark and failing grout lines around envelope cut tiles"
-                afterAlt="The same shower floor after regrouting, fresh grout lines and new silicone at the edges"
-                caption="A Groutix shower floor regrout, before and after. Drag the handle to compare the joints."
-              />
               <div className="text-center">
                 <Link
                   href="/shower-regrouting"
@@ -336,32 +365,6 @@ export default function BallaratHubPage({
             </div>
           </div>
         </AnimatedSection>
-
-        {/* ═════════ 5. IMAGE BAND A, Pattern v2 ═════════ */}
-        <section className="bg-white py-14">
-          <div className="mx-auto max-w-[1460px] px-4 sm:px-6 lg:px-10">
-            <div className="grid gap-6 sm:grid-cols-2">
-              <figure>
-                <div className="relative aspect-[4/3] overflow-hidden rounded-sm">
-                  <Image src="/shower-regrouting-beige-wall-tiles.webp" alt="Shower regrouting in Ballarat, a shower with beige wall tiles freshly regrouted" fill sizes="(min-width:640px) 50vw, 100vw" className="object-cover" />
-                </div>
-                <figcaption className="mt-2 text-sm text-neutral-500">Warm-toned tiles like these fill Ballarat&apos;s older bathrooms, fresh grout brings the whole room back.</figcaption>
-              </figure>
-              <figure>
-                <div className="relative aspect-[4/3] overflow-hidden rounded-sm">
-                  <Image src="/shower-floor-regrouting-dark-tiles-top-view.webp" alt="Shower floor regrouting in Ballarat, dark floor tiles regrouted, seen from above" fill sizes="(min-width:640px) 50vw, 100vw" className="object-cover" />
-                </div>
-                <figcaption className="mt-2 text-sm text-neutral-500">The finish we aim for in every Ballarat home: clean joints, sealed edges, tiles untouched.</figcaption>
-              </figure>
-            </div>
-            <p className="mx-auto mt-8 max-w-3xl text-center text-base text-neutral-600">
-              Want to see the finish up close? Browse{" "}
-              <Link href="/gallery" className="font-bold text-accent hover:underline">our gallery</Link>{" "}
-              of recent work, or read how a job runs step by step in{" "}
-              <Link href="/our-process" className="font-bold text-accent hover:underline">our process</Link>.
-            </p>
-          </div>
-        </section>
 
         {/* ═════════ 6. FLOORS, LAUNDRIES, KITCHENS ═════════ */}
         <AnimatedSection className="bg-white py-16 lg:py-24">
@@ -571,15 +574,20 @@ export default function BallaratHubPage({
           </div>
         </AnimatedSection>
 
-        {/* ═════════ 9. IMAGE BAND B, Pattern v2 ═════════ */}
-        <section className="bg-white py-14">
-          <div className="mx-auto max-w-[1460px] px-4 sm:px-6 lg:px-10">
-            <figure>
-              <div className="relative aspect-[21/9] overflow-hidden rounded-sm">
-                <Image src="/balcony-regrouting-tiles.webp" alt="Balcony regrouting in Ballarat, outdoor tiles freshly regrouted" fill sizes="100vw" className="object-cover" />
+        {/* ═════════ REAL WORK, homepage strip ═════════ */}
+        <section id="before-after" className="scroll-mt-28 bg-slate-100 py-14 md:py-20">
+          <div className={hpWrap}>
+            <div className="mb-9 flex flex-wrap items-end justify-between gap-4">
+              <div>
+                <p className={hpEyebrow}>Real work</p>
+                <h2 className={hpH2}>Before and After: Real Regrouting Results</h2>
+                <p className={hpLead}>Real Groutix jobs, not stock photos. Drag the slider to see the after.</p>
               </div>
-              <figcaption className="mt-2 text-sm text-neutral-500">Frost and sun crack outdoor joints first, fresh grout and silicone keep the water out for another decade.</figcaption>
-            </figure>
+              <Link href="/gallery" className={`${hpBtn} border border-slate-300 bg-white text-[#001F97] hover:border-[#001F97]`}>See more jobs</Link>
+            </div>
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+              {REAL_JOBS.map((j) => <BeforeAfter key={j.title} before={j.before} after={j.after} title={j.title} />)}
+            </div>
           </div>
         </section>
 
@@ -803,6 +811,49 @@ export default function BallaratHubPage({
           </div>
         </AnimatedSection>
 
+        {/* ═════════ REVIEWS, homepage section ═════════ */}
+        <section id="reviews" className="scroll-mt-28 bg-white py-14 md:py-20">
+          <div className={hpWrap}>
+            <SectionHead k="Customer feedback" title="What Our Customers Say" />
+            <div className="grid grid-cols-1 items-stretch gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
+              <div className="flex flex-col gap-2.5 rounded-lg bg-[#001F97] p-7 text-white">
+                <span className="flex items-center gap-2.5 font-medium">
+                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white"><Image src="/google-logo.svg" alt="" width={18} height={18} /></span>
+                  Google Rating
+                </span>
+                <span className="text-[60px] font-black leading-none">{rating.value.toFixed(1)}</span>
+                <Stars n={rating.value} className="text-[22px]" />
+                <span className="text-[15px] text-[#D6DCF5]">Based on {gr.countLabel} Google reviews</span>
+                <a href={BUSINESS.sameAs[0]} target="_blank" rel="noopener noreferrer" className={`${hpBtn} mt-auto bg-[#FBBC04] text-[#0F172A] hover:bg-[#E5AA00]`}>Read Verified Reviews</a>
+              </div>
+              <div className="review-marquee-wrap min-w-0 overflow-hidden rounded-lg [mask-image:linear-gradient(90deg,transparent,#000_4%,#000_96%,transparent)]">
+                <div className="review-marquee flex w-max py-1" style={{ ["--marquee-duration" as string]: `${Math.max(30, reviews.length * 8)}s` }}>
+                  {[...reviews, ...reviews].map((r, i) => (
+                    <blockquote key={`${r.name}-${i}`} aria-hidden={i >= reviews.length || undefined}
+                      className={`${hpBox} m-0 mr-5 flex w-[82vw] shrink-0 flex-col gap-3.5 p-6 sm:w-[340px]`}>
+                      <div className="flex items-center gap-3">
+                        {r.photoUri ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={r.photoUri} alt="" referrerPolicy="no-referrer" className="h-11 w-11 rounded-full object-cover" />
+                        ) : (
+                          <span className="flex h-11 w-11 items-center justify-center rounded-full bg-[#EEF3FF] font-bold text-[#001F97]">{r.name.charAt(0).toUpperCase()}</span>
+                        )}
+                        <span className="min-w-0">
+                          <b className="block truncate text-slate-900">{r.name}</b>
+                          <span className="text-[13px] text-slate-500">{r.suburb}</span>
+                        </span>
+                        <Image src="/google-logo.svg" alt="Google" width={20} height={20} className="ml-auto shrink-0" />
+                      </div>
+                      <Stars n={r.stars} />
+                      <p className="line-clamp-6 text-[15px] leading-[1.65] text-slate-700">&ldquo;{r.review}&rdquo;</p>
+                    </blockquote>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
         {/* ═════════ 15. FAQ ═════════ */}
         <AnimatedSection className="bg-white py-16 lg:py-24">
           <div className="mx-auto max-w-[1460px] space-y-10 px-4 sm:px-6 lg:px-10">
@@ -819,33 +870,32 @@ export default function BallaratHubPage({
           </div>
         </AnimatedSection>
 
-        {/* ═════════ 16. FINAL CTA (navy) ═════════ */}
-        <section className="bg-[#0d1030] py-16 lg:py-24">
-          <div className="mx-auto max-w-3xl space-y-5 px-4 text-center text-white sm:px-6">
-            <h2 className="text-3xl font-black leading-tight lg:text-[42px]">
-              Tired Grout Anywhere in Ballarat?
-            </h2>
-            <p className="text-base leading-relaxed text-white/85 sm:text-lg">
-              Send us a photo or call (03) 7023 8094 for a free quote. Regrouting Ballarat is what we do, we cover Ballarat, Wendouree and Sebastopol, most jobs done in a single visit.
-            </p>
-            <div className="flex flex-wrap items-center justify-center gap-4 pt-2">
-              <Link
-                href="/contact"
-                className="inline-block rounded-sm bg-[#FBBC04] px-8 py-3 text-base font-bold text-neutral-900 transition-transform hover:scale-105"
-              >
-                Request A Quote
-              </Link>
-              <a
-                href="tel:+61370238094"
-                className="inline-flex items-center gap-2 rounded-sm border-[1.5px] border-white/80 px-8 py-3 text-base font-bold text-white transition-colors hover:border-white hover:bg-white/10"
-              >
-                <Phone className="h-4 w-4" /> (03) 7023 8094
-              </a>
+        {/* ═════════ 16. FINAL CTA, homepage gradient card ═════════ */}
+        <section className="bg-white pb-14 md:pb-20">
+          <div className={hpWrap}>
+            <div className="grid grid-cols-1 items-center gap-7 rounded-xl bg-[linear-gradient(120deg,#06124F_0%,#001F97_100%)] p-7 text-white sm:p-10 lg:grid-cols-[minmax(0,1fr)_auto] lg:p-[52px]">
+              <div>
+                <h2 className={`${hpH2} text-white`}>Stop the Leak Before It Becomes a Renovation</h2>
+                <p className="mt-3 text-[#D6DCF5]">Free quote · Most jobs in one visit · 10 year waterproof warranty</p>
+              </div>
+              <div className="flex flex-wrap gap-3">
+                <a href="#quote-form" className={`${hpBtn} min-h-[54px] w-full bg-[#FBBC04] text-[#0F172A] hover:bg-[#E5AA00] sm:w-auto`}>Request A Quote</a>
+                <a href="tel:+61370238094" className={`${hpBtn} min-h-[54px] w-full border-[1.5px] border-white/70 text-white hover:bg-white/10 sm:w-auto`}>
+                  <Phone className="h-4 w-4" aria-hidden="true" />(03) 7023 8094
+                </a>
+              </div>
             </div>
           </div>
         </section>
       </main>
       <Footer />
+
+      {/* ── MOBILE CALL BAR, homepage style ── */}
+      <div className="h-[84px] md:hidden" aria-hidden="true" />
+      <div className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-2 gap-2.5 border-t border-slate-200 bg-white px-3 pb-[calc(12px+env(safe-area-inset-bottom,0px))] pt-2.5 shadow-[0_-8px_24px_rgba(15,23,42,0.12)] md:hidden">
+        <a href="tel:+61370238094" className={`${hpBtn} min-h-[52px] bg-[#001F97] px-3 text-white`}><Phone className="h-4 w-4" aria-hidden="true" />Call Now</a>
+        <a href="#quote-form" className={`${hpBtn} min-h-[52px] bg-[#FBBC04] px-3 text-[#0F172A]`}>Free Quote</a>
+      </div>
     </>
   );
 }
