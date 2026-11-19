@@ -95,11 +95,6 @@ const nextConfig: NextConfig = {
         permanent: true,
       },
       {
-        source: '/balcony-regrouting',
-        destination: '/balcony-leak-repairs',
-        permanent: true,
-      },
-      {
         source: '/cracked-grout-or-a-leaking-shower',
         destination: '/leaking-shower-repair',
         permanent: true,
