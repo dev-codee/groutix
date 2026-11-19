@@ -314,7 +314,7 @@ const services: Record<string, {
     workWithUsBlueBoxText: "Using commercial-grade epoxy grout, precise installation techniques and premium materials, we deliver a durable, stain-resistant finish built to last.",
     faqs: [
       { q: "Is epoxy grout worth the upgrade?", a: "For showers, balconies, kitchens and other demanding wet areas, epoxy grout is an excellent long-term investment. Its non-porous, stain-resistant finish outperforms standard cement grout significantly." },
-      { q: "How long does epoxy grout take to cure?", a: "Epoxy grout requires approximately 72 hours to fully cure before the tiled area can be used. Your technician will confirm the recommended curing time on completion." },
+      { q: "How long does epoxy grout take to cure?", a: "Epoxy grout requires approximately 4 days to fully cure before the tiled area can be used. Your technician will confirm the recommended curing time on completion." },
       { q: "Can epoxy grout be installed over my existing tiles?", a: "Yes. We remove the existing cement grout and install epoxy grout in its place. The tiles remain in position throughout the process." },
       { q: "Is epoxy grout suitable for floor tiles?", a: "Yes. Epoxy grout performs excellently on both floor and wall tiles, and is particularly recommended for high-traffic floor areas due to its exceptional durability." },
       { q: "Can you match my existing grout colour with epoxy grout?", a: "Yes. We stock a wide range of epoxy grout colours and will recommend the closest match to your existing tiles and fixtures." },
