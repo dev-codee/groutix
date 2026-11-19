@@ -268,7 +268,7 @@ const CORE = [
     alt: "Shower regrouting in Melbourne, a freshly regrouted tiled shower with waterproof epoxy grout", desc: "Cracked or crumbling grout removed and rebuilt with waterproof epoxy, so your shower seals properly again." },
   { slug: "leaking-shower-repair", title: "Leaking Shower Repair", tag: "Leak repair", img: "/corner-shower-regrouting-worn-grout.webp",
     alt: "Leaking shower repair in Melbourne, a corner shower with worn, failing grout that lets water escape behind the tiles", desc: "We remove the failed grout and silicone and regrout your shower with waterproof epoxy, usually without removing tiles." },
-  { slug: "balcony-leak-repairs", title: "Balcony Leak Repairs", tag: "Outdoor", img: "/balcony-regrouting-tiles.webp",
+  { slug: "balcony-leak-repairs", title: "Balcony Leak Repairs", tag: "Outdoor", img: "/balcony-regrouting-after.webp",
     alt: "Balcony leak repairs in Melbourne, outdoor balcony tiles regrouted and resealed by Groutix", desc: "Failed grout and sealant rebuilt with weatherproof epoxy to stop water reaching the areas below." },
 ];
 const MORE = [
@@ -285,6 +285,7 @@ const JOBS = [
 const CORE_SLIDERS: Record<string, { before: string; after: string }> = {
   "shower-regrouting": { before: "/shower-regrouting-before.webp", after: "/shower-regrouting-after.webp" },
   "leaking-shower-repair": { before: "/leaking-shower-before.webp", after: "/leaking-shower-after.webp" },
+  "balcony-leak-repairs": { before: "/balcony-regrouting-before.webp", after: "/balcony-regrouting-after.webp" },
 };
 
 function Stars({ n = 5, className = "" }: { n?: number; className?: string }) {
