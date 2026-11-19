@@ -927,7 +927,7 @@ export async function appendSubmissionPhotos(id: string, photos: SubmissionPhoto
 export async function updateSubmission(
   id: string,
   updates: Partial<SubmissionDoc>,
-  options?: { expectedStatus?: string; expectedInvoice?: Partial<SubmissionDoc> }
+  options?: { expectedStatus?: string; expectedInvoice?: Partial<SubmissionDoc> | SubmissionJSON }
 ): Promise<boolean> {
   if (!ObjectId.isValid(id)) return false;
   const col = await collection(false);
