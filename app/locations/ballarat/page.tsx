@@ -3,14 +3,14 @@ import BallaratHubPage from "@/components/BallaratHubPage";
 import { getReviews, getBusinessRating } from "@/lib/reviews";
 
 export const metadata: Metadata = {
-  title: "Regrouting Ballarat | Shower, Tile & Balcony",
+  title: "Shower Regrouting Ballarat | Leaking Shower Repairs",
   description:
-    "Shower, bathroom and balcony regrouting in Ballarat, Wendouree and Sebastopol. No tile removal, 10-year waterproof warranty. Free quote.",
+    "Ballarat showers, floors and balconies regrouted and resealed, tiles kept in place. 5.0 stars from 296 reviews, 10 year waterproof warranty. Free quote.",
   alternates: { canonical: "/locations/ballarat" },
   openGraph: {
-    title: "Regrouting in Ballarat | Groutix",
+    title: "Shower Regrouting Ballarat | Leaking Shower Repairs | Groutix",
     description:
-      "Shower, bathroom and balcony regrouting in Ballarat, Wendouree and Sebastopol. No tile removal, 10-year waterproof warranty. Free quote.",
+      "Ballarat showers, floors and balconies regrouted and resealed, tiles kept in place. 5.0 stars from 296 reviews, 10 year waterproof warranty. Free quote.",
     url: "/locations/ballarat",
     type: "website",
   },
