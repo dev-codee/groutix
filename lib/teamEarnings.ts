@@ -8,7 +8,7 @@ export type EarningsBasis = "ex_gst" | "inclusive";
 export interface EarningsMember {
   id: string; name: string; role: string; active: boolean; aliases: string[]; username?: string;
 }
-export interface EarningsShare { memberId: string; name: string; rateBps: number; earnedCents: number; paidCents: number }
+export interface EarningsShare { memberId: string; name: string; rateBps: number; fixedAmountCents?: number; earnedCents: number; paidCents: number }
 export interface EarningsInvoice { number: string; totalCents: number; gstBps: number; baseCents: number; items?: EarningsInvoice[] }
 type InvoiceSource = Pick<Lead, "invoiceNumber" | "invoiceAmount" | "invoiceDraft" | "invoiceStatus" | "paymentType">;
 export type EarningsSourceLead = Lead & { earningsInvoices?: InvoiceSource[] };
@@ -76,18 +76,22 @@ export function parseEarningsShares(value: unknown, members: EarningsMember[], e
     if (!member || (!member.active && !existing.some(s => s.memberId === member.id))) throw new EarningsError("Choose an active team member for new shares.");
     if (ids.has(member.id)) throw new EarningsError("A team member can appear only once per job.");
     ids.add(member.id);
+    if (body.fixedAmountCents !== undefined) {
+      if (body.rateBps !== undefined && body.rateBps !== 0) throw new EarningsError("Choose either a percentage or a fixed amount.");
+      return { memberId: member.id, name: member.name, rateBps: 0, fixedAmountCents: earningsInteger(body.fixedAmountCents, "fixed amount", 1), earnedCents: 0, paidCents: 0 };
+    }
     return { memberId: member.id, name: member.name, rateBps: earningsInteger(body.rateBps, "percentage (0.01–100%)", 1, 10000), earnedCents: 0, paidCents: 0 };
   });
   if (shares.reduce((sum, row) => sum + row.rateBps, 0) > 10000) throw new EarningsError("Combined team shares cannot exceed 100% of the invoice basis.");
   return shares;
 }
 // Allocate whole cents using the largest-remainder method, with a stable ID
-// tie-break. Shared jobs never create an extra cent or exceed the invoice base.
+// tie-break. Fixed amounts stay exact; validate the combined total before saving or approving.
 export function calculateEarnings(shares: EarningsShare[], baseCents: number): EarningsShare[] {
-  const values = shares.map(s => ({ ...s, earnedCents: Math.floor(baseCents * s.rateBps / 10000), paidCents: 0 }));
-  const target = Math.round(baseCents * shares.reduce((sum, s) => sum + s.rateBps, 0) / 10000);
+  const values = shares.map(s => ({ ...s, earnedCents: s.fixedAmountCents ?? Math.floor(baseCents * s.rateBps / 10000), paidCents: 0 }));
+  const target = shares.reduce((sum, s) => sum + (s.fixedAmountCents ?? 0), 0) + Math.round(baseCents * shares.reduce((sum, s) => sum + s.rateBps, 0) / 10000);
   let remainder = target - values.reduce((sum, s) => sum + s.earnedCents, 0);
-  const order = values.map((s, index) => ({ index, fraction: baseCents * s.rateBps % 10000, id: s.memberId })).sort((a, b) => b.fraction - a.fraction || a.id.localeCompare(b.id));
+  const order = values.map((s, index) => ({ index, fraction: baseCents * s.rateBps % 10000, id: s.memberId })).filter(row => values[row.index].fixedAmountCents === undefined).sort((a, b) => b.fraction - a.fraction || a.id.localeCompare(b.id));
   for (const row of order) if (remainder-- > 0) values[row.index].earnedCents++;
   return values;
 }
@@ -136,3 +140,12 @@ export function earningsJob(lead: EarningsSourceLead, members: EarningsMember[],
     invoice, invoicePaid: [...(lead.invoiceNumber ? [lead] : []), ...(lead.earningsInvoices || [])].length > 0 && [...(lead.invoiceNumber ? [lead] : []), ...(lead.earningsInvoices || [])].every(source => source.invoiceStatus === "Paid" || source.paymentType === "full"), eligible: !unavailableReason, unavailableReason, ledger,
     changed: ledger?.status === "approved" && (!sameEarningsInvoice(ledger.invoice, invoice) || !!unavailableReason) || false };
 }
+
+export function validateEarningsTotal(shares: EarningsShare[], baseCents: number) {
+  if (calculateEarnings(shares, baseCents).reduce((sum, share) => sum + share.earnedCents, 0) > baseCents) {
+    throw new EarningsError("Combined team amounts and shares cannot exceed the invoice basis.");
+  }
+}
+
+// Display whole dollars by dropping cents, while retaining exact ledger amounts.
+export const formatEarningsMoney = (cents: number) => Math.trunc(cents / 100).toLocaleString("en-AU", { style: "currency", currency: "AUD", minimumFractionDigits: 0, maximumFractionDigits: 0 });

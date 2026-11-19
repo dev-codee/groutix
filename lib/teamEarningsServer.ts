@@ -3,7 +3,7 @@ import { ObjectId, type ClientSession } from "mongodb";
 import { getDb, getMongoClient } from "@/lib/mongodb";
 import { listTechnicians } from "@/lib/technicians";
 import type { Lead } from "@/components/admin/types";
-import { EarningsError, calculateEarnings, earningsBody, earningsId, earningsInteger, earningsJob, earningsText, invoiceForEarnings, parseEarningsShares, sameEarningsInvoice, type EarningsData, type EarningsLedger, type EarningsMember, type EarningsPayment, type EarningsEvent, type EarningsSourceLead } from "./teamEarnings";
+import { EarningsError, validateEarningsTotal, calculateEarnings, earningsBody, earningsId, earningsInteger, earningsJob, earningsText, invoiceForEarnings, parseEarningsShares, sameEarningsInvoice, type EarningsData, type EarningsLedger, type EarningsMember, type EarningsPayment, type EarningsEvent, type EarningsSourceLead } from "./teamEarnings";
 
 type LedgerDoc = Omit<EarningsLedger, "id"> & { _id: string };
 type PaymentDoc = Omit<EarningsPayment, "id"> & { _id: string; leadId: string };
@@ -99,9 +99,11 @@ export async function mutateTeamEarnings(id: string, value: unknown, actor: stri
         if (body.basis !== "ex_gst" && body.basis !== "inclusive") throw new EarningsError("Choose an invoice basis.");
         record.basis = body.basis;
         record.shares = parseEarningsShares(body.shares, roster, current?.shares);
+        const draftInvoice = invoiceForEarnings(lead!, record.basis);
+        if (draftInvoice) validateEarningsTotal(record.shares, draftInvoice.baseCents);
         record.notes = earningsText(body.notes, "Notes", 2000);
         record.invoice = null;
-        detail = `Saved ${record.shares.length} shares, ${(record.shares.reduce((sum, s) => sum + s.rateBps, 0) / 100).toFixed(2)}% total; basis ${record.basis}. ${record.notes}`;
+        detail = `Saved ${record.shares.length} shares, ${(record.shares.reduce((sum, s) => sum + s.rateBps, 0) / 100).toFixed(2)}% total plus AUD ${(record.shares.reduce((sum, s) => sum + (s.fixedAmountCents || 0), 0) / 100).toFixed(2)} fixed; basis ${record.basis}. ${record.notes}`;
       } else if (action === "approve") {
         if (record.status !== "draft" || !record.shares.length) throw new EarningsError("Save draft shares before approving.", 409);
         const job = earningsJob(lead!, [], serialize(record));
@@ -110,9 +112,10 @@ export async function mutateTeamEarnings(id: string, value: unknown, actor: stri
         // Confirm the amount the manager reviewed; a stale UI cannot approve a
         // different invoice even if the earnings document itself did not change.
         if (!sameEarningsInvoice(body.invoice as typeof invoice, invoice)) throw new EarningsError("The invoice changed. Refresh before approving.", 409);
+        validateEarningsTotal(record.shares, invoice.baseCents);
         record.invoice = invoice; record.shares = calculateEarnings(record.shares, invoice.baseCents);
         record.status = "approved"; record.approvedAt = now; record.approvedBy = actor;
-        detail = `Approved ${invoice.number}: base AUD ${(invoice.baseCents / 100).toFixed(2)}; ${record.shares.map(s => `${s.name} ${s.rateBps / 100}% = AUD ${(s.earnedCents / 100).toFixed(2)}`).join(", ")}.`;
+        detail = `Approved ${invoice.number}: base AUD ${(invoice.baseCents / 100).toFixed(2)}; ${record.shares.map(s => `${s.name} ${s.fixedAmountCents !== undefined ? "fixed amount" : `${s.rateBps / 100}%`} = AUD ${(s.earnedCents / 100).toFixed(2)}`).join(", ")}.`;
       } else if (action === "reopen") {
         if (record.status !== "approved") throw new EarningsError("Only approved earnings can be reopened.", 409);
         if (record.shares.some(s => s.paidCents !== 0)) throw new EarningsError("Reverse recorded payments before reopening earnings.", 409);

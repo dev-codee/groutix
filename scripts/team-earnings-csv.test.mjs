@@ -23,3 +23,8 @@ test('member export keeps individual balances and protects formula-like names', 
   assert.match(csv, /"123.45","250.00","100.00","150.00"\r\n$/);
   assert.equal(earningsJobsCsv([]).split('\r\n').length, 2);
 });
+
+test('fixed amount exports identify the agreed AUD amount', () => {
+  const csv = earningsJobsCsv([{ ...job, ledger: { ...job.ledger, shares: [{ ...job.ledger.shares[0], rateBps: 0, fixedAmountCents: 30000, earnedCents: 30000 }] } }]);
+  assert.match(csv, /Zoë: AUD 300.00 fixed/);
+});

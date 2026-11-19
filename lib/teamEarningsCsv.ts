@@ -25,7 +25,7 @@ export function earningsJobsCsv(jobs: EarningsJob[]): string {
       return [job.jobLabel, job.customer, job.status, job.service, job.assignedNames.join("; "), job.completedVisits, job.totalVisits,
         job.daysDone, job.daysPlanned, job.invoice?.number || "", job.invoice ? amount(job.invoice.totalCents) : "", job.invoicePaid ? "Yes" : "No",
         earningsStatus(job), amount(approved ? 0 : total), amount(approved ? total : 0), amount(paid), amount(approved ? total - paid : 0),
-        shares.map(share => `${share.name}: ${share.rateBps / 100}%`).join("; ")];
+        shares.map(share => `${share.name}: ${share.fixedAmountCents !== undefined ? `AUD ${amount(share.fixedAmountCents)} fixed` : `${share.rateBps / 100}%`}`).join("; ")];
     }),
   ]);
 }

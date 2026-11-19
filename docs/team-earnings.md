@@ -26,3 +26,9 @@ Managers and super admins can open **Team Earnings** in the CRM sidebar (`?view=
 Uses `team_earnings`, `team_earnings_payments` and `team_earnings_events` collections with automatically created indexes. MongoDB Atlas or a replica set is required. Every mutation and its audit snapshot commit in one transaction; versions prevent stale concurrent changes, and request IDs prevent duplicate retries. Every event retains a complete ledger snapshot for audit, including earlier approvals after reopening. Payment and audit records are never deleted by this feature.
 
 Run `node scripts/team-earnings.test.mjs` for calculations, identity/completion rules, approvals, invoice changes, partial payments, overpayment prevention, concurrency, retry safety, transaction rollback, reversals, source deletion and role restrictions. Tests inject database boundaries and do not modify production records.
+
+## Fixed worker amounts and display
+
+Each worker row offers **Enter as → Share (%) / Amount (AUD)**. Fixed amounts are stored as exact cents and remain fixed when the invoice basis changes. Percentage and fixed rows can be combined, but their total cannot exceed the current invoice basis at saving or approval. Existing percentage records remain compatible.
+
+Currency labels on the earnings page drop the decimal portion (AUD 300.90 displays as $300). Ledger calculations, payment inputs, audit records and CSV exports retain cents for reconciliation.

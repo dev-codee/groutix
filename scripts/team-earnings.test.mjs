@@ -199,3 +199,34 @@ test("separately saved customer invoices appear, approve, and detect later invoi
   assert.equal(job.changed, true);
   await assert.rejects(f.mutate("pay", a.version, pay()), /changed after approval/);
 });
+
+test("fixed amounts mix with percentage shares, survive approval and support payment", async () => {
+  const f = fixture();
+  const d = await f.mutate("save", 0, { basis: "ex_gst", shares: [{ memberId, fixedAmountCents: 30000 }, { memberId: secondId, rateBps: 2500 }] });
+  assert.equal(d.shares[0].fixedAmountCents, 30000);
+  const a = await f.mutate("approve", d.version, { invoice: rules.invoiceForEarnings(baseLead, "ex_gst") });
+  assert.deepEqual(a.shares.map(s => s.earnedCents), [30000, 25000]);
+  const paid = await f.mutate("pay", a.version, pay({ amountCents: 30000 }));
+  assert.equal(paid.shares[0].paidCents, 30000);
+  assert.equal(paid.shares[0].fixedAmountCents, 30000);
+});
+
+test("invalid fixed amounts and mixed totals above the invoice basis are rejected", async () => {
+  for (const fixedAmountCents of [0, -1, 1.5, NaN, "30000"]) {
+    assert.throws(() => rules.parseEarningsShares([{ memberId, fixedAmountCents }], [member]));
+  }
+  assert.throws(() => rules.parseEarningsShares([{ memberId, fixedAmountCents: 30000, rateBps: 1000 }], [member]));
+  const f = fixture();
+  await assert.rejects(f.mutate("save", 0, { basis: "ex_gst", shares: [{ memberId, fixedAmountCents: 80000 }, { memberId: secondId, rateBps: 2500 }] }), /cannot exceed/);
+  const d = await f.mutate("save", 0, { basis: "ex_gst", shares: [{ memberId, fixedAmountCents: 80000 }] });
+  f.state.submissions[0].invoiceAmount = 550;
+  await assert.rejects(f.mutate("approve", d.version, { invoice: rules.invoiceForEarnings({ ...baseLead, invoiceAmount: 550 }, "ex_gst") }), /cannot exceed/);
+});
+
+test("mixed allocation preserves exact fixed cents and whole-dollar displays drop decimals", () => {
+  const shares = rules.parseEarningsShares([{ memberId, fixedAmountCents: 101 }, { memberId: secondId, rateBps: 3333 }], [member, second]);
+  const result = rules.calculateEarnings(shares, 1001);
+  assert.deepEqual(result.map(s => s.earnedCents), [101, 334]);
+  for (const cents of [30000, 30040, 30090, 30099]) assert.equal(rules.formatEarningsMoney(cents), "$300");
+  assert.equal(rules.formatEarningsMoney(99), "$0");
+});
