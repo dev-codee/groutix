@@ -268,8 +268,8 @@ const CORE = [
     alt: "Shower regrouting in Melbourne, a freshly regrouted tiled shower with waterproof epoxy grout", desc: "Cracked or crumbling grout removed and rebuilt with waterproof epoxy, so your shower seals properly again." },
   { slug: "leaking-shower-repair", title: "Leaking Shower Repair", tag: "Leak repair", img: "/corner-shower-regrouting-worn-grout.webp",
     alt: "Leaking shower repair in Melbourne, a corner shower with worn, failing grout that lets water escape behind the tiles", desc: "We remove the failed grout and silicone and regrout your shower with waterproof epoxy, usually without removing tiles." },
-  { slug: "balcony-leak-repairs", title: "Balcony Leak Repairs", tag: "Outdoor", img: "/balcony-centre-watermark.webp",
-    alt: "Long balcony with herringbone tiles and a black metal railing after leak repairs", desc: "Failed grout and sealant rebuilt with weatherproof epoxy to stop water reaching the areas below." },
+  { slug: "balcony-leak-repairs", title: "Balcony Leak Repairs", tag: "Outdoor", img: "/balcony-regrouting-tiles.webp",
+    alt: "Balcony leak repairs in Melbourne, outdoor balcony tiles regrouted and resealed by Groutix", desc: "Failed grout and sealant rebuilt with weatherproof epoxy to stop water reaching the areas below." },
 ];
 const MORE = [
   { slug: "tile-regrouting", title: "Tile Regrouting", desc: "Kitchens, laundries & floors", img: "/tile-regrouting-hero.webp", alt: "Tile regrouting in Melbourne, glossy white shower tiles and a tiled niche finished with fresh grout lines" },
@@ -324,7 +324,7 @@ function HubCoreSlider({ before, after, title, flip }: { before: string; after: 
     </div>
   );
   return (
-    <div className={`relative aspect-[5/4] w-full select-none overflow-hidden ${flip ? "lg:order-2" : ""}`}>
+    <div className={`relative aspect-[4/5] w-full select-none overflow-hidden ${flip ? "lg:order-2" : ""}`}>
       <div className="absolute inset-0 overflow-hidden" role="img" aria-label={`${title}, before`}>{layer(before)}</div>
       <div className="absolute inset-0 overflow-hidden" style={{ clipPath: `inset(0 0 0 ${pos}%)` }} role="img" aria-label={`${title}, after`}>{layer(after)}</div>
       <span className="pointer-events-none absolute left-3 top-3 rounded bg-black/75 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider text-white">Before</span>
@@ -504,7 +504,7 @@ export default function MelbourneHubClient({
                 </p>
               </div>
             </AnimatedImage>
-            <div className="space-y-6 text-neutral-800">
+            <div className="space-y-6 text-center text-neutral-800">
               <motion.h2
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
@@ -586,7 +586,7 @@ export default function MelbourneHubClient({
       {/* ── Real Jobs: Before and After (homepage pattern) ── */}
       <section id="before-after" className="scroll-mt-28 bg-slate-100 py-14 md:py-20">
         <div className={hubWrap}>
-          <div className="mb-9 flex flex-wrap items-end justify-between gap-4">
+          <div className="mb-9 flex flex-col items-center gap-4 text-center">
             <div>
               <p className={hubEyebrow}>Real work</p>
               <h2 className={hubH2}>Before and After: Real Regrouting Results</h2>
@@ -603,7 +603,7 @@ export default function MelbourneHubClient({
       {/* ── Leaking depth section ── */}
       <section className="bg-white py-14 lg:py-[72px]">
         <div className={hubWrap}>
-          <div className="max-w-[820px]">
+          <div className="mx-auto max-w-[820px] text-center">
             <p className={hubEyebrow}>Leaking showers</p>
             <h2 className={hubH2}>Leaking Shower Repairs in Melbourne</h2>
             <p className={hubLead}>A leaking shower rarely announces itself loudly. It starts as a damp patch on the wall beside the shower, a musty smell that never leaves, paint bubbling on the other side of the wall, or water appearing on the ceiling of the room below. Across Melbourne, the cause is usually the same: grout and silicone that have failed and let water behind the tiles with every shower.</p>
@@ -615,13 +615,13 @@ export default function MelbourneHubClient({
               ["Remove what failed", "The failed grout and perished silicone come out completely. New grout over old grout cracks and fails within months."],
               ["Rebuild and reseal", "The joints are rebuilt with waterproof epoxy grout and the corners are resealed with silicone, then the shower is ready to use again once the seals have cured."],
             ].map(([t, d]) => (
-              <div key={t} className={`${hubBox} p-6`}>
+              <div key={t} className={`${hubBox} p-6 text-center`}>
                 <h3 className="text-[17px] font-bold text-slate-900">{t}</h3>
                 <p className="mt-2 text-[15px] leading-relaxed text-slate-600">{d}</p>
               </div>
             ))}
           </div>
-          <div className="mt-7 flex flex-wrap gap-x-7 gap-y-2 text-[15px] font-semibold">
+          <div className="mt-7 flex flex-wrap justify-center gap-x-7 gap-y-2 text-[15px] font-semibold">
             <Link href="/leaking-shower-repair" className="text-[#2F63CC] hover:underline">See how we repair leaking showers →</Link>
             <Link href="/guides/shower-still-leaking-after-regrouting" className="text-[#2F63CC] hover:underline">Still leaking after regrouting?</Link>
             <Link href="/guides/shower-leaking-into-ceiling-below" className="text-[#2F63CC] hover:underline">Leak showing on the ceiling below?</Link>
@@ -632,12 +632,12 @@ export default function MelbourneHubClient({
       {/* ── Tile depth section + cleaning decision ── */}
       <section className="bg-[#F8FAFC] py-14 lg:py-[72px]">
         <div className={hubWrap}>
-          <div className="max-w-[820px]">
+          <div className="mx-auto max-w-[820px] text-center">
             <p className={hubEyebrow}>Floors, kitchens and laundries</p>
             <h2 className={hubH2}>Tile Regrouting in Melbourne</h2>
             <p className={hubLead}>Showers get the attention, but the same failure happens anywhere tiles meet water or daily wear: bathroom and laundry floors, kitchen splashbacks, and the tiled floors of older Melbourne homes. When the joints crack, crumble or go permanently dark, regrouting rebuilds them without replacing a single tile.</p>
           </div>
-          <div className={`${hubBox} mt-8 p-6 sm:p-8`}>
+          <div className={`${hubBox} mt-8 p-6 text-center sm:p-8`}>
             <h3 className="text-xl font-bold text-slate-900">Cleaning or Regrouting? How to Tell</h3>
             <div className="mt-4 grid gap-6 md:grid-cols-2">
               <div>
@@ -650,20 +650,20 @@ export default function MelbourneHubClient({
               </div>
             </div>
           </div>
-          <p className="mt-6 text-[15px] font-semibold"><Link href="/tile-regrouting" className="text-[#2F63CC] hover:underline">See tile regrouting in Melbourne →</Link></p>
+          <p className="mt-6 text-center text-[15px] font-semibold"><Link href="/tile-regrouting" className="text-[#2F63CC] hover:underline">See tile regrouting in Melbourne →</Link></p>
         </div>
       </section>
 
       {/* ── Balcony depth section ── */}
       <section className="bg-white py-14 lg:py-[72px]">
         <div className={hubWrap}>
-          <div className="max-w-[820px]">
+          <div className="mx-auto max-w-[820px] text-center">
             <p className={hubEyebrow}>Balconies and outdoor tiles</p>
             <h2 className={hubH2}>Balcony Regrouting in Melbourne</h2>
             <p className={hubLead}>Melbourne weather works outdoor joints hard. Summer sun, winter rain and frosts in the outer suburbs expand and contract balcony tiles until the grout cracks and the silicone peels, and every storm after that pushes water through the joints toward the rooms and units below.</p>
             <p className={hubLead}>If the joints are worn and cracked but nothing is leaking yet, a full balcony regrouting replaces the failed grout and seals before water gets in. If water is already reaching the area below, that is a leak repair: the failed sections are rebuilt and resealed so the balcony sheds water again. And if the waterproofing membrane under the tiles has failed, we will tell you honestly, because regrouting alone cannot fix that.</p>
           </div>
-          <div className="mt-6 flex flex-wrap gap-x-7 gap-y-2 text-[15px] font-semibold">
+          <div className="mt-6 flex flex-wrap justify-center gap-x-7 gap-y-2 text-[15px] font-semibold">
             <Link href="/balcony-regrouting" className="text-[#2F63CC] hover:underline">Balcony regrouting →</Link>
             <Link href="/balcony-leak-repairs" className="text-[#2F63CC] hover:underline">Balcony leak repairs →</Link>
           </div>
@@ -673,7 +673,7 @@ export default function MelbourneHubClient({
       {/* ── Sealing depth section ── */}
       <section className="bg-[#F8FAFC] py-14 lg:py-[72px]">
         <div className={hubWrap}>
-          <div className="max-w-[820px]">
+          <div className="mx-auto max-w-[820px] text-center">
             <p className={hubEyebrow}>Sealing, explained honestly</p>
             <h2 className={hubH2}>Grout Sealing in Melbourne</h2>
             <p className={hubLead}>Owners often ask whether their grout should be sealed. The honest answer depends on what the grout is made of.</p>
@@ -684,13 +684,13 @@ export default function MelbourneHubClient({
               ["Silicone is the seal that matters", "The corners and wall to floor junctions move, so they are sealed with flexible silicone rather than grout. When silicone perishes and lifts, replacing it is often the single most effective repair in a bathroom."],
               ["Cement grout drinks water", "Standard cement grout is porous. It absorbs water, stains and feeds mould, and it only keeps working if it is sealed again and again. Regrouting in epoxy removes that cycle."],
             ].map(([t, d]) => (
-              <div key={t} className={`${hubBox} p-6`}>
+              <div key={t} className={`${hubBox} p-6 text-center`}>
                 <h3 className="text-[17px] font-bold text-slate-900">{t}</h3>
                 <p className="mt-2 text-[15px] leading-relaxed text-slate-600">{d}</p>
               </div>
             ))}
           </div>
-          <div className="mt-7 flex flex-wrap gap-x-7 gap-y-2 text-[15px] font-semibold">
+          <div className="mt-7 flex flex-wrap justify-center gap-x-7 gap-y-2 text-[15px] font-semibold">
             <Link href="/epoxy-grout" className="text-[#2F63CC] hover:underline">Epoxy grout in Melbourne →</Link>
             <Link href="/silicone-recaulking" className="text-[#2F63CC] hover:underline">Silicone replacement →</Link>
           </div>
