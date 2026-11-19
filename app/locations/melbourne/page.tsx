@@ -7,14 +7,14 @@ import { getReviews, getBusinessRating } from "@/lib/reviews";
 import { OG_SHARE_IMAGE } from "@/lib/seo";
 
 export const metadata: Metadata = {
-  title: "Shower & Balcony Regrouting Melbourne | Free Quote",
+  title: "Regrouting Melbourne | Shower & Balcony Grout Repair",
   description:
-    "Shower regrouting, grout repair and leaking shower repairs across Melbourne. Rated 5.0 from 296 Google reviews, with a 10 year waterproof warranty and free quotes.",
+    "Showers, balconies and tiled floors regrouted and resealed across Melbourne, tiles kept in place. 5.0 stars from 296 reviews, 10 year warranty. Free quote.",
   alternates: { canonical: "/locations/melbourne" },
   openGraph: {
-    title: "Shower & Balcony Regrouting Melbourne | Free Quote",
+    title: "Regrouting Melbourne | Shower & Balcony Grout Repair",
     description:
-      "Melbourne shower regrouting, grout repair and leaking shower services. Rated 5.0 from 296 Google reviews, 10 year waterproof warranty, free quotes.",
+      "Showers, balconies and tiled floors regrouted and resealed across Melbourne, tiles kept in place. 5.0 stars from 296 reviews, 10 year warranty. Free quote.",
     url: "/locations/melbourne",
     type: "website",
     images: [{ url: OG_SHARE_IMAGE, width: 1920, height: 1440, alt: "Shower regrouting in Melbourne by Groutix" }],
@@ -188,6 +188,21 @@ const melbourneFaqs: Array<{ question: string; answer: string }> = [
     question: "Which Melbourne areas does Groutix cover?",
     answer:
       "Groutix covers 44 areas across greater Melbourne, from the inner city and bayside to the north, west and south east, plus the Geelong, Ballarat, Frankston, Casey, Lilydale and Kilmore regions. Find your suburb in the list on this page or call (03) 7023 8094.",
+  },
+  {
+    question: "Do you seal grout after regrouting?",
+    answer:
+      "Complete Groutix regrouting is finished in epoxy grout, which is non porous and never needs sealing. The corners and junctions are sealed with flexible silicone. Older cement grout is porous and does need regular sealing to keep working, which is one reason most owners choose epoxy when they regrout.",
+  },
+  {
+    question: "Will cleaning fix my grout, or do I need regrouting?",
+    answer:
+      "If the grout is whole and hard and only the surface is dirty, a professional clean is enough. If it is cracked, crumbling, missing or soft, or mould keeps coming back after cleaning, the grout has failed and cleaning cannot restore it. It needs to come out and be rebuilt.",
+  },
+  {
+    question: "My balcony is leaking into the unit below. Can regrouting fix it?",
+    answer:
+      "Often, yes, when the leak starts at failed grout joints and perished seals. Groutix regrouts and reseals the balcony so water sheds off the surface. If the waterproofing membrane under the tiles has failed, regrouting alone will not fix it, and we will tell you what repair is actually needed.",
   },
 ];
 
