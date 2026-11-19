@@ -22,6 +22,7 @@ import {
   box, btnGhost, btnGold, btnNavy, cardText, cardTitle, h2, heroWrap, inlineLink, lead, wrap, eyebrow,
 } from "@/components/v2/ui";
 import HeroContactBadges from "@/components/HeroContactBadges";
+import TrustedMarquee from "@/components/TrustedMarquee";
 import QuoteFormV2 from "@/components/home/QuoteFormV2";
 
 /* ───────────── Content (unchanged from the live page) ───────────── */
@@ -116,6 +117,9 @@ const faqs: Array<{ q: string; a: ReactNode; plain: string }> = [
   { q: "How do I fix shower grout mould?", a: "Surface mould can often be cleaned. Mould that keeps returning usually means the grout has failed and needs replacing.", plain: "Surface mould can often be cleaned. Mould that keeps returning usually means the grout has failed and needs replacing." },
   { q: "Why does my shower smell musty?", a: "A musty smell usually means moisture and mould are trapped in or behind failed grout and silicone. Cleaning lifts the surface smell for a while, but it keeps coming back while water is getting in. Removing the failed grout and resealing the joints fixes the cause.", plain: "A musty smell usually means moisture and mould are trapped in or behind failed grout and silicone. Cleaning lifts the surface smell for a while, but it keeps coming back while water is getting in. Removing the failed grout and resealing the joints fixes the cause." },
   { q: "Can you match my existing grout colour?", a: "Epoxy grout comes in many colours, so a close match is usually possible.", plain: "Epoxy grout comes in many colours, so a close match is usually possible." },
+  { q: "Can you repair just one section of grout instead of regrouting the whole shower?", a: "Yes, when the damage sits in one spot and the grout around it is still sound. If grout is cracking or mouldy in several places, patching one section usually means the next section fails soon after, so a full regrout works out cheaper and lasts longer. We check the whole shower and tell you honestly which one yours needs.", plain: "Yes, when the damage sits in one spot and the grout around it is still sound. If grout is cracking or mouldy in several places, patching one section usually means the next section fails soon after, so a full regrout works out cheaper and lasts longer. We check the whole shower and tell you honestly which one yours needs." },
+  { q: "What changes the price of regrouting a shower?", a: "The size of the shower, the tile size and type, whether epoxy or cement grout is used, how much silicone needs replacing, and the condition of the existing grout. Small tiles mean more grout lines and more time. That is why we quote from photos or a visit rather than a flat rate.", plain: "The size of the shower, the tile size and type, whether epoxy or cement grout is used, how much silicone needs replacing, and the condition of the existing grout. Small tiles mean more grout lines and more time. That is why we quote from photos or a visit rather than a flat rate." },
+  { q: "Will regrouting stop my shower leaking?", a: "If the leak is coming through failed grout or silicone, yes, regrouting and resealing stops it. If the waterproof membrane under the tiles has failed, regrouting alone will not fix it, and we will tell you that upfront instead of selling you a job that cannot work.", plain: "If the leak is coming through failed grout or silicone, yes, regrouting and resealing stops it. If the waterproof membrane under the tiles has failed, regrouting alone will not fix it, and we will tell you that upfront instead of selling you a job that cannot work." },
 ];
 
 /* ───────────── Small pieces ───────────── */
@@ -268,6 +272,8 @@ export default function ShowerRegroutingPageV2({ reviews }: { reviews: Review[] 
             </div>
           </div>
         </section>
+
+        <TrustedMarquee />
 
         {/* 1b. QUOTE FORM (moved out of the hero; keeps the #quote-form anchor) */}
         <section id="quote-form" className="scroll-mt-28 bg-slate-100 py-14 md:py-[72px]">
@@ -423,6 +429,34 @@ export default function ShowerRegroutingPageV2({ reviews }: { reviews: Review[] 
               </div>
             ))}
           </div>
+          <div className={`${box} mt-7 p-6 text-left sm:p-8`}>
+            <h3 className={cardTitle}>Shower Grout Repair or a Full Regrout?</h3>
+            <div className="mt-4 grid grid-cols-1 gap-6 md:grid-cols-2">
+              <div>
+                <p className="text-base font-bold text-slate-900">A spot repair is enough when</p>
+                <ul className="mt-3 space-y-2">
+                  {["The damage sits in one small area", "The grout around it is firm and clean", "No mould is returning anywhere else"].map((x) => (
+                    <li key={x} className="flex items-start gap-2.5 text-base text-slate-600">
+                      <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#FBBC04] text-[#0F172A]"><Check className="h-3 w-3" strokeWidth={3} aria-hidden="true" /></span>
+                      {x}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div>
+                <p className="text-base font-bold text-slate-900">A full regrout is the right fix when</p>
+                <ul className="mt-3 space-y-2">
+                  {["Cracks or gaps show in several places", "Mould keeps coming back after cleaning", "Grout feels soft, hollow or crumbly"].map((x) => (
+                    <li key={x} className="flex items-start gap-2.5 text-base text-slate-600">
+                      <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#FBBC04] text-[#0F172A]"><Check className="h-3 w-3" strokeWidth={3} aria-hidden="true" /></span>
+                      {x}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+            <p className="mt-4 text-base leading-relaxed text-slate-600">Patching grout that is failing everywhere only buys a few months. We check the whole shower first and recommend the smaller job whenever it will actually last.</p>
+          </div>
           <div className="mt-7 md:text-center">
             <Link href="/leaking-shower-repair" className="text-[15px] font-bold text-[#2F63CC] hover:underline">Read about leaking shower repair →</Link>
           </div>
@@ -464,6 +498,32 @@ export default function ShowerRegroutingPageV2({ reviews }: { reviews: Review[] 
               </li>
             ))}
           </ul>
+        </Section>
+
+        {/* COST */}
+        <Section id="cost">
+          <SectionHead k="Costs" title="What Does Shower Regrouting Cost in Melbourne?">
+            <p className={lead}>Every shower is different, so an honest price needs a look at the job first. These are the things that move a quote up or down.</p>
+          </SectionHead>
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {[
+              { t: "Shower size", d: "A compact ensuite has far fewer grout lines than a large double shower. More lines mean more removal, more grout and more time on site." },
+              { t: "Tile size and type", d: "Small mosaic tiles can mean hundreds of joints in a single shower floor. Large format tiles have fewer lines but need careful work around every edge." },
+              { t: "Epoxy or cement grout", d: "Epoxy costs more in materials and takes more skill to install, and it is the grout that lasts in a wet area. Cement costs less and suits dry areas better." },
+              { t: "Silicone and seals", d: "Perimeter silicone and shower screen seals are often replaced in the same visit, so the whole shower is sealed, not just the grout lines." },
+              { t: "Condition of the old grout", d: "Grout that is cracked through or hollow needs full removal before new grout goes in. The worse the failure, the longer the preparation takes." },
+              { t: "Damage under the tiles", d: "If water has already damaged the wall or floor under the tiles, that repair is separate work. We flag it before anything starts, never after." },
+            ].map((f) => (
+              <div key={f.t} className={`${box} p-6`}>
+                <h3 className={cardTitle}>{f.t}</h3>
+                <p className={`${cardText} mt-2`}>{f.d}</p>
+              </div>
+            ))}
+          </div>
+          <div className={`${box} mt-7 flex flex-col items-start gap-4 p-6 sm:p-8 lg:flex-row lg:items-center lg:justify-between`}>
+            <p className="max-w-[720px] text-base leading-relaxed text-slate-600"><strong className="text-slate-900">How our quotes work:</strong> send photos of your shower and we quote from what we can see. The price is fixed before work starts, and there is no obligation to go ahead.</p>
+            <a href="#quote-form" className={`${btnNavy} shrink-0`}>Get My Free Quote</a>
+          </div>
         </Section>
 
         {/* 10. DIY */}
