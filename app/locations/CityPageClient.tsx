@@ -58,6 +58,7 @@ export type CityPageProps = {
   googleMapsApiKey?: string;
   parentSlug?: string;
   locationExplanation?: string;
+  hubLink?: { href: string; anchor: string };
   faqs?: Array<{ question: string; answer: string }>;
 };
 
@@ -300,6 +301,7 @@ export default function CityPageClient({
   googleMapsApiKey,
   parentSlug,
   locationExplanation,
+  hubLink,
   faqs,
 }: CityPageProps) {
   const gr = useGoogleRating();
@@ -547,6 +549,15 @@ export default function CityPageClient({
                   {locationExplanation.split("\n\n").map((para, i) => (
                     <p key={i}>{para}</p>
                   ))}
+                  {hubLink && (
+                    <p>
+                      Looking at the whole region instead? Our{" "}
+                      <Link href={hubLink.href} className="font-bold text-accent hover:underline">
+                        {hubLink.anchor}
+                      </Link>{" "}
+                      page covers every service, what regrouting costs, and the questions local owners ask us most.
+                    </p>
+                  )}
                 </motion.div>
               </div>
             </div>
