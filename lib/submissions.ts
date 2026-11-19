@@ -1,3 +1,4 @@
+import { quoteNumberForJob, invoiceNumberForJob } from "./documentNumbers";
 import { savedWorkSegments } from "./bookingSpan";
 import { isPrimaryBooking, canonicalLeadBookings } from "./leadBookings";
 import { withBookingCalendarLock } from "./bookingCalendarLock";
@@ -28,7 +29,7 @@ import { validBookingStatus, combinedJobStatus } from "./bookingStatus";
 function normalizeApptFields<T extends { inspectionAt?: unknown; jobAt?: unknown }>(patch: T): T {
   for (const key of ["inspectionAt", "jobAt"] as const) {
     if (typeof patch[key] === "string") {
-      (patch as Record<string, unknown>)[key] = normalizeApptString(patch[key] as string);
+      (patch as Record<string, unknown>)[key] = normalizeApptString(patch[key] as string) ?? "";
     }
   }
   return patch;
@@ -56,6 +57,10 @@ export interface QuoteItem {
 }
 
 export interface CustomerMessage {
+  deletedAt?: string;
+  toEmail?: string;
+  fromEmail?: string;
+  emailMessageId?: string;
   id: string;
   from: "customer" | "groutix";
   channel?: "email" | "sms" | "lead" | "internal";
@@ -102,6 +107,7 @@ export interface WarrantyDoc {
 // A single entry in a lead's audit trail. `actor` is the staff username, or
 // "system" for automatic steps (assignment, follow-ups, timestamps).
 export interface ActivityEntry {
+  bookingId?: string;
   time: string;
   actor: string;
   action: string;
@@ -185,6 +191,8 @@ export interface SubmissionDoc {
   warranty?: WarrantyDoc;
   warrantyProvided?: boolean;
   activity?: ActivityEntry[];
+  /** Compact audit evidence supplied by dashboard reads. */
+  recordedWorkflowSteps?: Pick<ActivityEntry, "action" | "detail" | "bookingId">[];
   quoteNumber?: string;
   quoteReference?: string;
   hasCustomerQuotes?: boolean;
@@ -205,6 +213,7 @@ export interface SubmissionDoc {
   invoiceAmount?: number;
   invoiceNumber?: string;
   customerInvoiceCount?: number;
+  customerInvoiceSyncedCount?: number;
   customerInvoiceTotal?: number;
   customerInvoiceOutstanding?: number;
   invoicePayments?: import("@/lib/invoicePayments").InvoicePaymentRecord[];
@@ -309,6 +318,7 @@ function recycleBinToJSON(doc: RecycleBinDoc): RecycleBinJSON {
   const { _id, createdAt, deletedAt, ...rest } = doc;
   return {
     ...rest,
+    status: rest.status?.trim().toLowerCase() === "invoice sent" ? "Payment Pending" : rest.status,
     id: _id ? _id.toString() : "",
     createdAt: (createdAt instanceof Date ? createdAt : new Date(createdAt)).toISOString(),
     deletedAt: (deletedAt instanceof Date ? deletedAt : new Date(deletedAt)).toISOString(),
@@ -558,12 +568,18 @@ export function toJSON(doc: SubmissionDoc): SubmissionJSON {
   const { _id, createdAt, ...rest } = doc;
   return {
     ...rest,
+    ...(rest.quoteNumber ? { quoteNumber: quoteNumberForJob({ ...rest, id: _id?.toString() || "" }) } : {}),
+    ...(rest.invoiceNumber ? { invoiceNumber: invoiceNumberForJob({ ...rest, id: _id?.toString() || "" }) } : {}),
+    status: rest.status?.trim().toLowerCase() === "invoice sent" ? "Payment Pending" : rest.status,
     id: _id ? _id.toString() : "",
     createdAt: (createdAt instanceof Date ? createdAt : new Date(createdAt)).toISOString(),
   };
 }
 
 export interface ListParams {
+  dashboard?: boolean;
+  inbox?: boolean;
+  onTiming?: (stage: string, durationMs: number) => void;
   type?: SubmissionType;
   status?: SubmissionStatus;
   priority?: string;
@@ -604,7 +620,7 @@ export function parseListParams(sp: URLSearchParams): ListParams {
 function buildFilter(params: ListParams): Filter<SubmissionDoc> {
   const filter: Filter<SubmissionDoc> = {};
   if (params.type) filter.type = params.type;
-  if (params.status) filter.status = params.status;
+  if (params.status) filter.status = ["Payment Pending", "Invoice Sent"].includes(params.status) ? { $in: ["Payment Pending", "Invoice Sent"] } : params.status;
   if (params.priority) filter.priority = params.priority;
   if (params.from || params.to) {
     filter.createdAt = {};
@@ -643,16 +659,30 @@ function escapeRegex(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-async function withBookings(items: SubmissionJSON[]): Promise<SubmissionJSON[]> {
+const bookingProjection = {
+  _id: 1, bookingId: 1, leadId: 1, type: 1, date: 1, time: 1, endAt: 1, workSegments: 1, status: 1,
+  jobTotalDays: 1, jobDaysDone: 1, scheduledMinutes: 1, technicianId: 1, technician: 1,
+  technicianUsername: 1, inspectorId: 1, assigned: 1, inspectorUsername: 1,
+};
+type DashboardBatch = {
+  items: SubmissionDoc[];
+  bookings: import("./bookings").BookingDoc[];
+  acceptedQuotes: { leadId: string }[];
+  invoiceSyncs?: { _id: string; count: number; synced: number }[];
+};
+
+async function withBookings(items: SubmissionJSON[], prefetched?: Pick<DashboardBatch, "bookings" | "acceptedQuotes">): Promise<SubmissionJSON[]> {
   if (!items.length) return items;
-  const db = await getDb();
   const leadIds = items.map(item => item.id);
-  const [bookings, acceptedQuotes] = await Promise.all([
-    db.collection<import("./bookings").BookingDoc>("bookings")
-      .find({ leadId: { $in: leadIds } }).toArray(),
-    db.collection<import("./customerQuotes").CustomerQuote>("customer_quotes")
-      .find({ leadId: { $in: leadIds }, state: "accepted" }, { projection: { leadId: 1 } }).toArray(),
-  ]);
+  const [bookings, acceptedQuotes] = prefetched ? [prefetched.bookings, prefetched.acceptedQuotes] : await (async () => {
+    const db = await getDb();
+    return Promise.all([
+      db.collection<import("./bookings").BookingDoc>("bookings")
+        .find({ leadId: { $in: leadIds } }, { projection: bookingProjection }).toArray(),
+      db.collection<import("./customerQuotes").CustomerQuote>("customer_quotes")
+        .find({ leadId: { $in: leadIds }, state: "accepted" }, { projection: { leadId: 1, _id: 0 } }).toArray(),
+    ]);
+  })();
   const acceptedCounts = new Map<string, number>();
   for (const quote of acceptedQuotes) acceptedCounts.set(quote.leadId, (acceptedCounts.get(quote.leadId) || 0) + 1);
   const needsRepair = (segments?: { time: string; scheduledMinutes: number }[]) => !!segments && segments.length > 1 && segments.some(s => s.time === "00:00" || Number(s.time.slice(0, 2)) * 60 + Number(s.time.slice(3, 5)) + s.scheduledMinutes >= 1440);
@@ -670,25 +700,124 @@ async function withBookings(items: SubmissionJSON[]): Promise<SubmissionJSON[]> 
   });
 }
 
+// Explicit read model: new stored documents/history must not silently enlarge
+// every dashboard refresh. Editors always load the complete lead separately.
+const dashboardFields = [
+  "dashboardSummary", "recordedWorkflowSteps", "hasQuoteSignature", "hasCustomerUnread", "hasCustomerReplied", "type", "status",
+  "previousStatus", "createdAt", "jobNo", "name", "phone", "email",
+  "service", "enquiry", "message", "address", "city", "state",
+  "assigned", "inspectorId", "inspectorUsername", "technician", "technicianId", "technicianUsername",
+  "priority", "received", "contacted", "follow", "source", "notes",
+  "technicianNotes", "inspectionNotes", "scopeNotes", "customerType", "agency", "tenants",
+  "areas", "leaking", "damagedTiles", "quoteItemCode", "quoteTaxMode", "quoteTaxRate",
+  "quoteUpdated", "quoteAmount", "photosCount", "gps", "warranty", "warrantyProvided",
+  "quoteReference", "quoteNumber", "hasCustomerQuotes", "acceptedCustomerQuoteCount", "quoteSentAt", "quoteOpenedAt",
+  "quoteAcceptedAt", "quoteDeclinedAt", "quoteSignedName", "quoteSignedAt", "followUpStage", "followUpNext",
+  "paymentReceipt", "receiptSentAt", "invoiceDraft", "invoiceAmount", "invoiceNumber", "customerInvoiceCount", "customerInvoiceSyncedCount",
+  "customerInvoiceTotal", "customerInvoiceOutstanding", "invoicePayments", "invoicePaymentVersion", "invoiceParentId", "sourceQuoteId",
+  "sourceQuoteNumber", "invoiceSentAt", "invoiceStatus", "invoiceOpenedAt", "qboCustomerId", "qboInvoiceId",
+  "qboSyncedAt", "qboError", "qboErrorAt", "inspectionWorkSegments", "jobWorkSegments", "inspectionEndAt",
+  "jobEndAt", "primaryInspectionBookingId", "primaryJobBookingId", "inspectionAt", "jobAt", "inspectionReminderSent",
+  "inspectionRescheduled", "jobReminderSent", "inspectionReport", "jobTotalDays", "jobDaysDone", "paymentType",
+  "amountPaid",
+] as const;
+const dashboardProjection = {
+  _id: 1,
+  ...Object.fromEntries(dashboardFields.map(field => [field, 1])),
+  quoteItems: { $map: { input: { $ifNull: ["$quoteItems", []] }, as: "item", in: { price: "$$item.price", qty: "$$item.qty" } } },
+};
+
 export async function listSubmissions(
   params: ListParams
 ): Promise<{ items: SubmissionJSON[]; total: number }> {
-  const col = await collection();
+  const started = Date.now();
+  // Index creation belongs to writes/maintenance, never the dashboard read path.
+  const col = await collection(false);
+  const connected = Date.now();
+  params.onTiming?.("db_connect", connected - started);
   const filter = buildFilter(params);
   const page = Math.max(1, params.page ?? 1);
   const pageSize = Math.min(500, Math.max(1, params.pageSize ?? 25));
 
-  const [docs, total] = await Promise.all([
-    col
+  const [docsOrBatch, total] = await Promise.all([
+    (params.dashboard || params.inbox) ? col.aggregate<SubmissionDoc | DashboardBatch>([
+      { $match: filter },
+      { $sort: { createdAt: -1, _id: -1 } },
+      { $skip: (page - 1) * pageSize },
+      { $limit: pageSize },
+      { $set: {
+        dashboardSummary: true,
+        recordedWorkflowSteps: { $map: {
+          input: { $filter: { input: { $ifNull: ["$activity", []] }, as: "entry", cond: {
+            $in: ["$$entry.action", ["Status changed", "Booking status changed"]],
+          } } }, as: "entry", in: { action: "$$entry.action", detail: "$$entry.detail", bookingId: "$$entry.bookingId" },
+        } },
+        hasQuoteSignature: { $ne: [{ $ifNull: ["$quoteSignature", ""] }, ""] },
+        hasCustomerQuotes: { $ifNull: ["$hasCustomerQuotes", { $or: [
+          { $gt: [{ $size: { $ifNull: ["$quoteItems", []] } }, 0] },
+          { $eq: ["$status", "Quote Sent"] },
+          { $ne: [{ $ifNull: ["$quoteTerms", ""] }, ""] },
+        ] }] },
+        quoteSentAt: { $cond: [
+          { $ne: [{ $ifNull: ["$quoteSentAt", ""] }, ""] }, "$quoteSentAt",
+          { $let: { vars: { sends: { $filter: { input: { $ifNull: ["$activity", []] }, as: "entry", cond: { $eq: ["$$entry.action", "Quote emailed"] } } } }, in: { $arrayElemAt: ["$$sends.time", -1] } } },
+        ] },
+        photosCount: { $size: { $ifNull: ["$photos", []] } },
+        hasCustomerUnread: { $anyElementTrue: [{ $map: { input: { $ifNull: ["$messages", []] }, as: "message", in: {
+          $and: [{ $eq: ["$$message.from", "customer"] }, { $eq: ["$$message.read", false] }],
+        } } }] },
+        hasCustomerReplied: { $in: ["customer", { $ifNull: ["$messages.from", []] }] },
+        // The inbox keeps full bodies and legacy dispatch messages on demand.
+        activity: { $filter: { input: { $ifNull: ["$activity", []] }, as: "entry", cond: {
+          $in: ["$$entry.action", ["On The Way notification sent", "Arrived notification sent"]],
+        } } },
+      } },
+      ...(params.inbox ? [{ $project: { _id: 1, createdAt: 1, dashboardSummary: 1, name: 1, email: 1, phone: 1, jobNo: 1, messages: 1, activity: 1 } }]
+        : [
+          { $project: dashboardProjection },
+          // Omitted optional empty values have the same UI defaults. Keep false
+          // and zero: payment, warranty and read flags depend on those values.
+          { $replaceWith: { $arrayToObject: { $filter: {
+            input: { $objectToArray: "$$ROOT" }, as: "field",
+            cond: { $not: [{ $in: ["$$field.v", ["", null, []]] }] },
+          } } } },
+        ]),
+      ...(params.dashboard ? [
+        // One database result carries the selected compact leads and their
+        // related records, avoiding cursor and follow-up network round trips.
+        { $group: { _id: null, items: { $push: "$$ROOT" }, leadIds: { $push: { $toString: "$_id" } } } },
+        { $lookup: { from: "bookings", localField: "leadIds", foreignField: "leadId", pipeline: [{ $project: bookingProjection }], as: "bookings" } },
+        { $lookup: { from: "customer_quotes", localField: "leadIds", foreignField: "leadId", pipeline: [{ $match: { state: "accepted" } }, { $project: { leadId: 1, _id: 0 } }], as: "acceptedQuotes" } },
+        { $lookup: { from: "customer_invoices", localField: "leadIds", foreignField: "leadId", pipeline: [
+          { $group: { _id: "$leadId", count: { $sum: 1 }, synced: { $sum: { $cond: [{ $ne: [{ $ifNull: ["$values.qboInvoiceId", ""] }, ""] }, 1, 0] } } } },
+        ], as: "invoiceSyncs" } },
+        { $project: { _id: 0, items: 1, bookings: 1, acceptedQuotes: 1, invoiceSyncs: 1 } },
+      ] : []),
+    ], { maxTimeMS: 10_000 }).toArray() : col
       .find(filter, { projection: { "photos.dataUrl": 0 } })
       .sort({ createdAt: -1, _id: -1 })
       .skip((page - 1) * pageSize)
       .limit(pageSize)
       .toArray(),
-    col.countDocuments(filter),
+    col.countDocuments(filter, { maxTimeMS: 10_000 }),
   ]);
 
-  return { items: await withBookings(docs.map(toJSON)), total };
+  const queried = Date.now();
+  params.onTiming?.("lead_query", queried - connected);
+  const batch = params.dashboard ? (docsOrBatch as DashboardBatch[])[0] : undefined;
+  const docs = params.dashboard ? batch?.items || [] : docsOrBatch as SubmissionDoc[];
+  const summaries = docs.map(toJSON);
+  if (batch?.invoiceSyncs) {
+    const byId = new Map(batch.invoiceSyncs.map(item => [item._id, item]));
+    for (const item of summaries) {
+      const child = byId.get(item.id);
+      item.customerInvoiceSyncedCount = (child?.synced || 0) + Number(Boolean(item.invoiceNumber && item.qboInvoiceId));
+      if (child) item.customerInvoiceCount = child.count + Number(Boolean(item.invoiceNumber));
+    }
+  }
+  const items = params.inbox ? summaries : await withBookings(summaries, batch);
+  params.onTiming?.("booking_join", Date.now() - queried);
+  return { items, total };
 }
 
 /** Stream-friendly export: every matching doc, newest first, no pagination. */
@@ -749,7 +878,7 @@ export async function markBookingReminderSent(id: string, type: "inspection" | "
 
 export async function getSubmission(id: string): Promise<SubmissionJSON | null> {
   if (!ObjectId.isValid(id)) return null;
-  const col = await collection();
+  const col = await collection(false);
   const doc = await col.findOne({ _id: new ObjectId(id) });
   return doc ? (await withBookings([toJSON(doc)]))[0] : null;
 }
@@ -797,7 +926,8 @@ export async function appendSubmissionPhotos(id: string, photos: SubmissionPhoto
 
 export async function updateSubmission(
   id: string,
-  updates: Partial<SubmissionDoc>
+  updates: Partial<SubmissionDoc>,
+  options?: { expectedStatus?: string; expectedInvoice?: Partial<SubmissionDoc> | SubmissionJSON }
 ): Promise<boolean> {
   if (!ObjectId.isValid(id)) return false;
   const col = await collection(false);
@@ -809,9 +939,15 @@ export async function updateSubmission(
   // Status cannot be cleared by a partial edit (including older clients).
   if ("status" in safeUpdates && (typeof safeUpdates.status !== "string" || !safeUpdates.status.trim())) delete safeUpdates.status;
   const writeFilter: Filter<SubmissionDoc> = { _id: new ObjectId(id) };
+  if (options?.expectedInvoice) {
+    for (const field of ["invoicePaymentVersion", "invoiceAmount", "amountPaid", "invoiceStatus", "qboInvoiceId", "invoiceSentAt"] as const) {
+      const value = options.expectedInvoice[field];
+      Object.assign(writeFilter, { [field]: value === undefined ? { $exists: false } : value });
+    }
+  }
   // A stale full-form save must not reset an established lead to New through
   // another API/automation. New belongs to intake, rather than rescheduling.
-  if (typeof safeUpdates.status === "string" && /^(new|new lead)$/i.test(safeUpdates.status.trim())) {
+  if (options?.expectedStatus === undefined && typeof safeUpdates.status === "string" && /^(new|new lead)$/i.test(safeUpdates.status.trim())) {
     const current = await col.findOne({ _id: new ObjectId(id) }, { projection: { status: 1 } });
     if (!current) return false;
     if (typeof current.status === "string" && current.status.trim() && !/^(new|new lead)$/i.test(current.status.trim())) {
@@ -830,6 +966,7 @@ export async function updateSubmission(
       writeFilter[field] = current[field] === undefined ? { $exists: false } : current[field];
     }
   }
+  if (safeUpdates.status?.trim().toLowerCase() === "invoice sent") safeUpdates.status = "Payment Pending";
   normalizeApptFields(safeUpdates);
   // Every booking path resets reminders for a changed appointment, including Dispatch.
   if ("inspectionAt" in safeUpdates || "jobAt" in safeUpdates) {
@@ -859,6 +996,7 @@ export async function updateSubmission(
   if (safeUpdates.status && !["Inspection En Route", "Job En Route"].includes(safeUpdates.status)) {
     safeUpdates.customerTrackingEndedAt = new Date();
   }
+  if (options?.expectedStatus !== undefined) writeFilter.status = options.expectedStatus === "Payment Pending" ? { $in: ["Payment Pending", "Invoice Sent"] } : options.expectedStatus;
   const res = await col.updateOne(writeFilter, { $set: safeUpdates });
   if (res.matchedCount) await syncPrimaryBookingStatus(id, safeUpdates.status);
   return res.matchedCount > 0;
