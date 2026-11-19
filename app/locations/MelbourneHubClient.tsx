@@ -6,7 +6,6 @@ import Link from "next/link";
 import { Phone, ChevronRight, ChevronDown, Droplets, Grid2x2, Wrench, ShowerHead, Hammer, Building2, ShieldCheck } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import AnimatedSection from "@/components/AnimatedSection";
-import AnimatedImage from "@/components/AnimatedImage";
 import type { Review, BusinessRating } from "@/lib/reviews";
 import TrustedMarquee from "@/components/TrustedMarquee";
 import FaqSection from "@/components/FaqSection";
@@ -65,7 +64,6 @@ export type MelbourneHubProps = {
   heroHeading: string;
   heroSubtitle: string;
   serviceAreaText: string;
-  serviceAreaMapImage: string;
   heroImage: string;
   suburbGroups: SuburbGroup[];
   reviews: Review[];
@@ -75,41 +73,6 @@ export type MelbourneHubProps = {
   locationExplanation?: string;
   faqs?: Array<{ question: string; answer: string }>;
 };
-
-/* ─── ImgBox ─── */
-function ImgBox({
-  label,
-  aspect = "aspect-[4/3]",
-  className = "",
-  src,
-  objectClass = "object-cover",
-}: {
-  label: string;
-  aspect?: string;
-  className?: string;
-  src?: string;
-  objectClass?: string;
-}) {
-  return (
-    <div
-      className={`relative ${aspect} w-full bg-neutral-100 border border-neutral-200 overflow-hidden flex items-center justify-center ${className} rounded-xl border-2 border-transparent hover:border-accent transition-all duration-300 shadow-md hover:shadow-xl`}
-    >
-      <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-accent z-10 pointer-events-none" />
-      <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-accent z-10 pointer-events-none" />
-      {src ? (
-        <Image src={src} alt={label} fill className={`${objectClass} transition-transform duration-500 hover:scale-105`} />
-      ) : (
-        <>
-          <div className="absolute inset-0 bg-[linear-gradient(to_right,#8080800a_1px,transparent_1px),linear-gradient(to_bottom,#8080800a_1px,transparent_1px)] bg-[size:20px_20px]" />
-          <div className="relative text-center px-4 space-y-1 z-10">
-            <p className="text-[12px] font-bold text-neutral-400 uppercase tracking-widest">{label}</p>
-            <p className="text-[12px] text-neutral-300">Add photo manually</p>
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
 
 function SuburbAccordion({
   groups,
@@ -367,7 +330,6 @@ export default function MelbourneHubClient({
   heroHeading,
   heroSubtitle,
   serviceAreaText,
-  serviceAreaMapImage,
   heroImage,
   suburbGroups,
   reviews,
@@ -492,19 +454,16 @@ export default function MelbourneHubClient({
       ) : (
         <AnimatedSection className="bg-[#F3F4F6] py-16 lg:py-24">
           <div className="max-w-[1460px] mx-auto px-4 sm:px-6 lg:px-10 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center">
-            <AnimatedImage className="relative">
-              <ImgBox
-                src={serviceAreaMapImage}
-                label={`${cityName} Service Area Map`}
-                aspect="aspect-[4/3]"
-                className="rounded-xl"
-              />
-              <div className="relative mt-4 mx-4 lg:mx-0 lg:absolute lg:bottom-4 lg:left-4 lg:right-4 bg-accent text-primary-dark p-6 rounded-xl shadow-xl z-10">
+            <div className="flex flex-col gap-6">
+              <HubBeforeAfter before="/epoxy-grout-shower-before.webp" after="/epoxy-grout-shower-after.webp" title="Epoxy shower regrout" />
+              <HubBeforeAfter before="/damp-patch-leak-before.webp" after="/damp-patch-leak-after.webp" title="Leak damage repaired" />
+              <HubBeforeAfter before="/tile-regrouting-floor-before.webp" after="/tile-regrouting-floor-after.webp" title="Floor regrout" />
+              <div className="bg-accent text-primary-dark p-6 rounded-xl shadow-xl">
                 <p className="text-base sm:text-lg font-bold leading-relaxed">
                   Clear advice, specialist workmanship and proven repair systems on every wet-area project.
                 </p>
               </div>
-            </AnimatedImage>
+            </div>
             <div className="space-y-6 text-center text-neutral-800">
               <motion.h2
                 initial={{ opacity: 0, y: 20 }}
