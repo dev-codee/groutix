@@ -3,7 +3,7 @@ import HeroContactBadges from "@/components/HeroContactBadges";
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Phone, ChevronLeft, ChevronRight, ChevronDown, Droplets, Grid2x2, Wrench, ShowerHead, Hammer, Building2, ShieldCheck } from "lucide-react";
+import { Phone, ChevronRight, ChevronDown, Droplets, Grid2x2, Wrench, ShowerHead, Hammer, Building2, ShieldCheck } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import AnimatedSection from "@/components/AnimatedSection";
 import AnimatedImage from "@/components/AnimatedImage";
@@ -111,53 +111,6 @@ function ImgBox({
   );
 }
 
-/* ─── PhotoSlider ─── */
-function PhotoSlider({ cityName }: { cityName: string }) {
-  const [idx, setIdx] = useState(0);
-  const sliderImages = ["/epoxy-grout-shower-after.webp", "/silicone-shower-base-after.webp", "/leaking-shower-repaired-after.webp", "/balcony-centre-watermark.webp", "/shower-regrouting-tiled-interior.webp", "/tile-regrouting-hero.webp"];
-  const total = sliderImages.length;
-  const prev = () => setIdx((i) => (i - 1 + total) % total);
-  const next = () => setIdx((i) => (i + 1) % total);
-  const visibleImages = [sliderImages[idx], sliderImages[(idx + 1) % total], sliderImages[(idx + 2) % total]];
-  return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {visibleImages.map((img, i) => (
-          <AnimatedImage key={`${idx}-${i}`} delay={i * 0.1}>
-            <ImgBox
-              src={img}
-              label={`${cityName} Photo ${idx + i + 1}`}
-              aspect="aspect-[4/3]"
-              className="rounded-sm"
-            />
-          </AnimatedImage>
-        ))}
-      </div>
-      <div className="flex items-center gap-3 pt-2">
-        <button
-          onClick={prev}
-          className="h-9 w-9 rounded-sm bg-[#001F97] hover:bg-[#2F63CC] text-white flex items-center justify-center transition-colors"
-        >
-          <ChevronLeft className="h-5 w-5" />
-        </button>
-        <button
-          onClick={next}
-          className="h-9 w-9 rounded-sm bg-[#001F97] hover:bg-[#2F63CC] text-white flex items-center justify-center transition-colors"
-        >
-          <ChevronRight className="h-5 w-5" />
-        </button>
-        <div className="flex-1 max-w-[120px] h-1 bg-neutral-300 rounded-full overflow-hidden">
-          <div
-            className="h-full bg-[#001F97] rounded-full transition-all duration-300"
-            style={{ width: `${((idx + 1) / total) * 100}%` }}
-          />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ─── Suburb Accordion ─── */
 function SuburbAccordion({
   groups,
   cityName,
@@ -325,9 +278,9 @@ const MORE = [
   { slug: "small-tiling-jobs", title: "Small Tiling Jobs", desc: "Cracked or loose tiles", img: "/shower-regrouting-mosaic-feature-wall.webp", alt: "Small tiling jobs in Melbourne, a mosaic feature strip and tiled shower niche finished by Groutix" },
 ];
 const JOBS = [
-  { before: "/epoxy-grout-shower-before.webp", after: "/epoxy-grout-shower-after.webp", title: "Shower regrout" },
-  { before: "/epoxy-grout-floor-before.webp", after: "/epoxy-grout-floor-after.webp", title: "Shower floor regrout" },
-  { before: "/leaking-shower-failed-grout-before.webp", after: "/leaking-shower-repaired-after.webp", title: "Leaking shower repair" },
+  { before: "/tile-regrouting-wall-before.webp", after: "/tile-regrouting-wall-after.webp", title: "Tile regrout" },
+  { before: "/silicone-corner-before.webp", after: "/silicone-corner-after.webp", title: "Silicone replacement" },
+  { before: "/shower-cracked-grout-before.webp", after: "/shower-cracked-grout-after.webp", title: "Shower regrout" },
 ];
 const CORE_SLIDERS: Record<string, { before: string; after: string }> = {
   "shower-regrouting": { before: "/shower-regrouting-before.webp", after: "/shower-regrouting-after.webp" },
@@ -428,6 +381,7 @@ export default function MelbourneHubClient({
   const [mapQuery, setMapQuery] = useState(`${cityName}, VIC, Australia`);
   const parent = parentSlug || getRegionSlug(cityName, heroSubtitle, suburbGroups);
   return (
+    <>
     <main className="public-page min-h-screen">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(melbourneJsonLd) }} />
       {/* ── Hero + Quote Form (homepage pattern) ── */}
@@ -638,10 +592,107 @@ export default function MelbourneHubClient({
               <h2 className={hubH2}>Before and After: Real Regrouting Results</h2>
               <p className={hubLead}>Real jobs completed across Melbourne homes, not stock photos. Drag the slider to see the after.</p>
             </div>
-            <Link href="/shower-regrouting" className={`${hubBtn} border border-slate-300 bg-white text-[#001F97] hover:border-[#001F97]`}>See more jobs</Link>
+            <Link href="/gallery" className={`${hubBtn} border border-slate-300 bg-white text-[#001F97] hover:border-[#001F97]`}>See more jobs</Link>
           </div>
           <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
             {JOBS.map((jb) => <HubBeforeAfter key={jb.title} before={jb.before} after={jb.after} title={jb.title} />)}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Leaking depth section ── */}
+      <section className="bg-white py-14 lg:py-[72px]">
+        <div className={hubWrap}>
+          <div className="max-w-[820px]">
+            <p className={hubEyebrow}>Leaking showers</p>
+            <h2 className={hubH2}>Leaking Shower Repairs in Melbourne</h2>
+            <p className={hubLead}>A leaking shower rarely announces itself loudly. It starts as a damp patch on the wall beside the shower, a musty smell that never leaves, paint bubbling on the other side of the wall, or water appearing on the ceiling of the room below. Across Melbourne, the cause is usually the same: grout and silicone that have failed and let water behind the tiles with every shower.</p>
+            <p className={hubLead}>Left alone, that water rots the wall and floor underneath and turns a regrouting job into a renovation. Caught early, most leaking showers are fixed by removing the failed material and rebuilding the joints, with the tiles left exactly where they are.</p>
+          </div>
+          <div className="mt-8 grid gap-5 md:grid-cols-3">
+            {[
+              ["Find the source", "We check where the water is getting in before recommending any repair, so you are never sold a regrout for a problem it cannot fix."],
+              ["Remove what failed", "The failed grout and perished silicone come out completely. New grout over old grout cracks and fails within months."],
+              ["Rebuild and reseal", "The joints are rebuilt with waterproof epoxy grout and the corners are resealed with silicone, then the shower is ready to use again once the seals have cured."],
+            ].map(([t, d]) => (
+              <div key={t} className={`${hubBox} p-6`}>
+                <h3 className="text-[17px] font-bold text-slate-900">{t}</h3>
+                <p className="mt-2 text-[15px] leading-relaxed text-slate-600">{d}</p>
+              </div>
+            ))}
+          </div>
+          <div className="mt-7 flex flex-wrap gap-x-7 gap-y-2 text-[15px] font-semibold">
+            <Link href="/leaking-shower-repair" className="text-[#2F63CC] hover:underline">See how we repair leaking showers →</Link>
+            <Link href="/guides/shower-still-leaking-after-regrouting" className="text-[#2F63CC] hover:underline">Still leaking after regrouting?</Link>
+            <Link href="/guides/shower-leaking-into-ceiling-below" className="text-[#2F63CC] hover:underline">Leak showing on the ceiling below?</Link>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Tile depth section + cleaning decision ── */}
+      <section className="bg-[#F8FAFC] py-14 lg:py-[72px]">
+        <div className={hubWrap}>
+          <div className="max-w-[820px]">
+            <p className={hubEyebrow}>Floors, kitchens and laundries</p>
+            <h2 className={hubH2}>Tile Regrouting in Melbourne</h2>
+            <p className={hubLead}>Showers get the attention, but the same failure happens anywhere tiles meet water or daily wear: bathroom and laundry floors, kitchen splashbacks, and the tiled floors of older Melbourne homes. When the joints crack, crumble or go permanently dark, regrouting rebuilds them without replacing a single tile.</p>
+          </div>
+          <div className={`${hubBox} mt-8 p-6 sm:p-8`}>
+            <h3 className="text-xl font-bold text-slate-900">Cleaning or Regrouting? How to Tell</h3>
+            <div className="mt-4 grid gap-6 md:grid-cols-2">
+              <div>
+                <p className="font-bold text-[#001F97]">A clean is enough if</p>
+                <p className="mt-1.5 text-[15px] leading-relaxed text-slate-600">The grout is whole, hard and firmly in place, and only the surface looks dirty or stained. A professional clean lifts surface dirt, soap build up and light mould off sound grout.</p>
+              </div>
+              <div>
+                <p className="font-bold text-[#001F97]">Regrouting is the fix if</p>
+                <p className="mt-1.5 text-[15px] leading-relaxed text-slate-600">The grout is cracked, crumbling, missing in places or soft when you press it, mould keeps coming back after cleaning, or water sits in the joints instead of shedding off. Failed grout cannot be cleaned back to life, it has to come out and be rebuilt.</p>
+              </div>
+            </div>
+          </div>
+          <p className="mt-6 text-[15px] font-semibold"><Link href="/tile-regrouting" className="text-[#2F63CC] hover:underline">See tile regrouting in Melbourne →</Link></p>
+        </div>
+      </section>
+
+      {/* ── Balcony depth section ── */}
+      <section className="bg-white py-14 lg:py-[72px]">
+        <div className={hubWrap}>
+          <div className="max-w-[820px]">
+            <p className={hubEyebrow}>Balconies and outdoor tiles</p>
+            <h2 className={hubH2}>Balcony Regrouting in Melbourne</h2>
+            <p className={hubLead}>Melbourne weather works outdoor joints hard. Summer sun, winter rain and frosts in the outer suburbs expand and contract balcony tiles until the grout cracks and the silicone peels, and every storm after that pushes water through the joints toward the rooms and units below.</p>
+            <p className={hubLead}>If the joints are worn and cracked but nothing is leaking yet, a full balcony regrouting replaces the failed grout and seals before water gets in. If water is already reaching the area below, that is a leak repair: the failed sections are rebuilt and resealed so the balcony sheds water again. And if the waterproofing membrane under the tiles has failed, we will tell you honestly, because regrouting alone cannot fix that.</p>
+          </div>
+          <div className="mt-6 flex flex-wrap gap-x-7 gap-y-2 text-[15px] font-semibold">
+            <Link href="/balcony-regrouting" className="text-[#2F63CC] hover:underline">Balcony regrouting →</Link>
+            <Link href="/balcony-leak-repairs" className="text-[#2F63CC] hover:underline">Balcony leak repairs →</Link>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Sealing depth section ── */}
+      <section className="bg-[#F8FAFC] py-14 lg:py-[72px]">
+        <div className={hubWrap}>
+          <div className="max-w-[820px]">
+            <p className={hubEyebrow}>Sealing, explained honestly</p>
+            <h2 className={hubH2}>Grout Sealing in Melbourne</h2>
+            <p className={hubLead}>Owners often ask whether their grout should be sealed. The honest answer depends on what the grout is made of.</p>
+          </div>
+          <div className="mt-8 grid gap-5 md:grid-cols-3">
+            {[
+              ["Epoxy grout needs no sealing", "Epoxy is non porous and water resistant, so it never needs a sealer. Every complete Groutix regrouting job is finished in epoxy, which is why it stays cleaner for longer."],
+              ["Silicone is the seal that matters", "The corners and wall to floor junctions move, so they are sealed with flexible silicone rather than grout. When silicone perishes and lifts, replacing it is often the single most effective repair in a bathroom."],
+              ["Cement grout drinks water", "Standard cement grout is porous. It absorbs water, stains and feeds mould, and it only keeps working if it is sealed again and again. Regrouting in epoxy removes that cycle."],
+            ].map(([t, d]) => (
+              <div key={t} className={`${hubBox} p-6`}>
+                <h3 className="text-[17px] font-bold text-slate-900">{t}</h3>
+                <p className="mt-2 text-[15px] leading-relaxed text-slate-600">{d}</p>
+              </div>
+            ))}
+          </div>
+          <div className="mt-7 flex flex-wrap gap-x-7 gap-y-2 text-[15px] font-semibold">
+            <Link href="/epoxy-grout" className="text-[#2F63CC] hover:underline">Epoxy grout in Melbourne →</Link>
+            <Link href="/silicone-recaulking" className="text-[#2F63CC] hover:underline">Silicone replacement →</Link>
           </div>
         </div>
       </section>
@@ -818,81 +869,36 @@ export default function MelbourneHubClient({
         </div>
       </section>
 
-      {/* ── CTA Slider Section ── */}
-      <AnimatedSection className="bg-[#F3F4F6] py-16 lg:py-20">
-        <div className="max-w-[1460px] mx-auto px-4 sm:px-6 lg:px-10 space-y-8">
-          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-            <motion.h2
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              className="text-3xl lg:text-[38px] font-bold text-neutral-900 leading-tight"
-            >
-              Get Your <span className="text-accent">Free Quote Today</span>
-            </motion.h2>
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.1 }}
-              className="flex gap-3 flex-shrink-0"
-            >
-              <a
-                href="#quote-form"
-                className="bg-[#2F63CC] hover:bg-[#264FA3] text-white font-bold px-5 py-2.5 rounded-xl text-base transition-all active:scale-95"
-              >
-                Request A Quote
-              </a>
-              <a
-                href={tel}
-                className="flex items-center gap-2 bg-primary hover:bg-[#2F63CC] text-white font-bold px-5 py-2.5 rounded-xl text-base transition-all active:scale-95"
-              >
-                <Phone className="h-4 w-4" /> {phone}
-              </a>
-            </motion.div>
-          </div>
-          <PhotoSlider cityName={cityName} />
-        </div>
-      </AnimatedSection>
-
       {/* FAQ Section */}
       <FaqSection faqs={faqs} />
 
-      {/* ── CTA Banner ── */}
-      <AnimatedSection className="bg-[#3D68D8] py-14 px-4 sm:px-6 lg:px-10">
-        <div className="max-w-[1460px] mx-auto flex flex-col lg:flex-row items-center justify-between gap-6">
-          <motion.h2
-            initial={{ opacity: 0, x: -20 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true }}
-            className="text-2xl lg:text-3xl font-black text-white leading-tight"
-          >
-            Get Your <span className="text-white/80">Free Quote Today</span>
-          </motion.h2>
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.1 }}
-            className="flex gap-3 flex-shrink-0"
-          >
-            <Link
-              href="#quote-form"
-              className="bg-white text-primary hover:bg-accent hover:text-primary font-black px-6 py-3 rounded-xl text-base transition-all active:scale-95 border-2 border-accent"
-            >
-              Request A Quote
-            </Link>
-            <a
-              href={tel}
-              className="flex items-center gap-2 bg-primary hover:bg-[#001579] text-white font-bold px-6 py-3 rounded-xl text-base transition-all border border-white/20 active:scale-95"
-            >
-              <Phone className="h-4 w-4" /> {phone}
-            </a>
-          </motion.div>
+      {/* ── FINAL CTA, homepage gradient card ── */}
+      <section className="bg-white pb-14 md:pb-20">
+        <div className={hubWrap}>
+          <div className="grid grid-cols-1 items-center gap-7 rounded-xl bg-[linear-gradient(120deg,#06124F_0%,#001F97_100%)] p-7 text-white sm:p-10 lg:grid-cols-[minmax(0,1fr)_auto] lg:p-[52px]">
+            <div>
+              <h2 className={`${hubH2} text-white`}>Stop the Leak Before It Becomes a Renovation</h2>
+              <p className="mt-3 text-[#D6DCF5]">Free quote · Most jobs in one visit · 10 year waterproof warranty</p>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              <a href="#quote-form" className={`${hubBtn} min-h-[54px] w-full bg-[#FBBC04] text-[#0F172A] hover:bg-[#E5AA00] sm:w-auto`}>Request A Quote</a>
+              <a href={tel} className={`${hubBtn} min-h-[54px] w-full border-[1.5px] border-white/70 text-white hover:bg-white/10 sm:w-auto`}>
+                <Phone className="h-4 w-4" aria-hidden="true" />{phone}
+              </a>
+            </div>
+          </div>
         </div>
-      </AnimatedSection>
+      </section>
 
     </main>
+
+      {/* ── MOBILE CALL BAR, homepage style ── */}
+      <div className="h-[84px] md:hidden" aria-hidden="true" />
+      <div className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-2 gap-2.5 border-t border-slate-200 bg-white px-3 pb-[calc(12px+env(safe-area-inset-bottom,0px))] pt-2.5 shadow-[0_-8px_24px_rgba(15,23,42,0.12)] md:hidden">
+        <a href={tel} className={`${hubBtn} min-h-[52px] bg-[#001F97] px-3 text-white`}><Phone className="h-4 w-4" aria-hidden="true" />Call Now</a>
+        <a href="#quote-form" className={`${hubBtn} min-h-[52px] bg-[#FBBC04] px-3 text-[#0F172A]`}>Free Quote</a>
+      </div>
+    </>
   );
 }
 
