@@ -113,7 +113,7 @@ export const faqCategories: FaqCategory[] = [
       {
         question: "How Long Does Epoxy Grout Take To Cure?",
         answer:
-          "Epoxy grout requires approximately 72 hours to fully cure before the area can be used. Your technician will confirm the recommended curing time after the installation is complete.",
+          "Epoxy grout requires approximately 4 days to fully cure before the area can be used. Your technician will confirm the recommended curing time after the installation is complete.",
       },
       {
         question: "Where Do You Recommend Epoxy Grout?",
