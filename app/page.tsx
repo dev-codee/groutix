@@ -5,8 +5,8 @@ import { getReviews, getBusinessRating } from "@/lib/reviews";
 
 export async function generateMetadata(): Promise<Metadata> {
   return {
-    title: "Shower Regrouting Melbourne | Epoxy & Leaking Shower Repairs | Groutix",
-    description: "The Groutix team restores leaking showers & balconies professionally in Melbourne with epoxy regrouting & resealing. No tiles removed. 10-year warranty. Book a free inspection today.",
+    title: "Shower Regrouting Melbourne | Epoxy Grout & Grout Repair | Groutix",
+    description: "Leaking shower? We regrout and reseal showers, balconies and tiles across Melbourne with waterproof epoxy. 5.0 stars from 296 reviews, 10 year warranty. Free quote.",
   };
 }
 
