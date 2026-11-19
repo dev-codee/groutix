@@ -13,6 +13,7 @@ import { useGoogleRating } from "@/components/useGoogleRating";
 const SERVICES: [string, string][] = [
   ["Shower Regrouting", "/shower-regrouting"],
   ["Leaking Shower Repair", "/leaking-shower-repair"],
+  ["Balcony Regrouting", "/balcony-regrouting"],
   ["Balcony Leak Repair", "/balcony-leak-repairs"],
   ["Tile Regrouting", "/tile-regrouting"],
   ["Silicone & Recaulking", "/silicone-recaulking"],

@@ -84,8 +84,8 @@ const resultBlocks: ResultBlock[] = [
     afterAlt: "Shower floor after a leaking shower repair in Melbourne, regrouted with waterproof epoxy grout and resealed",
   },
   {
-    heading: "A Shower Base That Leaked at the Edges, Resealed and Watertight",
-    text: "The silicone around this shower base had split along the edges, the classic path for water to escape into the wall and the floor. We stripped the old sealant, cleaned the joint and resealed it with silicone made for wet areas.",
+    heading: "A Cracked, Leaking Shower Base, Repaired With Epoxy and Resealed",
+    text: "The base of this shower was cracked and leaking, the walls were leaking too, and the silicone around the base had split along the edges. We repaired the base, rebuilt the failed joints with waterproof epoxy grout and resealed the edges, so the shower is watertight again.",
     before: "/leaking-shower-base-leak-before.webp",
     after: "/leaking-shower-base-resealed-after.webp",
     beforeAlt: "Shower base with split, peeling silicone around the edges before a leaking shower repair in Melbourne",

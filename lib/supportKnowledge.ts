@@ -15,7 +15,7 @@ const BUSINESS_FACTS = [
   "Support hours shown on the contact page: Monday to Friday, 8:00am to 5:00pm.",
   "Groutix works with homeowners, landlords, tenants, property managers, real estate agencies, body corporates, and commercial properties.",
   "Groutix focuses on repairs and regrouting rather than full bathroom retiling or complete renovations.",
-  "Most shower regrouting projects are completed within one day, while epoxy grout typically needs about 72 hours to cure and new silicone typically needs about 24 hours to cure.",
+  "Most shower regrouting projects are completed within one day, while epoxy grout typically needs about 4 days to cure and new silicone typically needs about 24 hours to cure.",
   "If the customer needs a quote, inspection, urgent follow-up, or a case-specific diagnosis, the assistant should offer human escalation or a support request instead of inventing certainty.",
 ];
 

@@ -181,6 +181,37 @@ function SignSlider({ before, after, beforeAlt, afterAlt, title }: { before: str
   );
 }
 
+/* Hero slider: fills the hero photo panel, so the hero shows a real
+   before and after pair instead of a single photo. */
+function HeroSlider({ before, after, beforeAlt, afterAlt, title }: { before: string; after: string; beforeAlt: string; afterAlt: string; title: string }) {
+  const [pos, setPos] = useState(100);
+  const handle = Math.min(96, Math.max(4, pos));
+  const sizes = "(min-width:1024px) 40vw, 100vw";
+  return (
+    <div className="absolute inset-0 select-none">
+      <div className="absolute inset-0" role="img" aria-label={beforeAlt}>
+        <Image src={before} alt="" fill priority sizes={sizes} className="object-cover" />
+      </div>
+      <div className="absolute inset-0 overflow-hidden" style={{ clipPath: `inset(0 0 0 ${pos}%)` }} role="img" aria-label={afterAlt}>
+        <Image src={after} alt="" fill priority sizes={sizes} className="object-cover" />
+      </div>
+      <span className="pointer-events-none absolute left-3 top-3 rounded bg-black/75 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider text-white">Before</span>
+      <span className="pointer-events-none absolute right-3 top-3 rounded bg-[#001F97]/90 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider text-white">After</span>
+      <span className="pointer-events-none absolute inset-y-0 w-[3px] -translate-x-1/2 bg-white shadow-[0_0_6px_rgba(0,0,0,0.35)]" style={{ left: `${handle}%` }} aria-hidden="true" />
+      <span className="pointer-events-none absolute top-1/2 flex h-10 w-10 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-white text-lg font-black text-[#001F97] shadow-[0_2px_10px_rgba(0,0,0,0.3)]" style={{ left: `${handle}%` }} aria-hidden="true">↔</span>
+      <input
+        type="range"
+        min={0}
+        max={100}
+        value={pos}
+        onChange={(e) => setPos(Number(e.target.value))}
+        aria-label={`Drag to compare before and after: ${title}`}
+        className="absolute inset-0 h-full w-full cursor-ew-resize appearance-none bg-transparent opacity-0"
+      />
+    </div>
+  );
+}
+
 function SignPairCard({ c }: { c: SignCard }) {
   return (
     <div className={`${box} group flex flex-col overflow-hidden text-slate-900 transition hover:-translate-y-0.5 hover:border-[#2F63CC] hover:shadow-[0_8px_20px_rgba(15,23,42,0.08)]`}>
@@ -232,8 +263,8 @@ export default function ShowerRegroutingPageV2({ reviews }: { reviews: Review[] 
                 </div>
               </div>
             </div>
-            <div className="relative mx-auto aspect-[4/3] w-full max-w-[560px] overflow-hidden rounded-xl border border-white/25 bg-slate-200 shadow-2xl lg:aspect-[7/5] lg:max-w-none">
-              <Image src="/shower-regrouting-tiled-interior.webp" alt="Shower regrouting in Melbourne, a freshly regrouted tiled shower with waterproof epoxy grout" fill priority sizes="(min-width:1024px) 40vw, 100vw" className="object-cover" />
+            <div className="relative mx-auto aspect-[4/5] w-full max-w-[520px] overflow-hidden rounded-xl border border-white/25 bg-slate-200 shadow-2xl">
+              <HeroSlider before="/shower-regrouting-hero-before.webp" after="/shower-regrouting-hero-after.webp" beforeAlt="Shower in Melbourne with stained, failing grout before regrouting" afterAlt="The same shower after regrouting with waterproof epoxy grout in Melbourne" title="Shower regrouting" />
             </div>
           </div>
         </section>
