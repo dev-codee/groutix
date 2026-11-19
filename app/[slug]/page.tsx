@@ -17,6 +17,8 @@ import { abs, SITE_URL, OG_SHARE_IMAGE } from "@/lib/seo";
 // Old layout kept in components/BalconyLeakRepairsPage.tsx; point this import back there to roll back.
 import BalconyLeakRepairsPage from "@/components/service/BalconyLeakRepairsPageV2";
 import { BALCONY_META_TITLE, BALCONY_META_DESCRIPTION, balconyFaqs } from "@/lib/balconyLeakContent";
+import BalconyRegroutingPage from "@/components/service/BalconyRegroutingPageV2";
+import { BALCONY_REGROUTING_META_TITLE, BALCONY_REGROUTING_META_DESCRIPTION, balconyRegroutingFaqs } from "@/lib/balconyRegroutingContent";
 // Old layout kept in components/ShowerRegroutingPage.tsx; point this import back there to roll back.
 import ShowerRegroutingPage from "@/components/service/ShowerRegroutingPageV2";
 
@@ -228,6 +230,42 @@ const services: Record<string, {
     ],
   },
 
+  "balcony-regrouting": {
+    title: "Balcony Regrouting",
+    metaTitle: BALCONY_REGROUTING_META_TITLE,
+    metaDesc: BALCONY_REGROUTING_META_DESCRIPTION,
+    h1Desc: "Balcony regrouting in Melbourne by Groutix. Failed, cracked grout is removed from the joints and rebuilt with weatherproof epoxy grout, and the movement joints and edges are resealed, all without removing your tiles. It is the proper fix for tired, stained or crumbling balcony grout, done before small gaps in the joints turn into leaks.",
+    failHeading: "Failed Balcony Grout",
+    failHeadingBlue: "Lets the Weather In",
+    failText: "Outdoor grout takes sun, storms and movement that indoor grout never sees. Cement grout is porous from the start, and under Melbourne weather it cracks, crumbles and falls out of the joints. Every open joint is a path for rain to reach the slab and the rooms below.",
+    fixHeading: "Balcony Regrouting That",
+    fixHeadingBlue: "Restores the Surface",
+    fixText: "We remove the failed grout from the joints, clean the joints out and rebuild them with weatherproof epoxy grout, then reseal the movement joints and edges with flexible outdoor sealant. Your tiles stay in place and the balcony sheds water the way it should.",
+    fixBlueBoxText: "Fresh epoxy joints and resealed edges restore the surface and help protect the structure below from water damage.",
+    pillars: [
+      { title: "Weatherproof Epoxy Grout", desc: "Non porous epoxy grout made for outdoor joints, replacing porous cement grout that breaks down in the weather." },
+      { title: "Movement Joints Resealed", desc: "Edges and movement joints are resealed with flexible, weatherproof sealant that moves with the slab." },
+      { title: "No Tile Removal", desc: "The grout is replaced from the joints only. Your tiles stay down and there is no demolition." },
+    ],
+    processBlueText: "Every balcony regrouting job follows the same careful process, from inspection and a fixed written quote to the cure period and the final walkthrough.",
+    processIntro: "Our balcony regrouting process is built for outdoor work: sound preparation, the right materials and a proper cure before the balcony goes back into use.",
+    steps: [
+      { title: "Inspect and Quote", desc: "We check the grout, movement joints, tiles and drainage, then give you a fixed written quote." },
+      { title: "Remove the Failed Grout", desc: "Cracked and crumbling grout is taken out of the joints and the joints are cleaned back to a sound base." },
+      { title: "Rebuild With Epoxy Grout", desc: "Fresh weatherproof epoxy grout is packed into every joint in a colour matched to your tiles." },
+      { title: "Reseal and Cure", desc: "Joints and edges are resealed, and the epoxy cures for 4 days before furniture and foot traffic return." },
+    ],
+    workWithUsText: "Groutix regrouts balconies across Melbourne, from apartment towers in Southbank and Docklands to family homes in the suburbs. We use materials made for exposed outdoor surfaces and back eligible work with a 10 year warranty.",
+    workWithUsBullets: [
+      "Weatherproof epoxy grout and outdoor sealants",
+      "Experienced balcony regrouting technicians",
+      "10 year warranty on eligible work",
+      "Honest advice when the balcony needs a leak repair instead",
+    ],
+    workWithUsBlueBoxText: "Specialist materials, a careful process and a fixed written quote before we start.",
+    warrantyText: "Eligible balcony regrouting completed by Groutix is backed by our 10 year warranty. We use weatherproof epoxy grout and flexible outdoor sealants, helping keep your balcony joints sound through Melbourne seasons.",
+    faqs: balconyRegroutingFaqs,
+  },
   "silicone-recaulking": {
     title: "Silicone & Recaulking",
     metaTitle: SILICONE_META_TITLE,
@@ -427,7 +465,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const s = services[slug];
   if (!s) return {};
   const canonical = `/${slug}`;
-  const dedicatedService = ["tile-regrouting", "silicone-recaulking", "small-tiling-jobs", "balcony-leak-repairs"].includes(slug);
+  const dedicatedService = ["tile-regrouting", "silicone-recaulking", "small-tiling-jobs", "balcony-leak-repairs", "balcony-regrouting"].includes(slug);
   const rating = dedicatedService ? await getBusinessRating() : null;
   const description = slug === "tile-regrouting"
     ? `Tile regrouting in Melbourne for floors, kitchens, laundries and bathrooms. Cracked, mouldy grout replaced with colour matched grout, tiles stay in place. ${rating!.value.toFixed(1)} stars, ${formatReviewCount(rating!.count)} reviews. Free quote.`
@@ -464,6 +502,16 @@ export default async function ServicePage({ params }: Props) {
       { "@context": "https://schema.org", "@type": "WebPage", "@id": abs("/balcony-leak-repairs/#webpage"), url: abs("/balcony-leak-repairs/"), name: BALCONY_META_TITLE, speakable: { "@type": "SpeakableSpecification", cssSelector: ["#balcony-intro", ".balcony-faq-answer"] } },
     ];
     return <><script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema).replace(/</g, "\\u003c") }} /><BalconyLeakRepairsPage rating={rating} reviews={reviews} /></>;
+  }
+
+  if (slug === "balcony-regrouting") {
+    const [rating, reviews] = await Promise.all([getBusinessRating(), getReviews(5)]);
+    const schema = [
+      { "@context": "https://schema.org", "@type": "Service", "@id": abs("/balcony-regrouting/#service"), name: "Balcony Regrouting Melbourne", serviceType: "Balcony regrouting", url: abs("/balcony-regrouting/"), areaServed: { "@type": "City", name: "Melbourne VIC" }, provider: { "@id": `${SITE_URL}/#business` } },
+      faqJsonLd(balconyRegroutingFaqs),
+      { "@context": "https://schema.org", "@type": "WebPage", "@id": abs("/balcony-regrouting/#webpage"), url: abs("/balcony-regrouting/"), name: BALCONY_REGROUTING_META_TITLE, speakable: { "@type": "SpeakableSpecification", cssSelector: ["#balcony-regrouting-intro", ".balcony-regrouting-faq-answer"] } },
+    ];
+    return <><script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema).replace(/</g, "\\u003c") }} /><BalconyRegroutingPage rating={rating} reviews={reviews} /></>;
   }
 
   if (slug === "small-tiling-jobs") {
