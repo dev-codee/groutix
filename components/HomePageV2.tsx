@@ -125,7 +125,7 @@ function CoreSlider({ before, after, title, flip }: { before: string; after: str
     </div>
   );
   return (
-    <div className={`relative aspect-[5/4] w-full select-none overflow-hidden ${flip ? "lg:order-2" : ""}`}>
+    <div className={`relative aspect-[4/5] w-full select-none overflow-hidden ${flip ? "lg:order-2" : ""}`}>
       <div className="absolute inset-0 overflow-hidden" role="img" aria-label={`${title}, before`}>{layer(before)}</div>
       <div className="absolute inset-0 overflow-hidden" style={{ clipPath: `inset(0 0 0 ${pos}%)` }} role="img" aria-label={`${title}, after`}>{layer(after)}</div>
       <span className="pointer-events-none absolute left-3 top-3 rounded bg-black/75 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider text-white">Before</span>
