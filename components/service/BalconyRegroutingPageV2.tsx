@@ -115,17 +115,15 @@ export default function BalconyRegroutingPageV2({ rating, reviews }: { rating: B
     <>
       <Navbar />
       <main className="public-page v2-page overflow-x-clip">
-        {/* 1. HERO */}
-        <section className="relative scroll-mt-28 overflow-hidden bg-black pb-12 pt-[140px] text-white lg:pb-[72px] lg:pt-[160px]">
+        {/* 1. HERO + QUOTE FORM (homepage pattern: form inside the hero) */}
+        <section id="quote-form" className="relative scroll-mt-28 overflow-hidden bg-black pb-12 pt-[140px] text-white lg:pb-[72px] lg:pt-[160px]">
           <Image src="/dark-grey-shower-floor-regrouting.webp" alt="" fill priority sizes="100vw" className="object-cover" />
           <div className="absolute inset-0 bg-[linear-gradient(120deg,rgba(0,0,0,0.78)_0%,rgba(0,0,0,0.58)_55%,rgba(0,0,0,0.68)_100%)]" />
-          <div className={`${heroWrap} relative grid grid-cols-1 items-center gap-10 lg:grid-cols-[minmax(0,1fr)_520px] lg:gap-12 xl:grid-cols-[minmax(0,1fr)_540px]`}>
+          <div className={`${heroWrap} relative grid grid-cols-1 items-start gap-10 lg:grid-cols-[minmax(0,1fr)_520px] lg:gap-12 xl:grid-cols-[minmax(0,1fr)_540px]`}>
             <div className="text-center lg:text-left">
-              <p className="mb-4 text-[15px] font-bold tracking-[3px] text-[#FBBC04]">BALCONY REGROUTING · MELBOURNE</p>
+              <p className="mb-2 text-[11px] font-bold uppercase tracking-[1px] text-[#FBBC04] sm:text-[13px] sm:tracking-[1.5px]">Balcony Regrouting · Melbourne</p>
               <h1 className="mb-4 text-[clamp(28px,3.4vw,42px)] font-black leading-[1.15] tracking-[-0.01em] [text-wrap:balance]">Balcony Regrouting Melbourne</h1>
-              <div className="mx-auto mb-6 max-w-[560px] text-[15px] leading-relaxed text-[#D6DCF5] lg:mx-0 sm:text-base">
-                <p id="balcony-regrouting-intro">{balconyRegroutingIntro}</p>
-              </div>
+              <p id="balcony-regrouting-intro" className="mx-auto mb-6 max-w-[560px] text-[15px] leading-relaxed text-[#D6DCF5] lg:mx-0 sm:text-base">{balconyRegroutingIntro}</p>
               <div className="mb-7 flex flex-wrap justify-center gap-3 lg:justify-start [&>a[href^='tel:']]:hidden md:[&>a[href^='tel:']]:inline-flex">
                 <HeroContactBadges />
               </div>
@@ -144,30 +142,7 @@ export default function BalconyRegroutingPageV2({ rating, reviews }: { rating: B
                 </div>
               </div>
             </div>
-            <div className="relative mx-auto aspect-[4/3] w-full max-w-[560px] overflow-hidden rounded-xl border border-white/25 bg-slate-200 shadow-2xl lg:aspect-[7/5] lg:max-w-none">
-              <Image src="/balcony-regrouting-tiles.webp" alt="Balcony regrouting in Melbourne, balcony tiles with fresh weatherproof epoxy grout after regrouting" fill priority sizes="(min-width:1024px) 40vw, 100vw" className="object-cover" />
-            </div>
-          </div>
-        </section>
-
-        {/* 1b. QUOTE FORM */}
-        <section id="quote-form" className="scroll-mt-28 bg-slate-100 py-14 md:py-[72px]">
-          <div className={`${heroWrap} grid grid-cols-1 items-center gap-10 lg:grid-cols-[minmax(0,1fr)_520px] lg:gap-12 xl:grid-cols-[minmax(0,1fr)_540px]`}>
-            <div>
-              <p className={eyebrow}>Free Quote</p>
-              <h2 className={h2}>Get Your Free Balcony Regrouting Quote</h2>
-              <p className={`${lead} mt-3.5`}>Tell us about your balcony and add photos of the grout lines, joints and edges. Photos help us see the condition before we quote.</p>
-              <ul className="mt-6 space-y-2.5">
-                {["Free inspection, no obligation", "10 year warranty on eligible work", "Fixed written quote before work starts"].map((x) => (
-                  <li key={x} className="flex items-center gap-3 text-base font-semibold text-slate-800">
-                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#FBBC04] text-[#0F172A]"><Check className="h-3.5 w-3.5" strokeWidth={3} aria-hidden="true" /></span>
-                    {x}
-                  </li>
-                ))}
-              </ul>
-              <a href={tel} className={`${btnNavy} mt-7`}><Phone className="h-4 w-4" aria-hidden="true" />{phone}</a>
-            </div>
-            <div className="mx-auto w-full max-w-[560px] lg:max-w-none">
+            <div className="mx-auto w-full max-w-[560px] lg:max-w-none lg:self-start">
               <QuoteFormV2 />
             </div>
           </div>
