@@ -144,6 +144,7 @@ export default function Navbar() {
   const services = [
     { name: "Shower Regrouting", href: "/shower-regrouting" },
     { name: "Leaking Shower Repair", href: "/leaking-shower-repair" },
+    { name: "Balcony Regrouting", href: "/balcony-regrouting" },
     { name: "Balcony Leak Repair", href: "/balcony-leak-repairs" },
     // { name: "Shower Base Repair", href: "/shower-base-repair" },
     // { name: "Shower Screens", href: "/shower-screens" },
