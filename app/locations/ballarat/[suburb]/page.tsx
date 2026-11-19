@@ -110,6 +110,7 @@ Our specialist team delivers practical wet-area repairs with quality materials, 
         rating={rating}
         googleMapsApiKey={apiKey}
         locationExplanation={explanation}
+        hubLink={{ href: "/locations/ballarat", anchor: "tile regrouting in Ballarat" }}
       />
       <Footer />
     </>
