@@ -32,6 +32,7 @@
 
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Phone, Star, ChevronDown } from "lucide-react";
@@ -56,6 +57,35 @@ function FaqItem({ q, a }: { q: string; a: string }) {
         <p className="border-t border-neutral-100 px-5 pb-4 pt-3 text-base leading-relaxed text-neutral-600">{a}</p>
       </details>
     </li>
+  );
+}
+
+
+/* ─── Before / after drag slider, real job pairs only ─── */
+function PairSlider({ before, after, beforeAlt, afterAlt, caption }: { before: string; after: string; beforeAlt: string; afterAlt: string; caption: string }) {
+  const [pos, setPos] = useState(50);
+  return (
+    <figure className="mx-auto w-full max-w-[520px]">
+      <div className="relative aspect-[4/5] w-full select-none overflow-hidden rounded-sm">
+        <Image src={after} alt={afterAlt} fill sizes="(min-width: 1024px) 520px, 100vw" className="object-cover" />
+        <div className="absolute inset-0" style={{ clipPath: `inset(0 ${100 - pos}% 0 0)` }}>
+          <Image src={before} alt={beforeAlt} fill sizes="(min-width: 1024px) 520px, 100vw" className="object-cover" />
+        </div>
+        <span className="absolute left-3 top-3 rounded-full bg-black/60 px-3 py-1 text-xs font-bold text-white">Before</span>
+        <span className="absolute right-3 top-3 rounded-full bg-black/60 px-3 py-1 text-xs font-bold text-white">After</span>
+        <div className="absolute inset-y-0 z-10 w-0.5 bg-white shadow" style={{ left: `${pos}%` }} />
+        <input
+          type="range"
+          min={0}
+          max={100}
+          value={pos}
+          onChange={(e) => setPos(Number(e.target.value))}
+          aria-label="Slide to compare before and after"
+          className="absolute inset-0 z-20 h-full w-full cursor-ew-resize opacity-0"
+        />
+      </div>
+      <figcaption className="mt-2 text-center text-sm text-neutral-500">{caption}</figcaption>
+    </figure>
   );
 }
 
@@ -99,6 +129,18 @@ const FAQS = [
   {
     q: "Is regrouting worth it compared with renovating the bathroom?",
     a: "For most Ballarat homes, yes. A regrout keeps your existing tiles, is usually finished in a single visit, and costs a fraction of a full renovation that can take weeks. If the tiles themselves are damaged or the membrane has failed, we will tell you honestly when a renovation is the better spend.",
+  },
+  {
+    q: "Does grout need sealing after regrouting in Ballarat?",
+    a: "Cement grout does. A penetrating sealer keeps water and grime out of the joints, and in Ballarat's damp winters it makes a real difference to how long the grout stays clean. Epoxy grout is the exception, it is waterproof on its own and never needs sealing, which is why we often suggest it for showers here.",
+  },
+  {
+    q: "Can cleaning fix our grout, or does it need regrouting?",
+    a: "Cleaning lifts dirt and soap out of grout that is still sound, and if the joints are whole, that may be all you need. Cleaning cannot rebuild a joint that has cracked, crumbled or fallen out, and it cannot fix silicone that has split. If grout comes away when you run a fingernail along it, the joint has failed and regrouting is the fix.",
+  },
+  {
+    q: "Our balcony leaks into the room below. Is regrouting enough?",
+    a: "Sometimes. If the water is getting through cracked grout and split silicone at the edges and sill, cutting those joints out and rebuilding them stops the leak. If the waterproofing under the tiles has failed, regrouting alone will not hold, and we will tell you that before any work starts. Either way, the first step is checking where the water is actually getting in.",
   },
 ];
 
@@ -276,6 +318,13 @@ export default function BallaratHubPage({
                   ))}
                 </ol>
               </div>
+              <PairSlider
+                before="/ballarat-shower-floor-regrouting-before.webp"
+                after="/ballarat-shower-floor-regrouting-after.webp"
+                beforeAlt="Shower floor before regrouting, dark and failing grout lines around envelope cut tiles"
+                afterAlt="The same shower floor after regrouting, fresh grout lines and new silicone at the edges"
+                caption="A Groutix shower floor regrout, before and after. Drag the handle to compare the joints."
+              />
               <div className="text-center">
                 <Link
                   href="/shower-regrouting"
@@ -345,6 +394,12 @@ export default function BallaratHubPage({
                 </motion.div>
               ))}
             </div>
+            <div className="mx-auto max-w-3xl rounded-sm border border-neutral-200 bg-neutral-50 p-6 sm:p-8">
+              <h3 className="mb-3 text-xl font-bold text-neutral-900">Cleaning or Regrouting? How to Tell</h3>
+              <p className="text-base leading-relaxed text-neutral-600">
+                Ballarat owners often ask whether a good clean will bring their grout back. A professional clean lifts dirt, soap and grime out of grout that is still sound, and for stained but solid joints that is the right fix. What cleaning cannot do is rebuild a joint that has cracked, crumbled or fallen out, or reseal silicone that has split away. Run a fingernail along the joint: if grout comes away, or you can see gaps and cracks, the joint itself has failed, and that is a regrouting job. If the grout is sound and only dirty, we will tell you honestly that a clean is enough.
+              </p>
+            </div>
             <p className="mx-auto max-w-3xl text-center text-base text-neutral-600">
               More on{" "}
               <Link href="/tile-regrouting" className="font-bold text-accent hover:underline">tile regrouting</Link>{" "}
@@ -400,6 +455,28 @@ export default function BallaratHubPage({
                 <Link href="/leaking-shower-repair" className="font-bold text-accent hover:underline">leaking shower repair</Link>.
               </p>
             </div>
+            <div className="mx-auto max-w-3xl rounded-sm border border-neutral-200 bg-white p-6 sm:p-8">
+              <h3 className="mb-4 text-xl font-bold text-neutral-900">What Fixing the Leak Involves</h3>
+              <ol className="space-y-3">
+                {[
+                  "We trace the leak to the joint or seal that is letting the water through, and check the tiles, base and walls around it.",
+                  "Failed grout and silicone are cut out, and the joints are rebuilt, with waterproof epoxy grout where the shower takes the most water.",
+                  "Every edge and corner is resealed, and we tell you exactly when the shower can be used again.",
+                ].map((item, i) => (
+                  <li key={i} className="flex gap-3 text-base text-neutral-700">
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-black text-white">{i + 1}</span>
+                    <span className="pt-0.5">{item}</span>
+                  </li>
+                ))}
+              </ol>
+              <p className="mt-4 text-base leading-relaxed text-neutral-600">
+                Two of our guides walk through the tricky cases:{" "}
+                <Link href="/guides/shower-still-leaking-after-regrouting" className="font-bold text-accent hover:underline">a shower still leaking after regrouting</Link>
+                , and{" "}
+                <Link href="/guides/shower-leaking-into-ceiling-below" className="font-bold text-accent hover:underline">a shower leaking into the room below</Link>
+                .
+              </p>
+            </div>
           </div>
         </AnimatedSection>
 
@@ -434,6 +511,11 @@ export default function BallaratHubPage({
               ))}
             </div>
             <p className="mx-auto max-w-3xl text-center text-base text-neutral-600">
+              Not sure whether your balcony needs regrouting or a leak repair? If the grout has cracked and the surface looks tired but nothing underneath is damaged,{" "}
+              <Link href="/balcony-regrouting" className="font-bold text-accent hover:underline">balcony regrouting</Link>{" "}
+              is usually the fix. If water is already coming through to a ceiling or wall below, that is a leak repair. We check which one you are dealing with before we quote, so you only pay for the work your balcony actually needs.
+            </p>
+            <p className="mx-auto max-w-3xl text-center text-base text-neutral-600">
               Relaying a whole balcony is a bigger job, we&apos;ll tell you if yours needs it. More on{" "}
               <Link href="/balcony-leak-repairs" className="font-bold text-accent hover:underline">balcony leak repairs</Link>.
             </p>
@@ -445,6 +527,47 @@ export default function BallaratHubPage({
                 Get a Free Balcony Quote
               </Link>
             </div>
+          </div>
+        </AnimatedSection>
+
+
+        {/* ═════════ 8B. GROUT SEALING (new, GSC sealing cluster) ═════════ */}
+        <AnimatedSection className="bg-[#eef1f8] py-16 lg:py-24">
+          <div className="mx-auto max-w-[1460px] space-y-10 px-4 sm:px-6 lg:px-10">
+            <div className="mx-auto max-w-3xl space-y-4 text-center">
+              <h2 className="text-3xl font-bold leading-tight text-neutral-900 lg:text-[42px]">
+                Grout Sealing in Ballarat
+              </h2>
+              <p className="text-base leading-relaxed text-neutral-600 sm:text-lg">
+                Sealing is the part of grout care most Ballarat homes have never had done. Cement grout is porous, so it drinks in water, soap and grime a little more every winter until the joints stain and soften. A penetrating sealer soaks into the grout and slows that down, and fresh silicone at the edges and corners is the other half of the seal, the half that usually fails first.
+              </p>
+            </div>
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+              {[
+                { title: "Cement Grout Sealing", text: "A penetrating sealer applied once the new grout has cured, so the joints resist water and staining for longer." },
+                { title: "Epoxy Grout, Nothing to Seal", text: "Epoxy is waterproof through the whole joint and never needs sealing, the lowest maintenance finish we install." },
+                { title: "Silicone, the Seal That Fails First", text: "The flexible seal at the floor line, corners and screen edges splits years before the grout does. Replacing it is part of every regrout we do." },
+              ].map((c, i) => (
+                <motion.div
+                  key={c.title}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: i * 0.1, duration: 0.4 }}
+                  className="space-y-3 rounded-sm border border-neutral-200 bg-white p-6"
+                >
+                  <h3 className="text-lg font-bold text-neutral-900">{c.title}</h3>
+                  <p className="text-base leading-relaxed text-neutral-600">{c.text}</p>
+                </motion.div>
+              ))}
+            </div>
+            <p className="mx-auto max-w-3xl text-center text-base text-neutral-600">
+              More on{" "}
+              <Link href="/epoxy-grout" className="font-bold text-accent hover:underline">epoxy grout</Link>{" "}
+              and{" "}
+              <Link href="/silicone-recaulking" className="font-bold text-accent hover:underline">silicone recaulking</Link>
+              .
+            </p>
           </div>
         </AnimatedSection>
 
@@ -661,6 +784,7 @@ export default function BallaratHubPage({
                 { href: "/leaking-shower-repair", title: "Leaking Shower Repair", text: "We find where the water escapes and fix the joints and seals." },
                 { href: "/tile-regrouting", title: "Tile Regrouting", text: "Floors, walls, laundries and splashbacks regrouted throughout." },
                 { href: "/balcony-leak-repairs", title: "Balcony Leak Repairs", text: "Sill and edge joints resealed before water gets underneath." },
+                { href: "/balcony-regrouting", title: "Balcony Regrouting", text: "Outdoor joints cut out and regrouted before water gets under the tiles." },
                 { href: "/epoxy-grout", title: "Epoxy Grout", text: "Waterproof, stain-proof grout that never needs sealing." },
                 { href: "/silicone-recaulking", title: "Silicone Recaulking", text: "Old silicone stripped and replaced, never layered over." },
                 { href: "/small-tiling-jobs", title: "Small Tiling Jobs", text: "A few cracked or loose tiles replaced and regrouted." },
