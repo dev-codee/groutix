@@ -12,6 +12,7 @@ import { statusFilterAfterChange } from "@/lib/statusFilterTransition";
 
 import { useInvoiceDeliveries, notifyInvoiceDeliveryChanged } from "@/components/admin/InvoiceDeliveryHistory";
 import { SendInvoiceToQuickBooksButton } from "@/components/admin/SendInvoiceToQuickBooksButton";
+import { invoiceBalance } from "@/lib/invoiceBalance";
 import { invoiceDraftForLead } from "@/lib/invoiceDraft";
 import { uploadJobPhotos } from "@/lib/uploadJobPhotos";
 import { DEFAULT_INVOICE_ACCOUNT_NUMBER, invoiceAccountNumber as resolveInvoiceAccountNumber } from "@/lib/invoicePayment";
@@ -3614,6 +3615,7 @@ export default function CrmDashboardPage() {
       }
       setCustomerInvoices(current => [...current.filter(item => item.id !== result.item.id), result.item]);
       setActiveInvoiceLead(prev => prev ? { ...prev, ...result.item } : prev);
+      setInvoiceStatus(result.item.invoiceStatus || "Unpaid");
       if (activeInvoiceLead.invoiceParentId) void loadData();
     } catch (error) {
       setInvoiceSaveError(error instanceof Error ? error.message : "Could not save the invoice. Please try again.");
@@ -8265,7 +8267,6 @@ export default function CrmDashboardPage() {
                     <textarea
                       rows={2}
                       placeholder="e.g. Additional silicone replacement in second bathroom"
-                      disabled={Boolean(activeInvoiceLead.qboInvoiceId || activeInvoiceLead.amountPaid || activeInvoiceLead.paymentReceipt || activeInvoiceLead.invoiceStatus === "Paid")}
                       value={invoiceExtraWork}
                       onChange={(e) => setInvoiceExtraWork(e.target.value)}
                       className="w-full p-2 border border-amber-200 rounded-lg text-xs bg-white"
@@ -8277,7 +8278,7 @@ export default function CrmDashboardPage() {
                         min={0}
                         step={1}
                         placeholder="0"
-                        disabled={Boolean(activeInvoiceLead.qboInvoiceId || activeInvoiceLead.amountPaid || activeInvoiceLead.paymentReceipt || activeInvoiceLead.invoiceStatus === "Paid")}
+                        disabled={Boolean(activeInvoiceLead.qboInvoiceId)}
                         value={invoiceExtraCharge || ""}
                         onChange={(e) => setInvoiceExtraCharge(parseFloat(e.target.value) || 0)}
                         className="w-24 p-2 border border-amber-200 rounded-lg text-xs font-bold bg-white"
@@ -8288,6 +8289,7 @@ export default function CrmDashboardPage() {
                         </span>
                       )}
                     </div>
+                    {activeInvoiceLead.qboInvoiceId ? <p className="text-[11px] text-amber-800">This invoice is synced to QuickBooks. Add new charges on a separate invoice.</p> : invoiceBalance(activeInvoiceLead).paidCents > 0 && <p className="text-[11px] text-amber-800">Previously received: ${(invoiceBalance(activeInvoiceLead).paidCents / 100).toFixed(2)} · Outstanding after changes: ${Math.max(0, invoicePrice + invoiceExtraCharge - invoiceBalance(activeInvoiceLead).paidCents / 100).toFixed(2)}. Saving extra charges preserves the original receipt and updates the balance.</p>}
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div>

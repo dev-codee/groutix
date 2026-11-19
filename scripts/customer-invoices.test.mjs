@@ -381,3 +381,73 @@ test('existing GX invoices resolve to the job number in both list and selected-i
   assert.equal((await api.getInvoiceSubmission(invoice.id)).invoiceNumber, 'INV-1111');
   assert.equal((await api.listCustomerInvoices('customer')).find(item => item.id === invoice.id).invoiceNumber, 'INV-1111');
 });
+
+test('paid quote invoice extra-work wording saves, reopens and resends with its original receipt and total', async () => {
+  const api = setup();
+  const invoice = await api.createQuoteInvoice('customer', 'customer~a');
+  await api.updateInvoiceSubmission(invoice.id, { invoiceStatus: 'Paid', invoiceSentAt: 'sent', qboInvoiceId: 'synced-invoice' });
+  const before = await api.getInvoiceSubmission(invoice.id);
+  const emails = [], pdfs = [];
+  const overrides = {
+    '@/lib/customerInvoices': api,
+    '@/lib/adminAuth': { verifyRequestSession: async () => ({ role: 'finance', username: 'finance' }) },
+    '@/lib/quotePdf': { buildQuotePdfBase64: async input => { pdfs.push(input); return Buffer.from('pdf').toString('base64'); } },
+    '@/lib/email': { isEmailConfigured: () => true, sendEmail: async input => emails.push(input), getEmailLogoUrl: async () => '', wrapEmailHtml: html => html },
+    '@/lib/automations': { invoiceTrackingPixel: () => '' }, '@/lib/quickbooks': { isQboConfigured: () => false },
+  };
+  const input = { id: invoice.id, price: 275, status: 'Paid', extraWork: 'Extra silicone work completed at no charge' };
+  const save = loadTs('app/api/admin/invoice/save/route.ts', overrides);
+  assert.equal((await save.POST({ json: async () => input })).status, 200);
+  const reopened = await api.getInvoiceSubmission(invoice.id);
+  assert.equal(reopened.invoiceDraft.extraWork, input.extraWork);
+  assert.equal(reopened.invoiceAmount, 275);
+  assert.equal(reopened.invoiceStatus, 'Paid');
+  assert.deepEqual(reopened.paymentReceipt, before.paymentReceipt);
+  assert.deepEqual(reopened.invoiceDraft.lines, before.invoiceDraft.lines);
+  const send = loadTs('app/api/admin/invoice/send/route.ts', overrides);
+  assert.equal((await send.POST({ json: async () => input })).status, 200);
+  assert.match(emails[0].html, /Extra silicone work completed at no charge/);
+  assert.equal(pdfs[0].items[1].description, input.extraWork);
+  assert.equal(pdfs[0].total, 275);
+  assert.deepEqual((await api.getInvoiceSubmission(invoice.id)).paymentReceipt, before.paymentReceipt);
+});
+
+test('extra charges on a paid invoice create a collectible balance and preserve the original receipt', async () => {
+  const api = setup();
+  const a = await api.createQuoteInvoice('customer', 'customer~a');
+  const b = await api.createQuoteInvoice('customer', 'customer~b');
+  const { recordInvoicePayment } = loadTs('lib/invoicePayments.ts', { './customerInvoices': api, './mongodb': { getDb: async () => api.db } }, { Error });
+  const { invoiceBalance } = loadTs('lib/invoiceBalance.ts');
+  const { invoiceChanges } = loadTs('lib/invoiceDraft.ts');
+  const settled = (await recordInvoicePayment(a.id, { type: 'full', expectedPaidCents: 0, requestId: 'original-full-000001' }, 'finance')).item;
+  const receipt = structuredClone(settled.paymentReceipt);
+  const save = loadTs('app/api/admin/invoice/save/route.ts', {
+    '@/lib/customerInvoices': api, '@/lib/adminAuth': { verifyRequestSession: async () => ({ role: 'finance' }) },
+  });
+  const input = { id: a.id, price: 375, extraCharge: 100, extraWork: 'Additional silicone work', status: 'Paid' };
+  assert.equal((await save.POST({ json: async () => input })).status, 200);
+  let invoice = await api.getInvoiceSubmission(a.id);
+  assert.equal(invoice.invoiceAmount, 375);
+  assert.equal(invoice.amountPaid, 275);
+  assert.equal(invoice.invoiceStatus, 'Partially Paid');
+  assert.equal(invoice.status, 'Payment Pending');
+  assert.equal(invoice.paymentType, 'partial');
+  assert.deepEqual(invoice.paymentReceipt, receipt);
+  assert.equal(invoiceBalance(invoice).remainingCents, 10000);
+  assert.equal(api.leads.get('customer').customerInvoiceOutstanding, 350);
+  assert.equal(api.leads.get('customer').status, 'Payment Pending');
+  assert.equal((await api.getInvoiceSubmission(b.id)).invoiceAmount, 250);
+  assert.equal(api.docs.get(a.id).sourceQuoteSnapshot.quoteItems[0].price, 100);
+  assert.equal((await save.POST({ json: async () => input })).status, 200, 'resaving must not reset the payment');
+  assert.equal((await api.getInvoiceSubmission(a.id)).amountPaid, 275);
+  assert.throws(() => invoiceChanges(invoice, { price: 250, extraCharge: 0 }), /locked|less than/);
+  await recordInvoicePayment(a.id, { type: 'partial', amount: 40, expectedPaidCents: 27500, requestId: 'additional-part-00001' }, 'finance');
+  invoice = await api.getInvoiceSubmission(a.id);
+  assert.equal(invoiceBalance(invoice).remainingCents, 6000);
+  assert.deepEqual(invoice.paymentReceipt, receipt);
+  invoice = (await recordInvoicePayment(a.id, { type: 'full', expectedPaidCents: 31500, requestId: 'additional-full-00001' }, 'finance')).item;
+  assert.equal(invoice.amountPaid, 375);
+  assert.equal(invoice.invoiceStatus, 'Paid');
+  assert.equal(invoiceBalance(invoice).remainingCents, 0);
+  assert.deepEqual(invoice.paymentReceipt, receipt);
+});

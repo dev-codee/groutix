@@ -927,7 +927,7 @@ export async function appendSubmissionPhotos(id: string, photos: SubmissionPhoto
 export async function updateSubmission(
   id: string,
   updates: Partial<SubmissionDoc>,
-  options?: { expectedStatus?: string }
+  options?: { expectedStatus?: string; expectedInvoice?: Partial<SubmissionDoc> }
 ): Promise<boolean> {
   if (!ObjectId.isValid(id)) return false;
   const col = await collection(false);
@@ -939,6 +939,12 @@ export async function updateSubmission(
   // Status cannot be cleared by a partial edit (including older clients).
   if ("status" in safeUpdates && (typeof safeUpdates.status !== "string" || !safeUpdates.status.trim())) delete safeUpdates.status;
   const writeFilter: Filter<SubmissionDoc> = { _id: new ObjectId(id) };
+  if (options?.expectedInvoice) {
+    for (const field of ["invoicePaymentVersion", "invoiceAmount", "amountPaid", "invoiceStatus", "qboInvoiceId", "invoiceSentAt"] as const) {
+      const value = options.expectedInvoice[field];
+      Object.assign(writeFilter, { [field]: value === undefined ? { $exists: false } : value });
+    }
+  }
   // A stale full-form save must not reset an established lead to New through
   // another API/automation. New belongs to intake, rather than rescheduling.
   if (options?.expectedStatus === undefined && typeof safeUpdates.status === "string" && /^(new|new lead)$/i.test(safeUpdates.status.trim())) {

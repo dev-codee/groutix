@@ -82,7 +82,7 @@ test('the invoice editor retains its selected record and errors after saving', a
       currentInvoiceInput: () => input, setSavingInvoice() {},
       leads: [lead], leadReadVersion: { current: 0 }, setStatusFilter() {}, publishCrmChange() {},
       setInvoiceSaveError: error => { state.error = error; }, setInvoiceModalOpen: open => { state.closed = !open; },
-      setCustomerInvoices() {}, setLeads: update => { state.leads = update(state.leads); }, setActiveInvoiceLead() {},
+      setInvoiceStatus() {}, setCustomerInvoices() {}, setLeads: update => { state.leads = update(state.leads); }, setActiveInvoiceLead() {},
       fetch: async () => { assert.equal(state.closed, false); return { ok, json: async () => ok ? { item: { ...lead, ...invoiceChanges(lead, input) } } : { error: 'Database unavailable' } }; },
     });
     await module.exports();
@@ -90,4 +90,32 @@ test('the invoice editor retains its selected record and errors after saving', a
     assert.equal(state.error, ok ? '' : 'Database unavailable');
     if (ok) assert.equal(state.leads[0].invoiceAmount, 3565);
   }
+});
+
+test('sent, paid, receipted and synced invoices allow extra-work wording edits without changing money', () => {
+  const saved = { ...lead, ...invoiceChanges(lead, input) };
+  const receipt = { number: 'RCT-123', total: 3565 };
+  for (const state of [{ invoiceSentAt: 'sent' }, { amountPaid: 100, invoiceStatus: 'Partially Paid' }, { invoiceStatus: 'Paid', paymentReceipt: receipt }, { qboInvoiceId: 'qbo-123' }]) {
+    const current = { ...saved, ...state };
+    const changed = invoiceChanges(current, { price: 3565, extraWork: 'Corrected extra-work description' });
+    assert.equal(changed.invoiceDraft.extraWork, 'Corrected extra-work description');
+    assert.equal(changed.invoiceDraft.extraCharge, 100);
+    assert.equal(changed.invoiceDraft.basePrice, 3465);
+    assert.equal(changed.invoiceAmount, 3565);
+    assert.equal(current.paymentReceipt, state.paymentReceipt);
+    if (state.qboInvoiceId) {
+      assert.throws(() => invoiceChanges(current, { price: 3665, extraCharge: 200 }), /locked/);
+    }
+  }
+});
+
+test('legacy paid invoices retain received money when add-ons increase the total', () => {
+  const saved = { ...lead, ...invoiceChanges(lead, input), invoiceStatus: 'Paid', invoiceSentAt: 'sent' };
+  const updated = invoiceChanges(saved, { ...input, price: 3665, extraCharge: 200, status: 'Paid' });
+  assert.equal(updated.amountPaid, 3565);
+  assert.equal(updated.invoiceStatus, 'Partially Paid');
+  assert.equal(updated.paymentType, 'partial');
+  const { invoiceBalance } = loadTs('lib/invoiceBalance.ts');
+  assert.equal(invoiceBalance({ ...saved, ...updated }).remainingCents, 10000);
+  assert.equal(invoiceBalance({ invoiceAmount: 550, invoiceStatus: 'Partially Paid', paymentReceipt: { total: 450 } }).remainingCents, 10000);
 });
