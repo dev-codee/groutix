@@ -113,7 +113,7 @@ function BeforeAfter({ before, after, title }: { before: string; after: string; 
 const CORE_SLIDERS: Record<string, { before: string; after: string }> = {
   "shower-regrouting": { before: "/shower-regrouting-before.webp", after: "/shower-regrouting-after.webp" },
    "leaking-shower-repair": { before: "/leaking-shower-before.webp", after: "/leaking-shower-after.webp" },
-  "balcony-leak-repairs": { before: "/balcony-regrouting-before.webp", after: "/balcony-regrouting-after.webp" },
+    "balcony-leak-repairs": { before: "/balcony-regrouting-before.webp", after: "/balcony-regrouting-after.webp" },
 };
 };
 
