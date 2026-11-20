@@ -44,12 +44,12 @@ function Callout({ title, children }: { title: string; children: ReactNode }) {
 
 /* Image card styled like the homepage "shower grout problems" cards. */
 
-function SignSlider({ before, after, beforeAlt, afterAlt, title }: { before: string; after: string; beforeAlt: string; afterAlt: string; title: string }) {
+function SignSlider({ before, after, beforeAlt, afterAlt, title, fill }: { before: string; after: string; beforeAlt: string; afterAlt: string; title: string; fill?: boolean }) {
   const [pos, setPos] = useState(100);
   const handle = Math.min(96, Math.max(4, pos));
   const sizes = "(min-width:1024px) 33vw, (min-width:640px) 50vw, 100vw";
   return (
-    <div className="relative aspect-[4/5] select-none overflow-hidden bg-slate-200">
+    <div className={fill ? "absolute inset-0 select-none overflow-hidden bg-slate-200" : "relative aspect-[4/5] select-none overflow-hidden bg-slate-200"}>
       <div className="absolute inset-0">
         <Image src={before} alt={beforeAlt} fill sizes={sizes} className="object-cover" />
       </div>
@@ -195,7 +195,7 @@ export default function LeakingShowerPageV2({ reviews }: { reviews: Review[] }) 
               </div>
             </div>
             <div className="relative mx-auto aspect-[4/3] w-full max-w-[560px] overflow-hidden rounded-xl border border-white/25 bg-slate-200 shadow-2xl lg:aspect-[7/5] lg:max-w-none">
-              <Image src="/corner-shower-regrouting-worn-grout.webp" alt="Leaking shower repair in Melbourne, a corner shower with worn, failing grout that lets water escape behind the tiles" fill priority sizes="(min-width:1024px) 40vw, 100vw" className="object-cover" />
+              <SignSlider fill before="/leaking-shower-hero-before.webp" after="/leaking-shower-hero-after.webp" beforeAlt="Walk in shower in Melbourne leaking through failed grout and silicone, mould along the joints and a cracked floor tile before repair" afterAlt="The same walk in shower after a leaking shower repair in Melbourne, regrouted, resealed and watertight" title="Leaking shower repair" />
             </div>
           </div>
         </section>
