@@ -30,3 +30,9 @@ export function registerTotals(jobs: EarningsJob[]) {
     return sum;
   }, { invoices: 0, value: 0, received: 0, earned: 0, paid: 0, estimated: 0 });
 }
+
+// Financial records must be visible before unscheduled leads on the first page.
+export function compareRegisterJobs(a: EarningsJob, b: EarningsJob): number {
+  return Number(!!b.invoice) - Number(!!a.invoice) || Number(b.changed) - Number(a.changed)
+    || (b.scheduledAt || b.id).localeCompare(a.scheduledAt || a.id);
+}
