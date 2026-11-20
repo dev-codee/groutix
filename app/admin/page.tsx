@@ -4946,7 +4946,16 @@ export default function CrmDashboardPage() {
               />
             )}
 
-            {currentView === "earnings" && canSee("earnings") && <TeamEarningsView query={globalSearch} onQueryChange={setGlobalSearch} />}
+            {currentView === "earnings" && canSee("earnings") && <TeamEarningsView query={globalSearch} onQueryChange={setGlobalSearch} refreshKey={leadModalOpen} onAddJob={startNewLead} onManageTeam={() => navigateTo("team")} onOpenJob={async (id: string) => {
+              try {
+                const response = await fetch(`/api/admin/submissions/${id}`, { cache: "no-store" });
+                const result = await response.json();
+                if (!response.ok || !result.item) throw new Error("Could not open this job. It may have been removed.");
+                setEditingLead(result.item); setLeadModalOpen(true);
+              } catch (error) {
+                setEtaToast({ leadId: id, msg: error instanceof Error ? error.message : "Could not open this job." });
+              }
+            }} />}
 
             {currentView === "materials" && canSee("materials") && <MaterialsView query={globalSearch} onQueryChange={setGlobalSearch} />}
 

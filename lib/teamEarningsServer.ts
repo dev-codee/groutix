@@ -8,7 +8,7 @@ import { EarningsError, validateEarningsTotal, calculateEarnings, earningsBody, 
 type LedgerDoc = Omit<EarningsLedger, "id"> & { _id: string };
 type PaymentDoc = Omit<EarningsPayment, "id"> & { _id: string; leadId: string };
 type EventDoc = Omit<EarningsEvent, "id"> & { _id: string; leadId: string; requestHash: string; snapshot: LedgerDoc };
-const leadProjection = { name: 1, jobNo: 1, service: 1, status: 1, type: 1, createdAt: 1, assigned: 1, technician: 1, technicianId: 1, technicianUsername: 1, inspectorId: 1, inspectorUsername: 1, jobAt: 1, inspectionAt: 1, jobTotalDays: 1, jobDaysDone: 1, invoiceAmount: 1, invoiceNumber: 1, "invoiceDraft.gst": 1, invoiceStatus: 1, paymentType: 1, primaryJobBookingId: 1, primaryInspectionBookingId: 1, jobEndAt: 1, inspectionEndAt: 1, jobWorkSegments: 1, inspectionWorkSegments: 1 };
+const leadProjection = { name: 1, jobNo: 1, service: 1, status: 1, type: 1, createdAt: 1, assigned: 1, technician: 1, technicianId: 1, technicianUsername: 1, inspectorId: 1, inspectorUsername: 1, jobAt: 1, inspectionAt: 1, jobTotalDays: 1, jobDaysDone: 1, invoiceAmount: 1, invoiceNumber: 1, "invoiceDraft.gst": 1, invoiceStatus: 1, paymentType: 1, amountPaid: 1, "paymentReceipt.total": 1, primaryJobBookingId: 1, primaryInspectionBookingId: 1, jobEndAt: 1, inspectionEndAt: 1, jobWorkSegments: 1, inspectionWorkSegments: 1 };
 let indexes: Promise<unknown> | undefined;
 async function collections() {
   const db = await getDb();

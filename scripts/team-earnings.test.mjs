@@ -230,3 +230,50 @@ test("mixed allocation preserves exact fixed cents and whole-dollar displays dro
   for (const cents of [30000, 30040, 30090, 30099]) assert.equal(rules.formatEarningsMoney(cents), "$300");
   assert.equal(rules.formatEarningsMoney(99), "$0");
 });
+
+test("register receipts reconcile legacy, partial and multiple invoice payments without changing approval snapshots", async () => {
+  const f = fixture();
+  f.state.submissions[0].amountPaid = 100.25;
+  f.state.submissions[0].invoiceStatus = "Partially Paid";
+  f.state.customer_invoices.push({ _id: "extra", leadId, values: { invoiceNumber: "INV-EXTRA", invoiceAmount: 220, invoiceStatus: "Paid", invoiceDraft: { gst: 10 } } });
+  let job = (await f.api.listTeamEarnings()).jobs[0];
+  assert.equal(job.scheduledAt, baseLead.jobAt);
+  assert.equal(job.receipts.reduce((sum, row) => sum + row.paidCents, 0), 32025);
+  assert.equal(job.receipts[0].remainingCents, 99975);
+  assert.equal(job.invoicePaid, false);
+  const d = await draft(f);
+  const a = await f.mutate("approve", d.version, { invoice: job.invoice });
+  f.state.submissions[0].amountPaid = 1100;
+  f.state.submissions[0].invoiceStatus = "Paid";
+  job = (await f.api.listTeamEarnings()).jobs[0];
+  assert.equal(job.changed, false, "Customer receipts must not invalidate approved team allocations");
+  assert.equal(job.invoicePaid, true);
+  assert.equal(job.ledger.shares[0].earnedCents, a.shares[0].earnedCents);
+  const legacy = rules.earningsJob({ ...baseLead, paymentType: "full" }, [member], null);
+  assert.equal(legacy.receipts[0].paidCents, 110000);
+  assert.equal(legacy.invoicePaid, true);
+});
+
+test("register filters reflect visit progress and receipts while totals exclude draft estimates from payable earnings", () => {
+  const { matchesRegisterFilter: matches, registerTotals } = loadTs("lib/teamEarningsRegister.ts");
+  const done = rules.earningsJob({ ...baseLead, amountPaid: 200 }, [member], null);
+  const booked = rules.earningsJob({ ...baseLead, status: "Job Booked", invoiceNumber: undefined }, [member], null);
+  const cancelled = rules.earningsJob({ ...baseLead, status: "Cancelled" }, [member], null);
+  assert.equal(matches(done, "Completed"), true);
+  assert.equal(matches(done, "Pending"), true);
+  assert.equal(matches(done, "Paid"), false);
+  assert.equal(matches(booked, "Booked"), true);
+  assert.equal(matches(booked, "Scheduled"), true);
+  assert.equal(matches(booked, "Invoiced"), false);
+  assert.equal(matches(cancelled, "Completed"), false);
+  assert.equal(matches(cancelled, "Cancelled"), true);
+  done.ledger = { status: "draft", shares: [{ memberId, name: "Alex", rateBps: 3000, earnedCents: 0, paidCents: 0 }] };
+  const totals = registerTotals([done]);
+  assert.equal(totals.received, 20000);
+  assert.equal(totals.earned, 0);
+  assert.equal(totals.estimated, 30000);
+  done.ledger.status = "approved";
+  done.ledger.shares[0].earnedCents = 30000;
+  done.ledger.shares[0].paidCents = 10000;
+  assert.equal(registerTotals([done]).earned - registerTotals([done]).paid, 20000);
+});

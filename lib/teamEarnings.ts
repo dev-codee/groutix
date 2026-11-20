@@ -1,4 +1,5 @@
 import type { Lead } from "@/components/admin/types";
+import { invoiceBalance } from "./invoiceBalance";
 import { isPrimaryBooking, leadBookings } from "./leadBookings";
 
 export class EarningsError extends Error {
@@ -10,7 +11,7 @@ export interface EarningsMember {
 }
 export interface EarningsShare { memberId: string; name: string; rateBps: number; fixedAmountCents?: number; earnedCents: number; paidCents: number }
 export interface EarningsInvoice { number: string; totalCents: number; gstBps: number; baseCents: number; items?: EarningsInvoice[] }
-type InvoiceSource = Pick<Lead, "invoiceNumber" | "invoiceAmount" | "invoiceDraft" | "invoiceStatus" | "paymentType">;
+type InvoiceSource = Pick<Lead, "invoiceNumber" | "invoiceAmount" | "invoiceDraft" | "invoiceStatus" | "paymentType" | "amountPaid" | "paymentReceipt">;
 export type EarningsSourceLead = Lead & { earningsInvoices?: InvoiceSource[] };
 export interface EarningsLedger {
   id: string; version: number; status: "draft" | "approved"; basis: EarningsBasis;
@@ -20,6 +21,8 @@ export interface EarningsLedger {
 }
 export interface EarningsJob {
   id: string; jobLabel: string; customer: string; service: string; status: string;
+  scheduledAt?: string;
+  receipts?: { number: string; totalCents: number; paidCents: number; remainingCents: number }[];
   assignedIds: string[]; assignedNames: string[]; completedVisits: number; totalVisits: number;
   workVisits: { type: "inspection" | "job"; memberId?: string; name: string; date: string; status: string; daysDone: number; daysPlanned: number }[];
   memberWork: { memberId: string; completedVisits: number; totalVisits: number; daysDone: number; daysPlanned: number }[];
@@ -133,11 +136,13 @@ export function earningsJob(lead: EarningsSourceLead, members: EarningsMember[],
     if (visit.type === "job") { work.daysDone += safeDays(visit.jobDaysDone); work.daysPlanned += safeDays(visit.jobTotalDays); }
     memberWork.set(worker.id, work);
   }
-  return { id: lead.id, jobLabel: lead.jobNo || `Lead-${lead.id.slice(-6)}`, customer: lead.name || "Customer", service: lead.service || "", status: lead.status,
+  const receiptSources = [...(lead.invoiceNumber ? [lead] : []), ...(lead.earningsInvoices || [])];
+  const receipts = receiptSources.filter(source => invoiceForEarnings(source, "inclusive")).map(source => ({ number: source.invoiceNumber!, ...invoiceBalance({ ...source, invoiceStatus: source.invoiceStatus || (source.paymentType === "full" ? "Paid" : undefined) }) }));
+  return { scheduledAt: lead.jobAt || (visits[0] ? `${visits[0].date}T${visits[0].time}` : undefined), receipts, id: lead.id, jobLabel: lead.jobNo || `Lead-${lead.id.slice(-6)}`, customer: lead.name || "Customer", service: lead.service || "", status: lead.status,
     assignedIds: [...new Set(assignments.map(m => m.id))], assignedNames: [...new Set([lead.assigned, lead.technician, ...assignments.map(m => m.name), ...visits.map(b => b.technician)].filter((s): s is string => !!s))],
     workVisits, memberWork: [...memberWork.values()], completedVisits: visits.filter(b => b.status === "Job Done").length, totalVisits: visits.length,
     daysDone: visits.length ? visits.reduce((sum, b) => sum + safeDays(b.jobDaysDone), 0) : safeDays(lead.jobDaysDone), daysPlanned: visits.length ? visits.reduce((sum, b) => sum + safeDays(b.jobTotalDays), 0) : safeDays(lead.jobTotalDays),
-    invoice, invoicePaid: [...(lead.invoiceNumber ? [lead] : []), ...(lead.earningsInvoices || [])].length > 0 && [...(lead.invoiceNumber ? [lead] : []), ...(lead.earningsInvoices || [])].every(source => source.invoiceStatus === "Paid" || source.paymentType === "full"), eligible: !unavailableReason, unavailableReason, ledger,
+    invoice, invoicePaid: !!invoice && receipts.length > 0 && receipts.every(receipt => receipt.remainingCents === 0), eligible: !unavailableReason, unavailableReason, ledger,
     changed: ledger?.status === "approved" && (!sameEarningsInvoice(ledger.invoice, invoice) || !!unavailableReason) || false };
 }
 

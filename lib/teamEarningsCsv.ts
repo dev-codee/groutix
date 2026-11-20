@@ -16,7 +16,7 @@ const amount = (cents: number) => (cents / 100).toFixed(2);
 
 export function earningsJobsCsv(jobs: EarningsJob[]): string {
   return csv([
-    ["Job / lead", "Customer", "Job status", "Service", "Assigned members", "Completed visits", "Total visits", "Recorded job days", "Planned job days", "Invoice", "Invoice total (AUD)", "Customer invoice paid", "Earnings status", "Draft estimate (AUD)", "Approved earnings (AUD)", "Paid (AUD)", "Outstanding (AUD)", "Member shares"],
+    ["Job / lead", "Customer", "Job status", "Service", "Assigned members", "Completed visits", "Total visits", "Recorded job days", "Planned job days", "Invoice", "Invoice total (AUD)", "Customer invoice paid", "Earnings status", "Draft estimate (AUD)", "Approved earnings (AUD)", "Paid (AUD)", "Outstanding (AUD)", "Member shares", "Customer received (AUD)", "Customer outstanding (AUD)", "Scheduled job time"],
     ...jobs.map(job => {
       const shares = estimatedEarningsShares(job);
       const total = shares.reduce((sum, share) => sum + share.earnedCents, 0);
@@ -25,7 +25,7 @@ export function earningsJobsCsv(jobs: EarningsJob[]): string {
       return [job.jobLabel, job.customer, job.status, job.service, job.assignedNames.join("; "), job.completedVisits, job.totalVisits,
         job.daysDone, job.daysPlanned, job.invoice?.number || "", job.invoice ? amount(job.invoice.totalCents) : "", job.invoicePaid ? "Yes" : "No",
         earningsStatus(job), amount(approved ? 0 : total), amount(approved ? total : 0), amount(paid), amount(approved ? total - paid : 0),
-        shares.map(share => `${share.name}: ${share.fixedAmountCents !== undefined ? `AUD ${amount(share.fixedAmountCents)} fixed` : `${share.rateBps / 100}%`}`).join("; ")];
+        shares.map(share => `${share.name}: ${share.fixedAmountCents !== undefined ? `AUD ${amount(share.fixedAmountCents)} fixed` : `${share.rateBps / 100}%`}`).join("; "), amount((job.receipts || []).reduce((sum, receipt) => sum + receipt.paidCents, 0)), amount((job.receipts || []).reduce((sum, receipt) => sum + receipt.remainingCents, 0)), job.scheduledAt || ""];
     }),
   ]);
 }

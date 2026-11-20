@@ -28,3 +28,9 @@ test('fixed amount exports identify the agreed AUD amount', () => {
   const csv = earningsJobsCsv([{ ...job, ledger: { ...job.ledger, shares: [{ ...job.ledger.shares[0], rateBps: 0, fixedAmountCents: 30000, earnedCents: 30000 }] } }]);
   assert.match(csv, /Zoë: AUD 300.00 fixed/);
 });
+
+test('register export includes actual customer receipts and scheduled job time', () => {
+  const csv = earningsJobsCsv([{ ...job, scheduledAt: '2026-11-20T09:00', receipts: [{ paidCents: 50025, remainingCents: 59975 }] }]);
+  assert.match(csv, /"Customer received \(AUD\)","Customer outstanding \(AUD\)","Scheduled job time"/);
+  assert.match(csv, /"500.25","599.75","2026-11-20T09:00"/);
+});
