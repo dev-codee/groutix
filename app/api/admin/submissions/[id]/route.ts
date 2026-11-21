@@ -170,16 +170,8 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     }
   }
 
-  // Closing/cancelling a whole lead archives its saved snapshot. It must not
-  // manufacture completion or leave the customer in an active schedule.
-  if (body.status === "Lost" || body.status === "Cancelled") {
-    const session = await verifySession(req.cookies.get(SESSION_COOKIE)?.value);
-    const moved = await deleteSubmission(id, session?.username || "staff");
-    if (!moved) return NextResponse.json({ error: "Not found." }, { status: 404 });
-    await deleteBooking(id);
-    return NextResponse.json({ ok: true, recycled: true });
-  }
-
+  // Closing/cancelling a whole lead releases active bookings while preserving
+  // the lead record in the CRM under the Lost / No Response view.
   if (appendBooking && ["Lost", "Cancelled"].includes(before.status)) return NextResponse.json({ error: "Reopen this lead before adding a booking." }, { status: 409 });
   const primary = { ...before };
   const bookingType = "jobAt" in body ? "job" : "inspectionAt" in body ? "inspection" : undefined;
@@ -477,7 +469,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     }
 
     // ── Keep bookings collection in lockstep with manual staff changes ──
-    if (body.status === "Lost" || body.status === "Cancelled") {
+    if (body.status === "Lost" || body.status === "Cancelled" || /^(lost|cancelled|closed|no response)/i.test(body.status || "")) {
       await deleteBooking(id);
     } else {
       if (typeof body.inspectionAt === "string" && (body.inspectionAt !== (normalizeApptString(before.inspectionAt) || "") || body.inspectionEndAt !== undefined && (body.inspectionEndAt || "") !== (before.inspectionEndAt || ""))) {
