@@ -19,6 +19,7 @@ export async function GET(req: NextRequest, { params }: Ctx) {
   try {
     invoice = invoiceChanges({ ...lead, id }, {
       service: sp.get("service") ?? stored.service, description: sp.get("description") ?? stored.description,
+      extraWorkTitle: sp.get("extraWorkTitle") ?? stored.extraWorkTitle,
       extraWork: sp.get("extraWork") ?? stored.extraWork, extraCharge: Number(sp.get("extraCharge") ?? stored.extraCharge),
       price: Number(sp.get("price") ?? lead.invoiceAmount ?? (stored.basePrice + stored.extraCharge)),
       gst: Number(sp.get("gst") ?? stored.gst), status: sp.get("status") ?? lead.invoiceStatus,
@@ -26,9 +27,9 @@ export async function GET(req: NextRequest, { params }: Ctx) {
       accountNumber: sp.get("accountNumber") ?? stored.accountNumber, bsb: sp.get("bsb") ?? stored.bsb, dueDate: sp.get("dueDate") ?? stored.dueDate,
     });
   } catch (error) { return NextResponse.json({ error: (error as Error).message }, { status: 400 }); }
-  const { service, description, extraWork, extraCharge, bankName, accountName, accountNumber, bsb, dueDate } = invoice.invoiceDraft;
+  const { service, description, extraWorkTitle, extraWork, extraCharge, bankName, accountName, accountNumber, bsb, dueDate } = invoice.invoiceDraft;
   const items = [{ service, description, price: invoice.invoiceDraft.basePrice, qty: 1 },
-    ...(extraWork || extraCharge > 0 ? [{ service: "Additional Work", description: extraWork, price: extraCharge, qty: 1 }] : [])];
+    ...(extraWork || extraCharge !== 0 ? [{ service: extraWorkTitle || "Additional Work", description: extraWork, price: extraCharge, qty: 1 }] : [])];
   const total = invoice.invoiceAmount;
   const subtotal = total / (1 + invoice.invoiceDraft.gst / 100);
   const gst = total - subtotal;

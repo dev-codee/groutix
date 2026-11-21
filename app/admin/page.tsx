@@ -797,8 +797,9 @@ export default function CrmDashboardPage() {
   const [jobCardLead, setJobCardLead] = useState<Lead | null>(null);
   const [invoiceService, setInvoiceService] = useState("");
   const [invoiceDescription, setInvoiceDescription] = useState("");
+  const [invoiceExtraWorkTitle, setInvoiceExtraWorkTitle] = useState("Additional Work");
   const [invoiceExtraWork, setInvoiceExtraWork] = useState("");
-  const [invoiceExtraCharge, setInvoiceExtraCharge] = useState<number>(0);
+  const [invoiceExtraCharge, setInvoiceExtraCharge] = useState<number | string>(0);
   const [invoicePrice, setInvoicePrice] = useState<number>(0);
   const [invoiceGst, setInvoiceGst] = useState<number>(10);
   const [invoiceStatus, setInvoiceStatus] = useState("Unpaid");
@@ -3568,6 +3569,7 @@ export default function CrmDashboardPage() {
     setInvoiceService(draft.service);
     setInvoiceDescription(draft.description);
     setInvoicePrice(draft.basePrice);
+    setInvoiceExtraWorkTitle(draft.extraWorkTitle || "Additional Work");
     setInvoiceExtraWork(draft.extraWork);
     setInvoiceExtraCharge(draft.extraCharge);
     setInvoiceGst(draft.gst);
@@ -3591,8 +3593,10 @@ export default function CrmDashboardPage() {
   }
 
   function currentInvoiceInput() {
+    const extra = Number(invoiceExtraCharge) || 0;
     return { id: activeInvoiceLead?.id, service: invoiceService, description: invoiceDescription,
-      extraWork: invoiceExtraWork, extraCharge: invoiceExtraCharge, price: invoicePrice + invoiceExtraCharge,
+      extraWorkTitle: invoiceExtraWorkTitle || "Additional Work",
+      extraWork: invoiceExtraWork, extraCharge: extra, price: invoicePrice + extra,
       gst: invoiceGst, status: invoiceStatus, bankName: invoiceBankName, accountName: invoiceAccountName,
       accountNumber: invoiceAccountNumber, bsb: invoiceBsb, dueDate: invoiceDueDate };
   }
@@ -8266,39 +8270,63 @@ export default function CrmDashboardPage() {
                   </div>
                   <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl space-y-2">
                     <div className="flex items-center justify-between">
-                      <label className="font-bold text-slate-700 block text-[11px] uppercase tracking-wider">Extra / Add-On Work (Optional)</label>
+                      <label className="font-bold text-slate-700 block text-[11px] uppercase tracking-wider">Extra / Add-On Work (Editable)</label>
                       {(activeInvoiceLead.technicianNotes || activeInvoiceLead.scopeNotes) && (
                         <span className="text-[9.5px] font-black text-amber-800 bg-amber-200/80 px-1.5 py-0.5 rounded">
                           From Technician Notes
                         </span>
                       )}
                     </div>
-                    <textarea
-                      rows={2}
-                      placeholder="e.g. Additional silicone replacement in second bathroom"
-                      value={invoiceExtraWork}
-                      onChange={(e) => setInvoiceExtraWork(e.target.value)}
-                      className="w-full p-2 border border-amber-200 rounded-lg text-xs bg-white"
-                    />
-                    <div className="flex items-center gap-2">
-                      <label className="font-bold text-slate-600 text-xs whitespace-nowrap">Extra Charge ($):</label>
+                    <div>
+                      <label className="font-bold text-slate-600 text-[11px] block mb-1">Heading / Title</label>
                       <input
-                        type="number"
-                        min={0}
-                        step={1}
+                        type="text"
+                        placeholder="Additional Work"
+                        value={invoiceExtraWorkTitle}
+                        onChange={(e) => setInvoiceExtraWorkTitle(e.target.value)}
+                        className="w-full p-2 border border-amber-200 rounded-lg text-xs bg-white font-semibold text-slate-800"
+                      />
+                    </div>
+                    <div>
+                      <label className="font-bold text-slate-600 text-[11px] block mb-1">Description (Optional)</label>
+                      <textarea
+                        rows={2}
+                        placeholder="e.g. Additional silicone replacement in second bathroom, or discount details"
+                        value={invoiceExtraWork}
+                        onChange={(e) => setInvoiceExtraWork(e.target.value)}
+                        className="w-full p-2 border border-amber-200 rounded-lg text-xs bg-white"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <label className="font-bold text-slate-600 text-xs whitespace-nowrap">Extra Charge / Discount ($):</label>
+                      <input
+                        type="text"
+                        inputMode="decimal"
                         placeholder="0"
                         disabled={Boolean(activeInvoiceLead.qboInvoiceId)}
-                        value={invoiceExtraCharge || ""}
-                        onChange={(e) => setInvoiceExtraCharge(parseFloat(e.target.value) || 0)}
+                        value={invoiceExtraCharge === 0 ? "" : String(invoiceExtraCharge)}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (val === "" || val === "-" || /^-?\d*\.?\d*$/.test(val)) {
+                            setInvoiceExtraCharge(val);
+                          }
+                        }}
+                        onBlur={() => {
+                          const num = Number(invoiceExtraCharge);
+                          setInvoiceExtraCharge(Number.isFinite(num) ? num : 0);
+                        }}
                         className="w-24 p-2 border border-amber-200 rounded-lg text-xs font-bold bg-white"
                       />
-                      {invoiceExtraCharge > 0 && (
-                        <span className="text-xs text-amber-700 font-semibold">
-                          New total: ${(invoicePrice + invoiceExtraCharge).toFixed(2)}
+                      {(Number(invoiceExtraCharge) || 0) !== 0 && (
+                        <span className={`text-xs font-semibold ${(Number(invoiceExtraCharge) || 0) < 0 ? "text-emerald-700" : "text-amber-700"}`}>
+                          {(Number(invoiceExtraCharge) || 0) < 0
+                            ? `Discount: -$${Math.abs(Number(invoiceExtraCharge) || 0).toFixed(2)} · `
+                            : `Extra: +$${(Number(invoiceExtraCharge) || 0).toFixed(2)} · `}
+                          New total: ${(invoicePrice + (Number(invoiceExtraCharge) || 0)).toFixed(2)}
                         </span>
                       )}
                     </div>
-                    {activeInvoiceLead.qboInvoiceId ? <p className="text-[11px] text-amber-800">This invoice is synced to QuickBooks. Add new charges on a separate invoice.</p> : invoiceBalance(activeInvoiceLead).paidCents > 0 && <p className="text-[11px] text-amber-800">Previously received: ${(invoiceBalance(activeInvoiceLead).paidCents / 100).toFixed(2)} · Outstanding after changes: ${Math.max(0, invoicePrice + invoiceExtraCharge - invoiceBalance(activeInvoiceLead).paidCents / 100).toFixed(2)}. Saving extra charges preserves the original receipt and updates the balance.</p>}
+                    {activeInvoiceLead.qboInvoiceId ? <p className="text-[11px] text-amber-800">This invoice is synced to QuickBooks. Add new charges on a separate invoice.</p> : invoiceBalance(activeInvoiceLead).paidCents > 0 && <p className="text-[11px] text-amber-800">Previously received: ${(invoiceBalance(activeInvoiceLead).paidCents / 100).toFixed(2)} · Outstanding after changes: ${Math.max(0, invoicePrice + (Number(invoiceExtraCharge) || 0) - invoiceBalance(activeInvoiceLead).paidCents / 100).toFixed(2)}. Saving extra charges preserves the original receipt and updates the balance.</p>}
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div>
@@ -8464,7 +8492,8 @@ export default function CrmDashboardPage() {
 
                   {/* 4. Table */}
                   {(() => {
-                    const effectiveTotal = (invoicePrice || 0) + (invoiceExtraCharge || 0);
+                    const extraVal = Number(invoiceExtraCharge) || 0;
+                    const effectiveTotal = (invoicePrice || 0) + extraVal;
                     const subtotal = effectiveTotal / (1 + invoiceGst / 100);
                     const gst = effectiveTotal - subtotal;
                     return (
@@ -8494,15 +8523,15 @@ export default function CrmDashboardPage() {
                             <div className="col-span-2 text-right">${(invoicePrice || 0).toFixed(2)}</div>
                             <div className="col-span-2 text-right font-bold">${(invoicePrice || 0).toFixed(2)}</div>
                           </div>
-                          {(invoiceExtraWork || invoiceExtraCharge > 0) && (
+                          {(invoiceExtraWork || extraVal !== 0) && (
                             <div className="grid grid-cols-12 text-[11px] text-slate-800 py-1.5 border-b border-slate-200 items-start">
                               <div className="col-span-6">
-                                <div className="font-semibold text-amber-700">Additional Work</div>
-                                <div className="text-[10px] text-slate-500 mt-0.5">{invoiceExtraWork}</div>
+                                <div className="font-semibold text-amber-700">{invoiceExtraWorkTitle || "Additional Work"}</div>
+                                {invoiceExtraWork && <div className="text-[10px] text-slate-500 mt-0.5 whitespace-pre-wrap">{invoiceExtraWork}</div>}
                               </div>
                               <div className="col-span-2 text-right">1</div>
-                              <div className="col-span-2 text-right">${invoiceExtraCharge.toFixed(2)}</div>
-                              <div className="col-span-2 text-right font-bold">${invoiceExtraCharge.toFixed(2)}</div>
+                              <div className="col-span-2 text-right">{extraVal < 0 ? `-$${Math.abs(extraVal).toFixed(2)}` : `$${extraVal.toFixed(2)}`}</div>
+                              <div className="col-span-2 text-right font-bold">{extraVal < 0 ? `-$${Math.abs(extraVal).toFixed(2)}` : `$${extraVal.toFixed(2)}`}</div>
                             </div>
                           )}
                         </div>
@@ -8558,15 +8587,17 @@ export default function CrmDashboardPage() {
                 <button
                   type="button"
                   onClick={() => {
+                    const extraVal = Number(invoiceExtraCharge) || 0;
                     const q = new URLSearchParams({
                       bankName: invoiceBankName,
                       accountName: invoiceAccountName,
                       accountNumber: invoiceAccountNumber,
                       bsb: invoiceBsb,
                       dueDate: invoiceDueDate,
-                      price: String(invoicePrice + invoiceExtraCharge),
+                      price: String(invoicePrice + extraVal),
+                      extraWorkTitle: invoiceExtraWorkTitle || "Additional Work",
                       extraWork: invoiceExtraWork,
-                      extraCharge: String(invoiceExtraCharge),
+                      extraCharge: String(extraVal),
                       gst: String(invoiceGst),
                       status: invoiceStatus,
                       service: invoiceService,

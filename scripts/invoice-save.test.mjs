@@ -20,7 +20,13 @@ test('saving and reopening extra work retains the $3,565 total without adding th
   assert.equal(draft.basePrice + draft.extraCharge, 3565);
   assert.equal(invoiceDraftForLead({ ...lead, invoiceAmount: 3565 }).basePrice, 3565, 'legacy totals are preserved');
   for (const price of [NaN, Infinity, -1, 0]) assert.throws(() => invoiceChanges(lead, { ...input, price }));
-  assert.throws(() => invoiceChanges(lead, { ...input, extraCharge: -100 }));
+  const discounted = invoiceChanges(lead, { ...input, extraCharge: -100, price: 3365, extraWorkTitle: '10% Discount' });
+  assert.equal(discounted.invoiceAmount, 3365);
+  assert.equal(discounted.invoiceDraft.extraCharge, -100);
+  assert.equal(discounted.invoiceDraft.basePrice, 3465);
+  assert.equal(discounted.invoiceDraft.extraWorkTitle, '10% Discount');
+  assert.equal(discounted.invoiceDraft.basePrice + discounted.invoiceDraft.extraCharge, 3365);
+  for (const extraCharge of [NaN, Infinity]) assert.throws(() => invoiceChanges(lead, { ...input, extraCharge }));
 });
 
 test('Save Invoice persists the complete draft and reports database failures without sending mail', async () => {
@@ -118,4 +124,50 @@ test('legacy paid invoices retain received money when add-ons increase the total
   const { invoiceBalance } = loadTs('lib/invoiceBalance.ts');
   assert.equal(invoiceBalance({ ...saved, ...updated }).remainingCents, 10000);
   assert.equal(invoiceBalance({ invoiceAmount: 550, invoiceStatus: 'Partially Paid', paymentReceipt: { total: 450 } }).remainingCents, 10000);
+});
+
+test('negative extraCharge functions as discount and deducts from total with custom heading in PDF and email', async () => {
+  const discountInput = {
+    ...input,
+    extraWorkTitle: '10% Discount',
+    extraWork: 'Customer loyalty discount applied',
+    extraCharge: -100,
+    price: 3365,
+  };
+  const changed = invoiceChanges(lead, discountInput);
+  assert.equal(changed.invoiceAmount, 3365);
+  assert.equal(changed.invoiceDraft.extraCharge, -100);
+  assert.equal(changed.invoiceDraft.basePrice, 3465);
+  assert.equal(changed.invoiceDraft.extraWorkTitle, '10% Discount');
+  assert.equal(changed.invoiceDraft.extraWork, 'Customer loyalty discount applied');
+
+  const savedLead = { ...lead, ...changed };
+  const pdfs = [], emails = [];
+  const overrides = {
+    '@/lib/customerInvoices': { getInvoiceSubmission: async () => savedLead, updateInvoiceSubmission: async () => true, appendInvoiceActivity: async () => {} },
+    '@/lib/adminAuth': { verifyRequestSession: async () => ({ username: 'manager' }) },
+    '@/lib/quotePdf': { buildQuotePdfBase64: async values => { pdfs.push(values); return Buffer.from('pdf').toString('base64'); } },
+    '@/lib/email': { isEmailConfigured: () => true, sendEmail: async values => emails.push(values), getEmailLogoUrl: async () => '', wrapEmailHtml: html => html },
+    '@/lib/automations': { invoiceTrackingPixel: () => '' },
+    '@/lib/quickbooks': { isQboConfigured: () => false },
+  };
+
+  const { GET } = loadTs('app/api/admin/invoice/pdf/[id]/route.ts', overrides);
+  const pdfRes = await GET({ nextUrl: new URL('https://example.com/invoice') }, { params: Promise.resolve({ id: lead.id }) });
+  assert.equal(pdfRes.status, 200);
+
+  const { POST } = loadTs('app/api/admin/invoice/send/route.ts', overrides);
+  const sendRes = await POST({ json: async () => discountInput });
+  assert.equal(sendRes.status, 200);
+
+  for (const pdf of pdfs) {
+    assert.equal(pdf.total, 3365);
+    assert.equal(pdf.items.length, 2);
+    assert.equal(pdf.items[0].price, 3465);
+    assert.equal(pdf.items[1].service, '10% Discount');
+    assert.equal(pdf.items[1].description, 'Customer loyalty discount applied');
+    assert.equal(pdf.items[1].price, -100);
+  }
+  assert.match(emails[0].html, /10% Discount/);
+  assert.match(emails[0].html, /-\$100\.00/);
 });

@@ -6,6 +6,7 @@ export interface InvoiceDraft {
   lines?: { description: string; amount: number }[];
   service: string;
   description: string;
+  extraWorkTitle?: string;
   extraWork: string;
   extraCharge: number;
   basePrice: number;
@@ -23,10 +24,15 @@ export function invoiceDraftForLead(lead: InvoiceLead): InvoiceDraft {
   // for those too; the source snapshot and allocated lines stay available internally.
   if (lead.invoiceDraft && lead.sourceQuoteId) return {
     ...lead.invoiceDraft, description: "",
+    extraWorkTitle: lead.invoiceDraft.extraWorkTitle || "Additional Work",
   };
-  return lead.invoiceDraft ?? {
+  return lead.invoiceDraft ? {
+    ...lead.invoiceDraft,
+    extraWorkTitle: lead.invoiceDraft.extraWorkTitle || "Additional Work",
+  } : {
     service: lead.service || "Complete Shower Regrouting & Waterproof Resealing",
     description: lead.quoteScope || lead.notes || lead.message || "• Full removal of failed grout\n• Chemical cleaning and substrate prep\n• Regrouting with commercial epoxy grout\n• Sanitary mould-resistant silicone joints",
+    extraWorkTitle: "Additional Work",
     extraWork: lead.technicianNotes || lead.scopeNotes || "", extraCharge: 0,
     basePrice: lead.invoiceAmount ?? lead.quoteAmount ?? 850, gst: 10,
     bankName: "ANZ", accountName: "Groutix Pty Ltd", accountNumber: invoiceAccountNumber(), bsb: "013442", dueDate: "Within 7 days of invoice date",
@@ -34,7 +40,7 @@ export function invoiceDraftForLead(lead: InvoiceLead): InvoiceDraft {
 }
 
 export interface InvoiceInput {
-  service?: string; description?: string; extraWork?: string; extraCharge?: number;
+  service?: string; description?: string; extraWorkTitle?: string; extraWork?: string; extraCharge?: number;
   price?: number; gst?: number; status?: string; bankName?: string; accountName?: string;
   accountNumber?: string; bsb?: string; dueDate?: string;
 }
@@ -44,11 +50,12 @@ export function invoiceChanges(lead: InvoiceLead, input: InvoiceInput) {
   const desiredStatus = input.status ?? lead.invoiceStatus ?? "Unpaid";
   const defaults = invoiceDraftForLead(lead);
   const total = Number(input.price), extraCharge = Number(input.extraCharge ?? defaults.extraCharge), gstRate = Number(input.gst ?? defaults.gst);
-  if (input.price == null || !Number.isFinite(total) || total <= 0 || !Number.isFinite(extraCharge) || extraCharge < 0 || extraCharge > total || !Number.isFinite(gstRate) || gstRate < 0) {
-    throw new Error("Enter a valid invoice total greater than zero, a non-negative extra charge, and a valid GST rate.");
+  if (input.price == null || !Number.isFinite(total) || total <= 0 || !Number.isFinite(extraCharge) || (total - extraCharge) <= 0 || !Number.isFinite(gstRate) || gstRate < 0) {
+    throw new Error("Enter a valid invoice total greater than zero, a valid extra charge or discount, and a valid GST rate.");
   }
   const invoiceDraft: InvoiceDraft = {
     service: input.service ?? defaults.service, description: input.description ?? defaults.description,
+    extraWorkTitle: (input.extraWorkTitle ?? defaults.extraWorkTitle ?? "Additional Work").trim() || "Additional Work",
     extraWork: input.extraWork ?? defaults.extraWork, extraCharge,
     basePrice: Math.round((total - extraCharge) * 100) / 100, gst: gstRate,
     bankName: input.bankName ?? defaults.bankName, accountName: input.accountName ?? defaults.accountName,

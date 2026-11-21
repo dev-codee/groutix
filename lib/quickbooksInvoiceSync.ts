@@ -23,7 +23,7 @@ export async function syncInvoiceToQuickbooks(lead: SubmissionJSON, actor: strin
       customerName: lead.name || "Customer", customerEmail: lead.email, customerPhone: lead.phone,
       items: [
         { description: draft.description ? `${draft.service} — ${draft.description}` : draft.service, amount: draft.basePrice },
-        ...(draft.extraWork || draft.extraCharge > 0 ? [{ description: `Additional Work — ${draft.extraWork}`, amount: draft.extraCharge }] : []),
+        ...(draft.extraWork || draft.extraCharge !== 0 ? [{ description: draft.extraWork ? `${draft.extraWorkTitle || "Additional Work"} — ${draft.extraWork}` : (draft.extraWorkTitle || "Additional Work"), amount: draft.extraCharge }] : []),
       ],
     });
     const updates = { qboInvoiceId, qboSyncedAt: new Date().toISOString(), qboError: "", qboErrorAt: "" };

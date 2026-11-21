@@ -34,6 +34,7 @@ export async function POST(req: NextRequest) {
     id?: string;
     service?: string;
     description?: string;
+    extraWorkTitle?: string;
     extraWork?: string;
     extraCharge?: number;
     price?: number;
@@ -66,8 +67,9 @@ export async function POST(req: NextRequest) {
   const gstRate = draft.gst;
   const subtotal = total / (1 + gstRate / 100);
   const gst = total - subtotal;
-  const { service, description, extraWork, extraCharge, bankName, accountName, accountNumber, bsb, dueDate } = draft;
+  const { service, description, extraWorkTitle, extraWork, extraCharge, bankName, accountName, accountNumber, bsb, dueDate } = draft;
   const baseTotal = draft.basePrice;
+  const extraTitle = extraWorkTitle || "Additional Work";
 
   const statusBadge =
     status === "Paid"
@@ -95,12 +97,12 @@ export async function POST(req: NextRequest) {
             </td>
             <td style="padding:12px;border-bottom:1px solid #f1f5f9;color:#334155;text-align:right;vertical-align:top;">$${baseTotal.toFixed(2)}</td>
           </tr>
-          ${extraWork || extraCharge > 0 ? `<tr>
+          ${extraWork || extraCharge !== 0 ? `<tr>
             <td style="padding:12px;border-bottom:1px solid #f1f5f9;color:#334155;">
-              <div style="font-weight:600;">Additional Work</div>
-              <div style="color:#64748b;font-size:13px;margin-top:4px;white-space:pre-wrap;">${esc(extraWork)}</div>
+              <div style="font-weight:600;">${esc(extraTitle)}</div>
+              ${extraWork ? `<div style="color:#64748b;font-size:13px;margin-top:4px;white-space:pre-wrap;">${esc(extraWork)}</div>` : ""}
             </td>
-            <td style="padding:12px;border-bottom:1px solid #f1f5f9;color:#334155;text-align:right;vertical-align:top;">$${extraCharge.toFixed(2)}</td>
+            <td style="padding:12px;border-bottom:1px solid #f1f5f9;color:#334155;text-align:right;vertical-align:top;">${extraCharge < 0 ? `-$${Math.abs(extraCharge).toFixed(2)}` : `$${extraCharge.toFixed(2)}`}</td>
           </tr>` : ""}
         </tbody>
         <tfoot>
@@ -157,7 +159,7 @@ export async function POST(req: NextRequest) {
       jobDescription: lead.sourceQuoteId ? description || service : lead.issue || lead.message || service,
       items: [
         { service, description, price: baseTotal, qty: 1 },
-        ...(extraWork || extraCharge > 0 ? [{ service: "Additional Work", description: extraWork, price: extraCharge, qty: 1 }] : []),
+        ...(extraWork || extraCharge !== 0 ? [{ service: extraTitle, description: extraWork, price: extraCharge, qty: 1 }] : []),
       ],
       subtotal,
       gst,

@@ -94,7 +94,9 @@ const A4 = { w: 595.28, h: 841.89 };
 const MARGIN = 48;
 
 function money(n: number): string {
-  return `$${(Number.isFinite(n) ? n : 0).toFixed(2)}`;
+  const val = Number.isFinite(n) ? n : 0;
+  if (val < 0) return `-$${Math.abs(val).toFixed(2)}`;
+  return `$${val.toFixed(2)}`;
 }
 
 /** Sanitize unicode characters and formatting markup that fail StandardFonts (WinAnsiEncoding). */
