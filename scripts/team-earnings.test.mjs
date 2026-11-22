@@ -55,8 +55,9 @@ function fixture() {
     "@/lib/mongodb": { getDb: async () => ({ collection }), getMongoClient: async () => client },
     "@/lib/technicians": { listTechnicians: async () => [{ ...member, createdAt: "2026-01-01" }, { ...second, createdAt: "2026-01-01" }] },
   });
-  const mutate = (action, version, fields = {}) => api.mutateTeamEarnings(leadId, { action, version, requestId: randomUUID(), ...fields }, "manager");
-  return { api, mutate, get state() { return state; }, failEvents() { failEvents = true; } };
+  const mutateFor = (id, action, version, fields = {}) => api.mutateTeamEarnings(id, { action, version, requestId: randomUUID(), ...fields }, "manager");
+  const mutate = (action, version, fields = {}) => mutateFor(leadId, action, version, fields);
+  return { api, mutate, mutateFor, get state() { return state; }, failEvents() { failEvents = true; } };
 }
 async function draft(f, rate = 3000) { return f.mutate("save", 0, { basis: "ex_gst", notes: "Agreed job share", shares: [{ memberId, rateBps: rate }] }); }
 async function approved(f) { const d = await draft(f); return f.mutate("approve", d.version, { invoice: rules.invoiceForEarnings(baseLead, "ex_gst") }); }
@@ -67,6 +68,23 @@ test("invoice basis uses saved total, GST and no quote fallback", () => {
   assert.equal(rules.invoiceForEarnings(baseLead, "inclusive").baseCents, 110000);
   assert.equal(rules.invoiceForEarnings({ ...baseLead, invoiceDraft: { gst: 0 } }, "ex_gst").baseCents, 110000);
   for (const invoiceAmount of [undefined, NaN, Infinity, 0, -1, "100"]) assert.equal(rules.invoiceForEarnings({ ...baseLead, invoiceAmount, quoteAmount: 100 }, "ex_gst"), null);
+});
+test("worker defaults prefill a stable share and manager settings validate against CRM members", async () => {
+  const defaults = {
+    basis: "ex_gst", gstRateBps: 1000,
+    employeeSettings: [{ memberId, mode: "percent", rateBps: 3000, dailyCapCents: 50000 }],
+    automaticExpenses: [],
+  };
+  const job = rules.earningsJob(baseLead, [member], null, defaults);
+  assert.equal(job.defaultShares[0].memberId, memberId);
+  assert.equal(job.defaultShares[0].rateBps, 3000);
+  const f = fixture();
+  const saved = await f.api.saveTeamEarningsSettings(defaults, "manager");
+  assert.equal(saved.employeeSettings[0].dailyCapCents, 50000);
+  assert.equal(f.state.settings[0].updatedBy, "manager");
+  await assert.rejects(f.api.saveTeamEarningsSettings({
+    ...defaults, employeeSettings: [{ ...defaults.employeeSettings[0], memberId: "not-in-roster" }],
+  }, "manager"), /current CRM team member/);
 });
 test("each invoice has an independent sent and payment state within one job", () => {
   const invoice = rules.earningsJob({
@@ -118,6 +136,37 @@ test("approval preserves invoice and earned amounts and requires the reviewed in
   const list = await f.api.listTeamEarnings();
   assert.equal(list.jobs[0].changed, true); assert.equal(list.jobs[0].ledger.shares[0].earnedCents, 30000);
   await assert.rejects(f.mutate("pay", a.version, pay()), /changed after approval/);
+});
+test("daily caps span approved jobs on the same completion day without changing earlier approvals", async () => {
+  const f = fixture();
+  f.state.settings[0].employeeSettings = [{ memberId, mode: "percent", rateBps: 3000, dailyCapCents: 40000 }];
+  const first = await approved(f);
+  assert.equal(first.shares[0].earnedCents, 30000);
+  const secondId = "abcdef0123456789abcdef02";
+  f.state.submissions.push({ ...baseLead, _id: new ObjectId(secondId), jobNo: "GX-2002", invoiceNumber: "INV-2002" });
+  const secondDraft = await f.mutateFor(secondId, "save", 0, { basis: "ex_gst", notes: "", shares: [{ memberId, rateBps: 3000 }] });
+  const second = await f.mutateFor(secondId, "approve", secondDraft.version, { invoice: rules.invoiceForEarnings({ ...baseLead, jobNo: "GX-2002", invoiceNumber: "INV-2002" }, "ex_gst") });
+  assert.equal(second.shares[0].earnedCents, 10000);
+  assert.equal(f.state.team_earnings.find(row => row._id === leadId).shares[0].earnedCents, 30000);
+});
+
+test("automatic expenses are snapshotted once per eligible job and manual expense changes are audited", async () => {
+  const f = fixture();
+  f.state.settings[0].automaticExpenses = [{ id: randomUUID(), name: "Fuel", amountCents: 2500, active: true, activeFrom: "2026-01-01" }];
+  const first = await f.api.listTeamEarnings();
+  assert.equal(first.jobs[0].expenses.filter(expense => !expense.voidedAt).length, 1);
+  assert.equal(first.jobs[0].expenses[0].amountCents, 2500);
+  const again = await f.api.listTeamEarnings();
+  assert.equal(again.jobs[0].expenses.length, 1);
+  const added = await f.api.mutateTeamEarningsExpense(leadId, {
+    action: "add", requestId: randomUUID(), version: 1, name: "Materials", amountCents: 5000, date: "2026-01-01",
+  }, "manager");
+  assert.equal(added.version, 2);
+  const removed = await f.api.mutateTeamEarningsExpense(leadId, {
+    action: "remove", requestId: randomUUID(), version: 2, expenseId: added.items.find(expense => expense.source === "manual").id,
+  }, "manager");
+  assert.equal(removed.items.find(expense => expense.source === "manual").voidedBy, "manager");
+  assert.equal(f.state.team_earnings_expense_events.length, 2);
 });
 test("partial payments reduce due, prevent overpayment, and log actor and reference", async () => {
   const f = fixture(); let a = await approved(f);

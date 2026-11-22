@@ -199,10 +199,14 @@ test("cross-day booking drops wait for confirmation and same-day reordering wait
   list.props.onDragStart(ui.event(), { kind: "booking", id: firstId });
   ui.find(root, (el) => el.props?.["data-schedule-date"] === "2099-10-09").props.onDrop(ui.event());
   dialog = ui.find(ui.render(), (el) => el.type?.name === "RescheduleDialog");
+  dialog.props.onNotificationChange("notifyEmail", false);
+  dialog = ui.find(ui.render(), (el) => el.type?.name === "RescheduleDialog");
   await dialog.props.onSave("2099-10-09", "11:00");
   const writes = ui.requests.filter((req) => req.method === "PATCH");
   assert.equal(writes.length, 1);
-  assert.equal(JSON.parse(writes[0].body).inspectionAt, "2099-10-09T11:00:00");
+  const body = JSON.parse(writes[0].body);
+  assert.equal(body.inspectionAt, "2099-10-09T11:00:00");
+  assert.deepEqual(body.bookingNotifications, { email: false, sms: true });
 });
 
 

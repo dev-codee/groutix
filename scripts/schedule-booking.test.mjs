@@ -240,6 +240,22 @@ test("rescheduling sends reschedule messages once and unchanged bookings send no
   assert.equal(same.calls.some(c => c[0] === "email" || c[0] === "sms"), false);
 });
 
+test("reschedule notifications can be independently disabled without blocking the move", async () => {
+  const noMessages = patchApi({ messaging: true, before: { jobAt: "2026-10-14T09:00", email: "customer@example.com", phone: "0400000000" } });
+  const result = await noMessages.patch({ jobAt: "2026-10-15T10:00", bookingNotifications: { email: false, sms: false } });
+  assert.equal(result.status, 200);
+  assert.ok(noMessages.calls.some(call => call[0] === "reserve"));
+  assert.ok(noMessages.calls.some(call => call[0] === "update"));
+  assert.equal(noMessages.calls.some(call => call[0] === "email" || call[0] === "sms"), false);
+  assert.equal(result.body.notificationWarnings.length, 0);
+
+  const emailOnly = patchApi({ messaging: true, before: { inspectionAt: "2026-10-14T09:00", email: "customer@example.com", phone: "0400000000" } });
+  const emailResult = await emailOnly.patch({ inspectionAt: "2026-10-15T10:00", bookingNotifications: { email: true, sms: false } });
+  assert.equal(emailResult.status, 200);
+  assert.equal(emailOnly.calls.filter(call => call[0] === "email").length, 1);
+  assert.equal(emailOnly.calls.filter(call => call[0] === "sms").length, 0);
+});
+
 
 test("end-only edits reserve additional capacity and notify the customer after saving", async () => {
   const { patch, calls } = patchApi({ messaging: true, before: { jobAt: "2026-10-14T09:00", jobEndAt: "2026-10-14T10:00", email: "customer@example.com", phone: "0400000000" } });

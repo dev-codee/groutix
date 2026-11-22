@@ -67,7 +67,9 @@ export function validateTeamEarningsSettings(value: unknown, members: EarningsMe
     const amountCents = earningsInteger(rule.amountCents, "expense amount", 1);
     if (typeof rule.active !== "boolean") throw new EarningsError("Choose whether each expense rule is active.");
     const activeFrom = earningsText(rule.activeFrom, "Expense start date", 10, true);
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(activeFrom) || !Number.isFinite(Date.parse(`${activeFrom}T00:00:00Z`))) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(activeFrom)
+      || !Number.isFinite(Date.parse(`${activeFrom}T00:00:00Z`))
+      || new Date(`${activeFrom}T00:00:00Z`).toISOString().slice(0, 10) !== activeFrom) {
       throw new EarningsError("Enter a valid automatic expense start date.");
     }
     return { id, name, amountCents, active: rule.active, activeFrom };

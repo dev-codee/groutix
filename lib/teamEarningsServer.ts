@@ -3,14 +3,14 @@ import { ObjectId, type ClientSession } from "mongodb";
 import { getDb, getMongoClient } from "@/lib/mongodb";
 import { listTechnicians } from "@/lib/technicians";
 import type { Lead } from "@/components/admin/types";
-import { EarningsError, validateEarningsTotal, calculateEarnings, applyDailyEarningsCaps, earningsBody, earningsId, earningsInteger, earningsJob, earningsText, invoiceForEarnings, parseEarningsShares, sameEarningsInvoice, type EarningsData, type EarningsExpense, type EarningsLedger, type EarningsMember, type EarningsPayment, type EarningsEvent, type EarningsSourceLead } from "./teamEarnings";
+import { EarningsError, validateEarningsTotal, calculateEarnings, applyDailyEarningsCaps, earningsBody, earningsCompletionDate, earningsId, earningsInteger, earningsJob, earningsText, invoiceForEarnings, parseEarningsShares, sameEarningsInvoice, type EarningsData, type EarningsExpense, type EarningsLedger, type EarningsMember, type EarningsPayment, type EarningsEvent, type EarningsSourceLead } from "./teamEarnings";
 import { defaultTeamEarningsSettings, validateTeamEarningsSettings, type TeamEarningsSettings } from "./teamEarningsSettings";
 
 type LedgerDoc = Omit<EarningsLedger, "id"> & { _id: string };
 type PaymentDoc = Omit<EarningsPayment, "id"> & { _id: string; leadId: string };
 type EventDoc = Omit<EarningsEvent, "id"> & { _id: string; leadId: string; requestHash: string; snapshot: LedgerDoc };
 type ExpenseDoc = { _id: string; version: number; items: EarningsExpense[] };
-const leadProjection = { name: 1, jobNo: 1, service: 1, status: 1, type: 1, createdAt: 1, assigned: 1, technician: 1, technicianId: 1, technicianUsername: 1, inspectorId: 1, inspectorUsername: 1, jobAt: 1, inspectionAt: 1, jobTotalDays: 1, jobDaysDone: 1, invoiceAmount: 1, invoiceNumber: 1, "invoiceDraft.gst": 1, invoiceStatus: 1, paymentType: 1, amountPaid: 1, "paymentReceipt.total": 1, primaryJobBookingId: 1, primaryInspectionBookingId: 1, jobEndAt: 1, inspectionEndAt: 1, jobWorkSegments: 1, inspectionWorkSegments: 1 };
+const leadProjection = { name: 1, jobNo: 1, service: 1, status: 1, type: 1, createdAt: 1, assigned: 1, technician: 1, technicianId: 1, technicianUsername: 1, inspectorId: 1, inspectorUsername: 1, jobAt: 1, inspectionAt: 1, jobTotalDays: 1, jobDaysDone: 1, invoiceAmount: 1, invoiceNumber: 1, "invoiceDraft.gst": 1, invoiceStatus: 1, invoiceSentAt: 1, paymentType: 1, amountPaid: 1, "paymentReceipt.total": 1, primaryJobBookingId: 1, primaryInspectionBookingId: 1, jobEndAt: 1, inspectionEndAt: 1, jobWorkSegments: 1, inspectionWorkSegments: 1 };
 let indexes: Promise<unknown> | undefined;
 async function collections() {
   const db = await getDb();
@@ -47,6 +47,8 @@ export async function getTeamEarningsSettings(): Promise<TeamEarningsSettings> {
     gstRateBps: Number.isSafeInteger(saved.gstRateBps) ? saved.gstRateBps : defaultTeamEarningsSettings.gstRateBps,
     employeeSettings: Array.isArray(saved.employeeSettings) ? saved.employeeSettings : [],
     automaticExpenses: Array.isArray(saved.automaticExpenses) ? saved.automaticExpenses : [],
+    ...(typeof saved.updatedAt === "string" ? { updatedAt: saved.updatedAt } : {}),
+    ...(typeof saved.updatedBy === "string" ? { updatedBy: saved.updatedBy } : {}),
   };
 }
 export async function saveTeamEarningsSettings(value: unknown, actor: string): Promise<TeamEarningsSettings> {
@@ -117,6 +119,7 @@ export async function listTeamEarnings(): Promise<EarningsData> {
     if (["Cancelled", "Lost", "Source unavailable"].includes(job.status)) continue;
     const rules = settings.automaticExpenses.filter(rule => rule.active && job.completionDate >= rule.activeFrom);
     const current = expensesByLead.get(job.id) || [];
+    let expenseVersion = expenseDocs.find(expense => expense._id === job.id)?.version || 0;
     for (const rule of rules) {
       if (current.some(expense => expense.autoRuleId === rule.id)) continue;
       await expenses.updateOne({ _id: job.id }, { $setOnInsert: { _id: job.id, version: 0, items: [] } }, { upsert: true });
@@ -125,10 +128,11 @@ export async function listTeamEarnings(): Promise<EarningsData> {
         date: job.completionDate, source: "automatic", createdAt: `${rule.activeFrom}T00:00:00.000Z`,
         createdBy: settings.updatedBy || "system",
       };
-      await expenses.updateOne({ _id: job.id, "items.autoRuleId": { $ne: rule.id } }, { $push: { items: item }, $inc: { version: 1 } });
-      current.push(item);
+      const result = await expenses.updateOne({ _id: job.id, "items.autoRuleId": { $ne: rule.id } }, { $push: { items: item }, $inc: { version: 1 } });
+      if (result.matchedCount) { current.push(item); expenseVersion++; }
     }
     job.expenses = current;
+    job.expenseVersion = expenseVersion;
   }
   return {
     members: roster, jobs, settings,
@@ -267,10 +271,17 @@ export async function mutateTeamEarnings(id: string, value: unknown, actor: stri
         validateEarningsTotal(record.shares, invoice.baseCents);
         const completionDate = job.completionDate;
         if (completionDate) await dailyCaps.updateOne({ _id: completionDate }, { $inc: { version: 1 } }, { upsert: true, session });
-        const earlierApproved = completionDate ? await ledgers.find({ status: "approved", completionDate, _id: { $ne: id } }, { session }).toArray() : [];
         const usedByMember = new Map<string, number>();
-        for (const prior of earlierApproved) for (const share of prior.shares) {
-          usedByMember.set(share.memberId, (usedByMember.get(share.memberId) || 0) + share.earnedCents);
+        const earlierApproved = completionDate ? await ledgers.find({ status: "approved" }, { session }).toArray() : [];
+        for (const prior of earlierApproved) {
+          if (prior._id === id) continue;
+          let priorDate = prior.completionDate;
+          if (!priorDate) {
+            const priorLead = await sourceLead(prior._id, session);
+            priorDate = priorLead ? earningsCompletionDate(priorLead) : "";
+          }
+          if (priorDate !== completionDate) continue;
+          for (const share of prior.shares) usedByMember.set(share.memberId, (usedByMember.get(share.memberId) || 0) + share.earnedCents);
         }
         const capUsage = settings.employeeSettings.flatMap(setting => setting.dailyCapCents === null
           ? [] : [{ memberId: setting.memberId, capCents: setting.dailyCapCents, usedCents: usedByMember.get(setting.memberId) || 0 }]);
