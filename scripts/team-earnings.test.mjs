@@ -9,11 +9,15 @@ const member = { id: memberId, name: "Alex", role: "technician", active: true, a
 const second = { ...member, id: secondId, name: "Sam" };
 const baseLead = { id: leadId, name: "Customer", jobNo: "Job-100", status: "Completed", createdAt: "2026-01-01", technicianId: memberId, technician: "Alex", invoiceNumber: "INV-100", invoiceAmount: 1100, invoiceDraft: { gst: 10 }, jobAt: "2026-01-01T08:00", jobTotalDays: 2, jobDaysDone: 2 };
 function fixture() {
-  let state = { submissions: [{ ...baseLead, _id: new ObjectId(leadId) }], bookings: [], customer_invoices: [], admin_users: [], team_earnings: [], team_earnings_payments: [], team_earnings_events: [] };
+  let state = { submissions: [{ ...baseLead, _id: new ObjectId(leadId) }], bookings: [], customer_invoices: [], admin_users: [], team_earnings: [], team_earnings_payments: [], team_earnings_events: [], team_earnings_daily_caps: [], team_earnings_job_expenses: [], team_earnings_expense_events: [], settings: [{ _id: "team-earnings", basis: "ex_gst", gstRateBps: 1000, employeeSettings: [], automaticExpenses: [] }] };
   let failEvents = false, queue = Promise.resolve();
   const copy = value => structuredClone(value);
-  const get = (obj, key) => key.split(".").reduce((a, k) => a?.[k], obj);
-  const matches = (doc, query) => Object.entries(query).every(([key, value]) => value instanceof ObjectId ? String(doc[key]) === String(value) : doc[key] === value);
+  const get = (obj, key) => key.split(".").reduce((a, k) => Array.isArray(a) ? a.flatMap(item => item?.[k] ?? []) : a?.[k], obj);
+  const matches = (doc, query) => Object.entries(query).every(([key, value]) => {
+    const actual = get(doc, key);
+    if (value && typeof value === "object" && "$ne" in value) return Array.isArray(actual) ? !actual.includes(value.$ne) : actual !== value.$ne;
+    return value instanceof ObjectId ? String(actual) === String(value) : actual === value;
+  });
   const collection = name => ({
     createIndex: async () => "index",
     findOne: async query => state[name].find(d => matches(d, query)) || null,
@@ -28,7 +32,18 @@ function fixture() {
       state[name].push(copy(doc)); return {};
     },
     async replaceOne(query, doc) { const index = state[name].findIndex(d => matches(d, query)); if (index < 0) return { matchedCount: 0 }; state[name][index] = copy(doc); return { matchedCount: 1 }; },
-    async updateOne(query, update) { const doc = state[name].find(d => matches(d, query)); if (!doc) return { matchedCount: 0 }; Object.assign(doc, copy(update.$set)); return { matchedCount: 1 }; },
+    async updateOne(query, update, options = {}) {
+      let doc = state[name].find(d => matches(d, query));
+      if (!doc && options.upsert) {
+        doc = Object.fromEntries(Object.entries(query).filter(([, value]) => value === null || typeof value !== "object").map(([key, value]) => [key, value]));
+        Object.assign(doc, copy(update.$setOnInsert || {})); state[name].push(doc);
+      }
+      if (!doc) return { matchedCount: 0 };
+      Object.assign(doc, copy(update.$set || {}));
+      for (const [key, value] of Object.entries(update.$inc || {})) doc[key] = (doc[key] || 0) + value;
+      for (const [key, value] of Object.entries(update.$push || {})) doc[key].push(copy(value));
+      return { matchedCount: 1 };
+    },
   });
   const client = { startSession: () => ({ async withTransaction(work) {
     const previous = queue; let release; queue = new Promise(resolve => { release = resolve; }); await previous;
@@ -223,12 +238,12 @@ test("invalid fixed amounts and mixed totals above the invoice basis are rejecte
   await assert.rejects(f.mutate("approve", d.version, { invoice: rules.invoiceForEarnings({ ...baseLead, invoiceAmount: 550 }, "ex_gst") }), /cannot exceed/);
 });
 
-test("mixed allocation preserves exact fixed cents and whole-dollar displays drop decimals", () => {
+test("mixed allocation preserves exact fixed cents and currency displays cents", () => {
   const shares = rules.parseEarningsShares([{ memberId, fixedAmountCents: 101 }, { memberId: secondId, rateBps: 3333 }], [member, second]);
   const result = rules.calculateEarnings(shares, 1001);
   assert.deepEqual(result.map(s => s.earnedCents), [101, 334]);
-  for (const cents of [30000, 30040, 30090, 30099]) assert.equal(rules.formatEarningsMoney(cents), "$300");
-  assert.equal(rules.formatEarningsMoney(99), "$0");
+  for (const cents of [30000, 30040, 30090, 30099]) assert.equal(rules.formatEarningsMoney(cents), "$300.00");
+  assert.equal(rules.formatEarningsMoney(99), "$0.99");
 });
 
 test("register receipts reconcile legacy, partial and multiple invoice payments without changing approval snapshots", async () => {
