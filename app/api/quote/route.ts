@@ -15,6 +15,7 @@ import { getZoneRules } from "@/lib/zoneRulesServer";
 import { formatHHmm, hoursEnvelope, fromMinutes } from "@/lib/bookingRules";
 import { updateSubmission, appendActivity, getNextJobNo, assignInspectorOnBooking } from "@/lib/submissions";
 import { isCloudinaryConfigured, uploadBufferToCloudinary } from "@/lib/cloudinary";
+import { sendChecklistEmail } from "@/lib/checklistDelivery";
 
 export const runtime = "nodejs";
 // Give the retry sequence room to finish before the platform kills the
@@ -573,6 +574,16 @@ export async function POST(req: NextRequest) {
       });
     } catch (err) {
       logSendError("customer confirmation", err);
+    }
+
+    // Email the detailed regrouting/resealing checklist so the customer can
+    // confirm the exact scope, which then auto-picks the quote line items.
+    if (submissionId && email) {
+      try {
+        await sendChecklistEmail(submissionId, { toEmail: email, name: fullName });
+      } catch (err) {
+        console.error("checklist email failed (non-fatal):", err);
+      }
     }
 
     // Acknowledge by multipart SMS, preserving the entire signed booking URL.

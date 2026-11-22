@@ -138,6 +138,7 @@ import {
   findBestTemplateForService,
   getMatchedQuoteItemsForLead
 } from "@/lib/serviceMatching";
+import { checklistRequestText } from "@/lib/checklistOptions";
 import { TemplatePicker } from "@/components/admin/TemplatePicker";
 import { isQuoteScopeHeading } from "@/lib/quoteScope";
 import type { QboStatus } from "@/lib/quickbooks";
@@ -5256,6 +5257,38 @@ export default function CrmDashboardPage() {
                               <b>{activeQuoteLead.damagedTiles}</b>
                             </div>
                           )}
+                        </div>
+                      )}
+
+                      {/* Regrouting & Resealing Checklist lifecycle + answers */}
+                      {(activeQuoteLead.checklistSentAt || activeQuoteLead.checklistOpenedAt || activeQuoteLead.checklistFilledAt || activeQuoteLead.checklistSubmittedAt || activeQuoteLead.checklist) && (
+                        <div className="p-2.5 rounded-lg bg-white border border-indigo-200 space-y-1.5">
+                          <div className="text-[10px] font-bold text-indigo-700 uppercase tracking-wider">
+                            Regrouting &amp; Resealing Checklist
+                          </div>
+                          <div className="space-y-1 text-[10px] text-slate-600">
+                            {([
+                              ["Emailed", activeQuoteLead.checklistSentAt],
+                              ["Opened", activeQuoteLead.checklistOpenedAt],
+                              ["Started filling", activeQuoteLead.checklistFilledAt],
+                              ["Submitted", activeQuoteLead.checklistSubmittedAt],
+                            ] as const).map(([stage, time]) => (
+                              <div key={stage} className="flex items-center gap-1.5">
+                                <span className={`w-1.5 h-1.5 rounded-full ${time ? "bg-emerald-500" : "bg-slate-300"}`} />
+                                <span className="font-semibold text-slate-700">{stage}:</span>
+                                <span>
+                                  {time
+                                    ? new Date(time).toLocaleString("en-AU", { timeZone: "Australia/Sydney", day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })
+                                    : "Pending"}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                          {activeQuoteLead.checklist?.answers?.pages?.length ? (
+                            <pre className="max-h-40 overflow-auto rounded bg-slate-50 p-2 text-[10px] leading-relaxed whitespace-pre-wrap text-slate-700 font-sans">
+                              {checklistRequestText(activeQuoteLead.checklist.answers)}
+                            </pre>
+                          ) : null}
                         </div>
                       )}
 

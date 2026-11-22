@@ -257,6 +257,12 @@ export interface SubmissionDoc {
   ip?: string;
   userAgent?: string;
   emailDelivered?: boolean;
+  // Regrouting & resealing checklist (emailed after the website quote form).
+  checklist?: import("@/lib/checklist").ChecklistDoc;
+  checklistSentAt?: string; // checklist email delivered
+  checklistOpenedAt?: string; // checklist email opened (tracking pixel)
+  checklistFilledAt?: string; // customer started filling the checklist
+  checklistSubmittedAt?: string; // customer submitted the checklist
 }
 
 // Serialised shape sent to the browser (ObjectId -> string, Date -> ISO).
@@ -719,7 +725,7 @@ const dashboardFields = [
   "qboSyncedAt", "qboError", "qboErrorAt", "inspectionWorkSegments", "jobWorkSegments", "inspectionEndAt",
   "jobEndAt", "primaryInspectionBookingId", "primaryJobBookingId", "inspectionAt", "jobAt", "inspectionReminderSent",
   "inspectionRescheduled", "jobReminderSent", "inspectionReport", "jobTotalDays", "jobDaysDone", "paymentType",
-  "amountPaid",
+  "amountPaid", "checklistSentAt", "checklistOpenedAt", "checklistFilledAt", "checklistSubmittedAt",
 ] as const;
 const dashboardProjection = {
   _id: 1,

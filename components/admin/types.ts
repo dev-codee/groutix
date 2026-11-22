@@ -187,6 +187,12 @@ export interface Lead {
   jobDaysDone?: number;
   paymentType?: "full" | "half" | "partial"; // full or partial payment received
   amountPaid?: number;                        // actual amount received (for partial)
+  // Regrouting & resealing checklist lifecycle.
+  checklist?: import("@/lib/checklist").ChecklistDoc;
+  checklistSentAt?: string;
+  checklistOpenedAt?: string;
+  checklistFilledAt?: string;
+  checklistSubmittedAt?: string;
 }
 
 export interface CrmTask {
