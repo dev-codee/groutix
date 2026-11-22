@@ -40,6 +40,8 @@ export function DispatchBookingModal({ date: initialDate, time: initialTime, sta
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [warnings, setWarnings] = useState<string[]>([]);
+  const [notifyEmail, setNotifyEmail] = useState(true);
+  const [notifySms, setNotifySms] = useState(true);
   const savedLead = useRef<Lead | null>(null);
   const saving = useRef(false);
   const dialog = useRef<HTMLDivElement>(null);
@@ -75,7 +77,8 @@ export function DispatchBookingModal({ date: initialDate, time: initialTime, sta
     try {
       if (mode === "existing" && !customerId) throw new Error("Select an existing customer, or choose New customer.");
       if (!customer.name.trim() || !customer.address.trim() || !service.trim() || !assignee) throw new Error("Enter the customer, property address, service and assigned specialist.");
-      if (!customer.email.trim() && !customer.phone.trim()) throw new Error("Add an email address or phone number for the confirmation.");
+      if (notifyEmail && !customer.email.trim()) throw new Error("Add an email address for the email confirmation, or turn off email notifications below.");
+      if (notifySms && !customer.phone.trim()) throw new Error("Add a phone number for the SMS confirmation, or turn off SMS notifications below.");
       await checkAvailability();
       if (!review) { setReview(true); return; }
       // Reuse the selected lead; only a genuinely new customer needs a new record.
@@ -97,13 +100,17 @@ export function DispatchBookingModal({ date: initialDate, time: initialTime, sta
         ...(type === "job" ? { jobAt: `${date}T${time}`, jobEndAt: endAt, jobWorkSegments: segments, technicianId: assignee, technician: specialist.name }
           : { inspectionAt: `${date}T${time}`, inspectionEndAt: endAt, inspectionWorkSegments: segments, assigned: specialist.name, inspectorId: assignee }) };
       const response = await fetch(`/api/admin/submissions/${leadId}`, { method: "PATCH", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...updates, appendBooking: true, bookingNotifications: true }) });
+        body: JSON.stringify({ ...updates, appendBooking: true, bookingNotifications: { email: notifyEmail, sms: notifySms } }) });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Could not reserve this time.");
       // The response contains the canonical lead and all its bookings. Do not
       // replace the primary visit locally with this additional visit.
       if (data.item) upsertLead(data.item);
-      onBooked(date, `${type === "job" ? "Job" : "Inspection"} booked for ${customer.name}. ${data.notificationWarnings?.length ? data.notificationWarnings.join(" ") : "Email and SMS confirmations sent."}`);
+      const channels = [notifyEmail ? "Email" : null, notifySms ? "SMS" : null].filter(Boolean);
+      const confirmation = channels.length
+        ? data.notificationWarnings?.length ? data.notificationWarnings.join(" ") : `${channels.join(" and ")} confirmation${channels.length > 1 ? "s" : ""} sent.`
+        : "No customer notification sent (by your choice).";
+      onBooked(date, `${type === "job" ? "Job" : "Inspection"} booked for ${customer.name}. ${confirmation}`);
     } catch (err) {
       setError(`${err instanceof Error ? err.message : "Could not save. Please try again."}${savedLead.current ? " The customer record is saved; retry here to complete the booking." : ""}`);
     } finally { saving.current = false; setBusy(false); }
@@ -122,7 +129,7 @@ export function DispatchBookingModal({ date: initialDate, time: initialTime, sta
         }
       }}>
       <div className="flex items-center justify-between border-b p-5">
-        <div><h2 id="dispatch-create-title" className="font-bold text-lg">{review ? "Confirm booking" : "New booking"}</h2><p className="text-xs text-slate-500">{review ? "Review the details before booking and notifying the customer." : "Choose a time, customer and specialist. All times are Melbourne time."}</p></div>
+        <div><h2 id="dispatch-create-title" className="font-bold text-lg">{review ? "Confirm booking" : "New booking"}</h2><p className="text-xs text-slate-500">{review ? (notifyEmail || notifySms ? "Review the details before booking and notifying the customer." : "Review the details before booking. No customer notification will be sent.") : "Choose a time, customer and specialist. All times are Melbourne time."}</p></div>
         <button type="button" aria-label="Close booking" disabled={busy} onClick={onClose}><X className="h-5 w-5" /></button>
       </div>
       <form onSubmit={event => { event.preventDefault(); void submit(); }}>
@@ -132,8 +139,8 @@ export function DispatchBookingModal({ date: initialDate, time: initialTime, sta
             <BookingTimingSummary type={type} start={`${date}T${time}`} end={endAt} rules={rules} />
             <p><strong>{customer.name}</strong><br />{customer.address}</p>
             <p>{service}<br />Assigned to <strong>{choices.find(c => c.key === assignee)?.name}</strong></p>
-            <div className="rounded-xl border p-3 space-y-1"><p className="font-semibold">Customer confirmations</p><p>Email: {customer.email || "Not available — email will not be sent"}</p><p>SMS: {customer.phone || "Not available — SMS will not be sent"}</p></div>
-            <p className="text-xs text-slate-500">Confirming creates a new booking record, reserves this time and sends confirmations through the configured email and SMS services. Existing bookings remain unchanged.</p>
+            <div className="rounded-xl border p-3 space-y-1"><p className="font-semibold">Customer notifications</p><p>Email: {notifyEmail ? customer.email || "Not available — email will not be sent" : "Off (not sent)"}</p><p>SMS: {notifySms ? customer.phone || "Not available — SMS will not be sent" : "Off (not sent)"}</p>{!notifyEmail && !notifySms && <p className="text-xs text-amber-700">No notifications will be sent to the customer.</p>}</div>
+            <p className="text-xs text-slate-500">Confirming creates a new booking record and reserves this time{notifyEmail || notifySms ? " and sends confirmations through the configured email/SMS services" : " without sending any customer notifications"}. Existing bookings remain unchanged.</p>
           </div> : <>
             <div className="grid grid-cols-2 gap-3">{(["inspection", "job"] as const).map(value => <button key={value} type="button" aria-pressed={type === value} onClick={() => { setType(value); setAssignee(""); setFinish(""); }} className={`rounded-xl border p-3 font-semibold capitalize ${type === value ? "border-blue-600 bg-blue-50 text-blue-700" : "border-slate-200"}`}>{value}</button>)}</div>
             <BookingTimingEditor type={type} start={`${date}T${time}`} end={finish} rules={rules} minDate={todayAU()} disabled={busy}
@@ -143,10 +150,18 @@ export function DispatchBookingModal({ date: initialDate, time: initialTime, sta
             <div className="grid grid-cols-2 gap-3">{(["name", "email", "phone", "address"] as const).map(field => <label key={field} className={`text-sm capitalize ${field === "address" ? "col-span-2" : ""}`}>{field === "address" ? "Property address" : field}<input readOnly={mode === "existing"} required={field === "name" || field === "address"} type={field === "email" ? "email" : field === "phone" ? "tel" : "text"} className={input} value={customer[field]} onChange={e => setCustomer({ ...customer, [field]: e.target.value })} /></label>)}</div>
             <label className="block text-sm">Service<input readOnly={mode === "existing"} required className={input} value={service} onChange={e => setService(e.target.value)} placeholder="e.g. Shower regrouting" /></label>
             <label className="block text-sm">{type === "job" ? "Technician" : "Inspector"}<select required className={input} value={assignee} onChange={e => setAssignee(e.target.value)}><option value="">Select a specialist</option>{choices.map(c => <option key={c.key} value={c.key}>{c.name}</option>)}</select></label>
+            <fieldset className="rounded-xl border border-slate-200 p-3">
+              <legend className="px-1 text-sm font-semibold text-slate-700">Customer notifications</legend>
+              <p className="mb-2 text-xs text-slate-500">Uncheck both to schedule without notifying the customer.</p>
+              <div className="flex flex-wrap gap-4">
+                <label className="flex items-center gap-2 text-sm"><input type="checkbox" className="h-4 w-4 rounded border-slate-300" checked={notifyEmail} onChange={e => setNotifyEmail(e.target.checked)} /> Send email confirmation</label>
+                <label className="flex items-center gap-2 text-sm"><input type="checkbox" className="h-4 w-4 rounded border-slate-300" checked={notifySms} onChange={e => setNotifySms(e.target.checked)} /> Send SMS confirmation</label>
+              </div>
+            </fieldset>
           </>}
           {warnings.length > 0 && <p role="alert" className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800">{warnings.join(" ")} Staff override: you can confirm this booking anyway.</p>}
           {error && <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p>}
-          <div className="flex justify-between border-t pt-4"><button type="button" onClick={() => review ? setReview(false) : onClose()} className="flex items-center gap-1 text-sm"><ArrowLeft className="h-4 w-4" />{review ? "Edit details" : "Cancel"}</button><button type="submit" className="flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <CalendarCheck className="h-4 w-4" />}{busy ? "Checking / saving…" : review ? "Confirm & notify customer" : "Review booking"}</button></div>
+          <div className="flex justify-between border-t pt-4"><button type="button" onClick={() => review ? setReview(false) : onClose()} className="flex items-center gap-1 text-sm"><ArrowLeft className="h-4 w-4" />{review ? "Edit details" : "Cancel"}</button><button type="submit" className="flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <CalendarCheck className="h-4 w-4" />}{busy ? "Checking / saving…" : review ? (notifyEmail || notifySms ? "Confirm & notify customer" : "Confirm booking (no notification)") : "Review booking"}</button></div>
         </fieldset>
       </form>
     </div>

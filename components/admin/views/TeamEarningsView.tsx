@@ -36,7 +36,7 @@ function WorkBreakdown({ job }: { job: EarningsJob }) {
   </div>)}</div>;
 }
 interface HistoryData { events: EarningsEvent[]; payments: EarningsPayment[]; hasMore: boolean }
-function EarningsDetail({ job, members, settings, onClose, onChanged, initialMember }: { job: EarningsJob; members: EarningsMember[]; settings?: TeamEarningsSettings; onClose: () => void; onChanged: (ledger: EarningsLedger) => void; initialMember?: string }) {
+function EarningsDetail({ job, members, settings, onClose, onChanged, onExpenseChanged, initialMember }: { job: EarningsJob; members: EarningsMember[]; settings?: TeamEarningsSettings; onClose: () => void; onChanged: (ledger: EarningsLedger) => void; onExpenseChanged: () => void; initialMember?: string }) {
   const [basis, setBasis] = useState<EarningsBasis>(job.ledger?.basis || settings?.basis || "ex_gst");
   const [rows, setRows] = useState<ShareRow[]>(() => job.ledger?.shares.map(shareRow) || (job.defaultShares?.length ? job.defaultShares.slice(0, 20).map(shareRow) : job.assignedIds.length ? job.assignedIds.slice(0, 20).map(emptyRow) : [emptyRow()]));
   const [notes, setNotes] = useState(job.ledger?.notes || "");
@@ -46,9 +46,13 @@ function EarningsDetail({ job, members, settings, onClose, onChanged, initialMem
   const [historyError, setHistoryError] = useState("");
   const [historyPage, setHistoryPage] = useState(1);
   const [historyRetry, setHistoryRetry] = useState(0);
-  const [mode, setMode] = useState<"approve" | "reopen" | "pay" | null>(initialMember ? "pay" : null);
+  const [mode, setMode] = useState<"approve" | "reopen" | null>(null);
   const [voidId, setVoidId] = useState<string | null>(null);
   const [paymentMember, setPaymentMember] = useState(initialMember || job.ledger?.shares.find(s => s.earnedCents > s.paidCents)?.memberId || "");
+  const [paymentAmount, setPaymentAmount] = useState("");
+  const [paymentDate, setPaymentDate] = useState(today());
+  const [paymentMethod, setPaymentMethod] = useState("Bank transfer");
+  const [paymentNote, setPaymentNote] = useState("");
   const request = useRef<{ signature: string; id: string } | null>(null);
   const ledger = job.ledger;
   const approved = ledger?.status === "approved";
@@ -59,6 +63,11 @@ function EarningsDetail({ job, members, settings, onClose, onChanged, initialMem
   const preview = applyDailyEarningsCaps(rawPreview, job.dailyCapUsage);
   const exceedsBase = !!invoice && rawPreview.reduce((sum, share) => sum + share.earnedCents, 0) > previewBase;
   const dirty = basis !== (ledger?.basis || "ex_gst") || notes !== (ledger?.notes || "") || JSON.stringify(rows) !== JSON.stringify(ledger?.shares.map(shareRow) || []);
+  const shares = approved ? ledger!.shares : preview;
+  const totalEarned = shares.reduce((sum, s) => sum + s.earnedCents, 0);
+  const totalPaid = approved ? shares.reduce((sum, s) => sum + s.paidCents, 0) : 0;
+  const jobReceived = registerTotals([job]).received;
+  const managerBalance = jobReceived - totalEarned;
   useEffect(() => {
     const controller = new AbortController();
     queueMicrotask(() => { if (!controller.signal.aborted) { setHistory(null); setHistoryError(""); } });
@@ -82,47 +91,123 @@ function EarningsDetail({ job, members, settings, onClose, onChanged, initialMem
   }
   async function recordPayment(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const form = new FormData(event.currentTarget);
-    await mutate({ action: "pay", memberId: paymentMember, amountCents: Math.round(Number(form.get("amount")) * 100), date: form.get("date"), method: form.get("method"), reference: form.get("reference"), note: form.get("note") });
+    if (!paymentMember || !paymentAmount) return;
+    await mutate({ action: "pay", memberId: paymentMember, amountCents: Math.round(Number(paymentAmount) * 100), date: paymentDate, method: paymentMethod, reference: `Payment ${today()}`, note: paymentNote });
+    setPaymentAmount(""); setPaymentNote("");
   }
   const paymentShare = ledger?.shares.find(s => s.memberId === paymentMember);
-  return <section aria-label={`${job.jobLabel} · Manage team earnings`} className="space-y-5 rounded-xl border border-blue-200 bg-white p-4"><div className="flex items-center justify-between"><h3 className="font-bold">Team shares & payments</h3><button className={button} aria-label="Close earnings editor" onClick={onClose} disabled={busy}><X className="h-4 w-4" />Close</button></div>
+  return <section aria-label={`${job.jobLabel} · Manage team earnings`} className="space-y-4">
     <ErrorBox error={error} />
-    {job.changed && <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-800">The invoice, completion status or source lead changed after approval. Approved amounts are preserved. Review the history, reverse any recorded payments if correcting the approval, then reopen and approve the updated earnings.</p>}
-    {!approved ? <form onSubmit={save} className="space-y-4">
-      <fieldset disabled={busy} className="space-y-4">
-        <Field name="Commission basis"><select className={input} value={basis} onChange={e => setBasis(e.target.value as EarningsBasis)}><option value="ex_gst">Invoice amount excluding GST</option><option value="inclusive">Full invoice amount including GST</option></select></Field>
-        <p className="text-xs text-slate-500">{invoice ? `Invoice GST: ${invoice.gstBps < 0 ? "mixed rates" : `${invoice.gstBps / 100}%`}. Calculation base: ${money(previewBase)}.` : "Save an invoice to calculate estimates. Shares can be planned now."} Defaults come from Earnings Settings. Daily maximums apply across all approved jobs for each worker on this completion date. Fixed amounts apply once per job; work days do not multiply the share.</p>
-        <div className="rounded-lg border border-blue-100 bg-blue-50/60 p-3 text-xs text-slate-600"><span className="font-semibold text-slate-700">How to pay a worker:</span> set the shares below → <b>Save draft shares</b> → <b>Review approval</b> → <b>Approve earnings</b>. Once approved, a <b>Record paid to worker</b> button appears on each row so you can log what you actually paid.</div>
-        <div className="overflow-x-auto"><table className="w-full min-w-[620px] text-left text-sm"><thead className="bg-blue-50 text-xs text-slate-600"><tr>{["Team member", "Role", "Share type", "Share / Amount", "Est. earnings", "Action"].map(title => <th key={title} className="p-2">{title}</th>)}</tr></thead><tbody>{rows.map((row, index) => <tr key={index} className="border-b border-slate-100">
-          <td className="min-w-32 p-2"><select required aria-label={`Team member ${index + 1}`} className={input} value={row.memberId} onChange={e => setRows(old => old.map((r, i) => i === index ? { ...r, memberId: e.target.value } : r))}><option value="">Choose member</option>{members.filter(m => m.active || ledger?.shares.some(s => s.memberId === m.id)).map(m => <option key={m.id} value={m.id}>{m.name}{!m.active ? " (inactive)" : ""}</option>)}</select></td>
-          <td className="p-2 text-xs capitalize">{members.find(m => m.id === row.memberId)?.role || "—"}</td>
-          <td className="min-w-32 p-2"><select aria-label={`Share type ${index + 1}`} className={input} value={row.mode} onChange={e => setRows(old => old.map((r, i) => i === index ? { ...r, mode: e.target.value as ShareRow["mode"], value: "" } : r))}><option value="percent">Percentage %</option><option value="amount">Fixed AUD</option></select></td>
-          <td className="min-w-28 p-2"><input required aria-label={`${row.mode === "amount" ? "Amount AUD" : "Share percent"} ${index + 1}`} className={input} type="number" min="0.01" max={row.mode === "percent" ? 100 : undefined} step="0.01" value={row.value} onChange={e => setRows(old => old.map((r, i) => i === index ? { ...r, value: e.target.value } : r))} /></td>
-          <td className="whitespace-nowrap p-2 font-semibold text-slate-800">{invoice ? money(preview[index]?.earnedCents || 0) : "Awaiting invoice"}</td>
-          <td className="p-2"><button className={button} type="button" aria-label={`Remove share ${index + 1}`} disabled={rows.length === 1} onClick={() => setRows(old => old.filter((_, i) => i !== index))}><X className="h-4 w-4" /></button></td>
-        </tr>)}</tbody></table></div>
-        <div className="flex flex-wrap justify-between gap-2"><button className={button} type="button" disabled={rows.length >= 20} onClick={() => setRows(old => [...old, emptyRow()])}><Plus className="h-3.5 w-3.5" />Add worker payment share</button><p className={`text-sm font-semibold ${totalRate > 100 || exceedsBase ? "text-rose-600" : "text-slate-700"}`}>{totalRate.toFixed(2)}% total · Estimated {money(preview.reduce((sum, s) => sum + s.earnedCents, 0))}</p></div>
-        {exceedsBase && <ErrorBox error="Combined team amounts and shares cannot exceed the invoice basis." />}
+    {job.changed && <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800">The invoice, completion status or source lead changed after approval. Approved amounts are preserved. Review the history, reverse any recorded payments if correcting the approval, then reopen and approve the updated earnings.</p>}
+    {/* Team Shares table */}
+    {!approved ? <form onSubmit={save} className="space-y-3">
+      <fieldset disabled={busy} className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 className="text-sm font-bold text-slate-900">Team Shares <span className="text-xs font-normal text-slate-500">(This Job)</span></h3>
+          <Field name="Basis"><select className={`${input} w-auto`} value={basis} onChange={e => setBasis(e.target.value as EarningsBasis)}><option value="ex_gst">Excluding GST</option><option value="inclusive">Including GST</option></select></Field>
+        </div>
+        <div className="overflow-x-auto rounded-lg border border-slate-200">
+          <table className="w-full min-w-[640px] text-left text-sm">
+            <thead className="bg-blue-50 text-xs text-slate-600">
+              <tr>{["Employee", "Role", "Share Type", "Share", "Amount", "Paid", "Remaining", ""].map(t => <th key={t} className="p-2 font-semibold">{t}</th>)}</tr>
+            </thead>
+            <tbody>{rows.map((row, index) => {
+              const member = members.find(m => m.id === row.memberId);
+              const earned = preview[index]?.earnedCents || 0;
+              return <tr key={index} className="border-t border-slate-100">
+                <td className="min-w-28 p-1.5"><select required aria-label={`Employee ${index + 1}`} className={input} value={row.memberId} onChange={e => setRows(old => old.map((r, i) => i === index ? { ...r, memberId: e.target.value } : r))}><option value="">Select</option>{members.filter(m => m.active || ledger?.shares.some(s => s.memberId === m.id)).map(m => <option key={m.id} value={m.id}>{m.name}</option>)}</select></td>
+                <td className="p-2 text-xs capitalize text-slate-600">{member?.role || "—"}</td>
+                <td className="min-w-24 p-1.5"><select aria-label={`Share type ${index + 1}`} className={input} value={row.mode} onChange={e => setRows(old => old.map((r, i) => i === index ? { ...r, mode: e.target.value as ShareRow["mode"], value: "" } : r))}><option value="percent">%</option><option value="amount">$</option></select></td>
+                <td className="min-w-20 p-1.5"><input required aria-label={`Share value ${index + 1}`} className={input} type="number" min="0.01" max={row.mode === "percent" ? 100 : undefined} step="0.01" value={row.value} onChange={e => setRows(old => old.map((r, i) => i === index ? { ...r, value: e.target.value } : r))} placeholder={row.mode === "percent" ? "30" : "100"} /></td>
+                <td className="whitespace-nowrap p-2 font-semibold text-slate-800">{invoice ? money(earned) : "—"}</td>
+                <td className="whitespace-nowrap p-2 text-slate-500">$0.00</td>
+                <td className="whitespace-nowrap p-2 font-semibold text-rose-600">{invoice ? money(earned) : "—"}</td>
+                <td className="p-1.5"><button type="button" aria-label={`Remove share ${index + 1}`} disabled={rows.length === 1} onClick={() => setRows(old => old.filter((_, i) => i !== index))} className="rounded-md p-1 text-rose-500 hover:bg-rose-50 disabled:opacity-30"><X className="h-4 w-4" /></button></td>
+              </tr>;
+            })}</tbody>
+            <tfoot className="border-t-2 border-slate-200 bg-slate-50">
+              <tr><td colSpan={4} className="p-2 text-right text-sm font-bold">Total Team Share:</td><td className="p-2 font-bold">{money(totalEarned)}</td><td className="p-2 font-bold">{money(totalPaid)}</td><td className="p-2 font-bold text-rose-600">{money(totalEarned - totalPaid)}</td><td /></tr>
+            </tfoot>
+          </table>
+        </div>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <button className={button} type="button" disabled={rows.length >= 20} onClick={() => setRows(old => [...old, emptyRow()])}><Plus className="h-3.5 w-3.5" />Add Employee</button>
+          <p className={`text-xs font-semibold ${totalRate > 100 || exceedsBase ? "text-rose-600" : "text-slate-500"}`}>{totalRate > 0 ? `${totalRate.toFixed(2)}% total` : ""} {exceedsBase ? "· exceeds invoice base" : ""}</p>
+        </div>
+        {exceedsBase && <ErrorBox error="Combined team shares cannot exceed the invoice basis." />}
         <Field name="Manager notes"><textarea className={input} maxLength={2000} rows={2} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Agreed rate, shared work or other context" /></Field>
       </fieldset>
-      <div className="flex flex-wrap items-center justify-end gap-2"><button className={button} disabled={busy || totalRate > 100 || exceedsBase} type="submit">{busy && <Loader2 className="h-4 w-4 animate-spin" />}Save draft shares</button><button type="button" className={primary} disabled={busy || !ledger || dirty || !job.eligible} title={!ledger ? "Save draft shares first" : dirty ? "Save shares before approval" : job.unavailableReason} onClick={() => setMode("approve")}><CheckCircle2 className="h-4 w-4" />Review approval</button></div>
+      <div className="flex flex-wrap items-center justify-end gap-2 border-t border-slate-100 pt-3">
+        <button className={button} disabled={busy || totalRate > 100 || exceedsBase} type="submit">{busy && <Loader2 className="h-4 w-4 animate-spin" />}Save draft shares</button>
+        <button type="button" className={primary} disabled={busy || !ledger || dirty || !job.eligible} title={!ledger ? "Save draft shares first" : dirty ? "Save shares before approval" : job.unavailableReason} onClick={() => setMode("approve")}><CheckCircle2 className="h-4 w-4" />Approve earnings</button>
+      </div>
       {!job.eligible && <p className="text-xs text-amber-700">{job.unavailableReason}</p>}
-      {!ledger && <p className="text-xs text-slate-500">Step 1 of 3: save your draft shares first, then you can approve and record payments.</p>}
-      {ledger && dirty && <p className="text-xs text-slate-500">Step 2 of 3: save your changes, then approve earnings to unlock worker payments.</p>}
-      {ledger && !dirty && job.eligible && <p className="text-xs text-emerald-700">Step 2 of 3: ready — click Review approval to lock in these shares and enable worker payments.</p>}
-    </form> : <section className="space-y-3"><div className="flex flex-wrap items-center justify-between gap-2"><div><h3 className="text-sm font-bold">Approved earnings · {ledger.invoice?.number}</h3><p className="text-xs text-slate-500">Base {money(ledger.invoice?.baseCents || 0)} · {ledger.basis === "ex_gst" ? "excluding GST" : "including GST"} · Approved by {ledger.approvedBy}</p></div><span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">{label(job)}</span></div>
-      <p className="rounded-lg border border-emerald-100 bg-emerald-50 p-2 text-xs text-emerald-800">Earnings are approved. Use <b>Record paid to worker</b> on any row below (or the <b>Record payment</b> button) to log money you have paid to a team member.</p>
-      <div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="bg-slate-50 text-xs text-slate-500"><tr>{["Member", "Share", "Earned", "Paid", "Outstanding", "Payment"].map(s => <th key={s} className="p-2">{s}</th>)}</tr></thead><tbody>{ledger.shares.map(s => <tr key={s.memberId} className="border-b border-slate-100"><td className="p-2">{s.name}</td><td className="p-2">{shareLabel(s)}</td><td className="p-2">{money(s.earnedCents)}</td><td className="p-2">{money(s.paidCents)}</td><td className="p-2 font-semibold">{money(s.earnedCents - s.paidCents)}</td><td className="p-2"><button type="button" className={s.paidCents >= s.earnedCents ? button : primary} disabled={busy || job.changed || s.paidCents >= s.earnedCents} onClick={() => { setPaymentMember(s.memberId); setMode("pay"); }}>{s.paidCents >= s.earnedCents ? "Paid in full" : "Record paid to worker"}</button></td></tr>)}</tbody></table></div>
-      {ledger.notes && <p className="whitespace-pre-wrap text-sm text-slate-500">{ledger.notes}</p>}
-      <div className="flex justify-end gap-2"><button className={button} disabled={busy || ledger.shares.some(s => s.paidCents > 0)} onClick={() => setMode("reopen")}>Reopen approval</button><button className={primary} disabled={busy || job.changed || !ledger.shares.some(s => s.earnedCents > s.paidCents)} onClick={() => setMode("pay")}><Wallet className="h-4 w-4" />Record payment</button></div>
-    </section>}
-    {mode === "approve" && <section className="space-y-3 rounded-xl border border-blue-200 bg-blue-50 p-4"><h3 className="font-bold">Approve these earnings?</h3><p className="text-sm">Approve {money(estimatedShares(job).reduce((sum, s) => sum + s.earnedCents, 0))} against {job.invoice?.number}. The invoice amount, GST basis and member shares will be preserved.</p><p className="text-xs text-slate-600">{job.invoicePaid ? "The customer invoice is marked paid." : "The customer invoice is not marked paid. Approval records earnings independently of customer payment."}</p><div className="flex gap-2"><button className={primary} disabled={busy} onClick={() => void mutate({ action: "approve", invoice: job.invoice })}>Approve earnings</button><button className={button} disabled={busy} onClick={() => setMode(null)}>Cancel</button></div></section>}
-    {mode === "reopen" && <form onSubmit={e => { e.preventDefault(); void mutate({ action: "reopen", reason: new FormData(e.currentTarget).get("reason") }); }} className="space-y-3 rounded-xl border border-amber-200 bg-amber-50 p-4"><h3 className="font-bold">Reopen for correction</h3><p className="text-sm text-slate-600">The previous approval remains in audit history. Save and approve the revised shares afterwards.</p><Field name="Reason *"><textarea className={input} name="reason" required maxLength={500} disabled={busy} /></Field><div className="flex gap-2"><button className={primary} disabled={busy}>Reopen</button><button type="button" className={button} disabled={busy} onClick={() => setMode(null)}>Cancel</button></div></form>}
-    {mode === "pay" && approved && <form onSubmit={recordPayment} className="space-y-4 rounded-xl border border-blue-200 bg-blue-50 p-4"><h3 className="font-bold">Record paid to technician / worker</h3><p className="text-xs text-slate-600">Log a payment already made. This records the payment without transferring money.{!job.invoicePaid && " The customer invoice is not marked paid."}</p><fieldset disabled={busy} className="grid gap-3 sm:grid-cols-2"><Field name="Member *"><select className={input} required value={paymentMember} onChange={e => setPaymentMember(e.target.value)}><option value="">Choose member</option>{ledger.shares.filter(s => s.paidCents < s.earnedCents).map(s => <option key={s.memberId} value={s.memberId}>{s.name} · {money(s.earnedCents - s.paidCents)} due</option>)}</select></Field><Field name="Amount (AUD) *"><input className={input} name="amount" type="number" required min="0.01" max={paymentShare ? (paymentShare.earnedCents - paymentShare.paidCents) / 100 : 0} step="0.01" /></Field><Field name="Date paid *"><input className={input} type="date" name="date" required defaultValue={today()} max={today()} /></Field><Field name="Method *"><select className={input} name="method"><option>Bank transfer</option><option>Cash</option><option>Other</option></select></Field><Field name="Payment reference *"><input className={input} name="reference" required maxLength={160} placeholder="Transfer or receipt reference" /></Field><Field name="Note"><input className={input} name="note" maxLength={500} /></Field></fieldset><div className="flex gap-2"><button className={primary} disabled={busy}>Save payment record</button><button type="button" className={button} disabled={busy} onClick={() => setMode(null)}>Cancel</button></div></form>}
+      {!ledger && <p className="text-xs text-slate-500">Save your draft shares first, then approve to lock in earnings and enable worker payments.</p>}
+      {ledger && dirty && <p className="text-xs text-slate-500">Save your changes, then approve earnings to enable worker payments.</p>}
+      {ledger && !dirty && job.eligible && <p className="text-xs text-emerald-700">Ready — click Approve earnings to lock in these shares.</p>}
+    </form> : <div className="space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h3 className="text-sm font-bold text-slate-900">Team Shares <span className="text-xs font-normal text-slate-500">(This Job) · {ledger.basis === "ex_gst" ? "ex GST" : "incl GST"}</span></h3>
+        <button className={button} disabled={busy || ledger.shares.some(s => s.paidCents > 0)} onClick={() => setMode("reopen")}>Reopen for edits</button>
+      </div>
+      <div className="overflow-x-auto rounded-lg border border-slate-200">
+        <table className="w-full min-w-[640px] text-left text-sm">
+          <thead className="bg-slate-50 text-xs text-slate-500">
+            <tr>{["Employee", "Role", "Share Type", "Share", "Amount", "Paid", "Remaining", ""].map(t => <th key={t} className="p-2 font-semibold">{t}</th>)}</tr>
+          </thead>
+          <tbody>{ledger.shares.map(s => {
+            const member = members.find(m => m.id === s.memberId);
+            const remaining = s.earnedCents - s.paidCents;
+            return <tr key={s.memberId} className="border-t border-slate-100">
+              <td className="p-2 font-semibold text-slate-800">{s.name}</td>
+              <td className="p-2 text-xs capitalize text-slate-600">{member?.role || "—"}</td>
+              <td className="p-2 text-slate-600">{s.fixedAmountCents !== undefined ? "$ Fixed" : "%"}</td>
+              <td className="p-2 text-slate-700">{s.fixedAmountCents !== undefined ? money(s.fixedAmountCents) : `${s.rateBps / 100}%`}</td>
+              <td className="whitespace-nowrap p-2 font-semibold">{money(s.earnedCents)}</td>
+              <td className="whitespace-nowrap p-2 text-emerald-700">{money(s.paidCents)}</td>
+              <td className={`whitespace-nowrap p-2 font-semibold ${remaining > 0 ? "text-rose-600" : "text-emerald-600"}`}>{money(remaining)}</td>
+              <td className="p-1.5">
+                {remaining > 0 ? <button type="button" className="rounded-md bg-blue-600 px-2 py-1 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50" disabled={busy || job.changed} onClick={() => { setPaymentMember(s.memberId); setPaymentAmount(String(remaining / 100)); setPaymentDate(today()); }}>Pay</button>
+                  : <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700">Paid</span>}
+              </td>
+            </tr>;
+          })}</tbody>
+          <tfoot className="border-t-2 border-slate-200 bg-slate-50">
+            <tr><td colSpan={4} className="p-2 text-right text-sm font-bold">Total Team Share:</td><td className="p-2 font-bold">{money(totalEarned)}</td><td className="p-2 font-bold text-emerald-700">{money(totalPaid)}</td><td className="p-2 font-bold text-rose-600">{money(totalEarned - totalPaid)}</td><td /></tr>
+          </tfoot>
+        </table>
+      </div>
+      {ledger.notes && <p className="whitespace-pre-wrap text-xs text-slate-500">{ledger.notes}</p>}
+    </div>}
+    {/* Manager balance + Job Expenses side by side, Record Payment below */}
+    <div className="grid gap-3 md:grid-cols-2">
+      <div className="rounded-lg border border-slate-200 bg-amber-50/40 p-3">
+        <h4 className="text-sm font-bold text-slate-800">Manager (Groutix)</h4>
+        <dl className="mt-2 space-y-1.5 text-sm">
+          <div className="flex justify-between"><dt className="text-slate-600">Amount Received:</dt><dd className="font-semibold">{money(jobReceived)}</dd></div>
+          <div className="flex justify-between"><dt className="text-slate-600">Less: Team Share:</dt><dd className="font-semibold text-rose-600">- {money(totalEarned)}</dd></div>
+          <div className="flex justify-between border-t border-amber-200 pt-1.5"><dt className="font-bold text-slate-800">Manager Balance:</dt><dd className="font-bold text-slate-900">{money(managerBalance)}</dd></div>
+        </dl>
+      </div>
+      <JobExpensesInline job={job} onChanged={onExpenseChanged} />
+    </div>
+    {approved ? <form onSubmit={recordPayment} className="rounded-lg border border-blue-200 bg-blue-50/50 p-3">
+      <h4 className="flex items-center gap-1.5 text-sm font-bold text-slate-800"><Wallet className="h-4 w-4 text-blue-600" />Record Payment</h4>
+      <p className="mb-2 text-xs text-slate-500">Log money already paid to a team member. Select a row's <b>Pay</b> button to prefill the amount, or enter it manually.</p>
+      <fieldset disabled={busy} className="grid gap-2 sm:grid-cols-4">
+        <label className="text-xs font-semibold text-slate-600">Employee<select className={input} required value={paymentMember} onChange={e => { setPaymentMember(e.target.value); const s = ledger.shares.find(x => x.memberId === e.target.value); if (s) setPaymentAmount(String((s.earnedCents - s.paidCents) / 100)); }}><option value="">Select</option>{ledger.shares.filter(s => s.earnedCents > s.paidCents).map(s => <option key={s.memberId} value={s.memberId}>{s.name} · {money(s.earnedCents - s.paidCents)} due</option>)}</select></label>
+        <label className="text-xs font-semibold text-slate-600">Amount ($)<input className={input} type="number" required min="0.01" max={paymentShare ? (paymentShare.earnedCents - paymentShare.paidCents) / 100 : undefined} step="0.01" value={paymentAmount} onChange={e => setPaymentAmount(e.target.value)} /></label>
+        <label className="text-xs font-semibold text-slate-600">Date<input className={input} type="date" required max={today()} value={paymentDate} onChange={e => setPaymentDate(e.target.value)} /></label>
+        <label className="text-xs font-semibold text-slate-600">Method<select className={input} value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)}><option>Bank transfer</option><option>Cash</option><option>Other</option></select></label>
+        <label className="sm:col-span-4 text-xs font-semibold text-slate-600">Note (optional)<input className={input} maxLength={500} value={paymentNote} onChange={e => setPaymentNote(e.target.value)} placeholder="e.g. Partial payment" /></label>
+      </fieldset>
+      <div className="mt-2 flex justify-end"><button type="submit" className={primary} disabled={busy || !paymentMember || !paymentAmount}>{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}Mark as Paid</button></div>
+    </form> : <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-3 text-center text-xs text-slate-500">Approve earnings first to record worker payments.</div>}
+    {mode === "approve" && <section className="space-y-3 rounded-lg border border-blue-200 bg-blue-50 p-4"><h3 className="font-bold">Approve these earnings?</h3><p className="text-sm">Approve {money(totalEarned)} team share{invoice ? ` against ${invoice.number}` : ""}. The invoice amount, GST basis and member shares will be preserved.</p><p className="text-xs text-slate-600">{job.invoicePaid ? "The customer invoice is marked paid." : "The customer invoice is not marked paid. Approval records earnings independently of customer payment."}</p><div className="flex gap-2"><button className={primary} disabled={busy} onClick={() => void mutate({ action: "approve", invoice: job.invoice })}>Approve earnings</button><button className={button} disabled={busy} onClick={() => setMode(null)}>Cancel</button></div></section>}
+    {mode === "reopen" && <form onSubmit={e => { e.preventDefault(); void mutate({ action: "reopen", reason: new FormData(e.currentTarget).get("reason") }); }} className="space-y-3 rounded-lg border border-amber-200 bg-amber-50 p-4"><h3 className="font-bold">Reopen for correction</h3><p className="text-sm text-slate-600">The previous approval remains in audit history. Save and approve the revised shares afterwards.</p><Field name="Reason *"><textarea className={input} name="reason" required maxLength={500} disabled={busy} /></Field><div className="flex gap-2"><button className={primary} disabled={busy}>Reopen</button><button type="button" className={button} disabled={busy} onClick={() => setMode(null)}>Cancel</button></div></form>}
     <section className="space-y-3 border-t border-slate-100 pt-4"><h3 className="flex items-center gap-2 text-sm font-bold"><History className="h-4 w-4" />Payments & audit log</h3><ErrorBox error={historyError} />{historyError && <button className={button} onClick={() => setHistoryRetry(v => v + 1)}>Retry history</button>}{!history && !historyError && <p role="status" className="text-sm text-slate-500">Loading history…</p>}
-      {history && <><div className="space-y-2">{history.payments.map(p => <div key={p.id} className="rounded-xl border border-slate-200 p-3"><div className="flex flex-wrap items-start justify-between gap-2"><div><p className="text-sm font-semibold">{p.memberName} · {money(p.amountCents)}{p.voidedAt && <span className="ml-2 text-xs text-rose-600">Reversed</span>}</p><p className="text-xs text-slate-500">{p.date} · {p.method} · {p.reference} · Recorded by {p.actor}</p>{p.note && <p className="mt-1 break-words text-xs text-slate-500">{p.note}</p>}{p.voidedAt && <p className="mt-1 break-words text-xs text-rose-600">{p.voidedBy}: {p.voidReason}</p>}</div>{!p.voidedAt && <button className={button} disabled={busy} onClick={() => setVoidId(p.id)}>Reverse record</button>}</div>{voidId === p.id && <form className="mt-3 space-y-2" onSubmit={e => { e.preventDefault(); void mutate({ action: "void_payment", paymentId: p.id, reason: new FormData(e.currentTarget).get("reason") }); }}><p className="text-xs text-amber-700">Correct the ledger only after confirming this payment was entered incorrectly or returned. This does not recover transferred money.</p><Field name="Reversal reason *"><input className={input} name="reason" required maxLength={500} disabled={busy} /></Field><div className="flex gap-2"><button className={button} disabled={busy}>Confirm reversal</button><button className={button} type="button" disabled={busy} onClick={() => setVoidId(null)}>Cancel</button></div></form>}</div>)}{!history.payments.length && <p className="text-xs text-slate-500">No team payments recorded.</p>}</div>
-      <ol className="divide-y divide-slate-100">{history.events.map(event => <li key={event.id} className="py-3"><p className="text-xs font-semibold text-slate-500">{new Date(event.createdAt).toLocaleString("en-AU")} · {event.actor} · {event.action.replaceAll("_", " ")}</p><p className="mt-1 whitespace-pre-wrap break-words text-sm text-slate-700">{event.detail}</p></li>)}</ol>{!history.events.length && <p className="text-xs text-slate-500">No earnings changes yet.</p>}<div className="flex items-center justify-between"><button className={button} disabled={historyPage === 1} onClick={() => setHistoryPage(p => p - 1)}>Previous</button><span className="text-xs text-slate-500">Audit page {historyPage}</span><button className={button} disabled={!history.hasMore} onClick={() => setHistoryPage(p => p + 1)}>Next</button></div></>}
+      {history && <><div className="space-y-2">{history.payments.map(p => <div key={p.id} className="rounded-lg border border-slate-200 p-3"><div className="flex flex-wrap items-start justify-between gap-2"><div><p className="text-sm font-semibold">{p.memberName} · {money(p.amountCents)}{p.voidedAt && <span className="ml-2 text-xs text-rose-600">Reversed</span>}</p><p className="text-xs text-slate-500">{p.date} · {p.method} · Recorded by {p.actor}</p>{p.note && <p className="mt-1 break-words text-xs text-slate-500">{p.note}</p>}{p.voidedAt && <p className="mt-1 break-words text-xs text-rose-600">{p.voidedBy}: {p.voidReason}</p>}</div>{!p.voidedAt && <button className={button} disabled={busy} onClick={() => setVoidId(p.id)}>Reverse</button>}</div>{voidId === p.id && <form className="mt-3 space-y-2" onSubmit={e => { e.preventDefault(); void mutate({ action: "void_payment", paymentId: p.id, reason: new FormData(e.currentTarget).get("reason") }); }}><p className="text-xs text-amber-700">Correct the ledger only after confirming this payment was entered incorrectly or returned. This does not recover transferred money.</p><Field name="Reversal reason *"><input className={input} name="reason" required maxLength={500} disabled={busy} /></Field><div className="flex gap-2"><button className={button} disabled={busy}>Confirm reversal</button><button className={button} type="button" disabled={busy} onClick={() => setVoidId(null)}>Cancel</button></div></form>}</div>)}{!history.payments.length && <p className="text-xs text-slate-500">No team payments recorded.</p>}</div>
+      <ol className="divide-y divide-slate-100">{history.events.map(event => <li key={event.id} className="py-2"><p className="text-xs font-semibold text-slate-500">{new Date(event.createdAt).toLocaleString("en-AU")} · {event.actor} · {event.action.replaceAll("_", " ")}</p><p className="mt-1 whitespace-pre-wrap break-words text-sm text-slate-700">{event.detail}</p></li>)}</ol>{!history.events.length && <p className="text-xs text-slate-500">No earnings changes yet.</p>}<div className="flex items-center justify-between"><button className={button} disabled={historyPage === 1} onClick={() => setHistoryPage(p => p - 1)}>Previous</button><span className="text-xs text-slate-500">Audit page {historyPage}</span><button className={button} disabled={!history.hasMore} onClick={() => setHistoryPage(p => p + 1)}>Next</button></div></>}
     </section>
   </section>;
 }
@@ -212,13 +297,14 @@ function EarningsSettingsDialog({ members, current, onClose, onSaved, onManageTe
   </div>;
 }
 
-function JobExpenses({ job, onChanged }: { job: EarningsJob; onChanged: () => void }) {
+function JobExpensesInline({ job, onChanged }: { job: EarningsJob; onChanged: () => void }) {
   const [name, setName] = useState("");
   const [amount, setAmount] = useState("");
   const [date, setDate] = useState(today());
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const activeExpenses = (job.expenses || []).filter(expense => !expense.voidedAt);
+  const totalExpenses = activeExpenses.reduce((sum, expense) => sum + expense.amountCents, 0);
   async function mutate(payload: Record<string, unknown>) {
     setBusy(true); setError("");
     try {
@@ -226,19 +312,19 @@ function JobExpenses({ job, onChanged }: { job: EarningsJob; onChanged: () => vo
       setName(""); setAmount(""); onChanged();
     } catch (e) { setError((e as Error).message); } finally { setBusy(false); }
   }
-  return <section className="space-y-3 rounded-xl border border-slate-200 bg-white p-4">
-    <div className="flex items-center justify-between gap-3"><h3 className="font-bold">Job Expenses</h3><span className="text-sm font-semibold">{money(activeExpenses.reduce((sum, expense) => sum + expense.amountCents, 0))}</span></div>
-    <div className="divide-y divide-slate-100">{activeExpenses.map(expense => <div key={expense.id} className="flex items-center justify-between gap-3 py-2 text-sm"><span>{expense.name}<span className="ml-2 text-xs text-slate-400">{expense.source === "automatic" ? "Automatic" : "Manual"} · {expense.date}</span></span><span className="flex items-center gap-3 font-semibold">{money(expense.amountCents)}<button className={button} type="button" disabled={busy} aria-label={`Remove expense ${expense.name}`} onClick={() => void mutate({ action: "remove", expenseId: expense.id })}><Trash2 className="h-3.5 w-3.5" /></button></span></div>)}
-      {!activeExpenses.length && <p className="py-2 text-xs text-slate-500">No job expenses recorded.</p>}
+  return <div className="rounded-lg border border-slate-200 bg-white p-3">
+    <div className="flex items-center justify-between gap-3"><h4 className="text-sm font-bold text-slate-800">Job Expenses</h4><span className="text-sm font-semibold">{money(totalExpenses)}</span></div>
+    <div className="mt-2 divide-y divide-slate-100">{activeExpenses.map(expense => <div key={expense.id} className="flex items-center justify-between gap-2 py-1.5 text-sm"><span>{expense.name}<span className="ml-2 text-xs text-slate-400">{expense.source === "automatic" ? "Auto" : "Manual"} · {expense.date}</span></span><span className="flex items-center gap-2 font-semibold">{money(expense.amountCents)}<button className="rounded-md p-1 text-rose-500 hover:bg-rose-50 disabled:opacity-30" type="button" disabled={busy} aria-label={`Remove expense ${expense.name}`} onClick={() => void mutate({ action: "remove", expenseId: expense.id })}><Trash2 className="h-3.5 w-3.5" /></button></span></div>)}
+      {!activeExpenses.length && <p className="py-1.5 text-xs text-slate-500">No job expenses recorded.</p>}
     </div>
     <ErrorBox error={error} />
-    <form className="grid gap-2 sm:grid-cols-[minmax(140px,1fr)_130px_150px_auto]" onSubmit={event => { event.preventDefault(); void mutate({ action: "add", name, amountCents: Math.round(Number(amount) * 100), date }); }}>
-      <input className={input} aria-label="Expense name" required maxLength={100} placeholder="Expense name, e.g. Materials" value={name} onChange={e => setName(e.target.value)} />
+    <form className="mt-2 grid gap-1.5 sm:grid-cols-[1fr_90px_130px_auto]" onSubmit={event => { event.preventDefault(); void mutate({ action: "add", name, amountCents: Math.round(Number(amount) * 100), date }); }}>
+      <input className={input} aria-label="Expense name" required maxLength={100} placeholder="e.g. Materials" value={name} onChange={e => setName(e.target.value)} />
       <input className={input} aria-label="Expense amount" required type="number" min="0.01" step="0.01" placeholder="AUD" value={amount} onChange={e => setAmount(e.target.value)} />
       <input className={input} aria-label="Expense date" required type="date" max={today()} value={date} onChange={e => setDate(e.target.value)} />
-      <button className={button} type="submit" disabled={busy}><Plus className="h-4 w-4" />Add expense</button>
+      <button className={button} type="submit" disabled={busy}><Plus className="h-3.5 w-3.5" />Add</button>
     </form>
-  </section>;
+  </div>;
 }
 
 export function TeamEarningsView({ query, onQueryChange, onOpenJob, onAddJob, onManageTeam, refreshKey }: {
@@ -345,10 +431,8 @@ export function TeamEarningsView({ query, onQueryChange, onOpenJob, onAddJob, on
         <div className="flex flex-wrap items-center justify-between gap-2"><div><h3 className="text-lg font-bold">Job # {activeJob.jobLabel}</h3><p className="text-xs text-slate-500">{activeJob.customer} · {activeJob.completionDate || activeJob.scheduledAt?.slice(0, 10) || "No date"} · {activeJob.service}</p></div><div className="flex gap-2"><Badge warning={activeJob.changed}>{label(activeJob)}</Badge>{activeJob.status !== "Source unavailable" && <button className={button} onClick={() => onOpenJob(activeJob.id)}>Edit Job</button>}</div></div>
         <div className="grid gap-3 md:grid-cols-2"><section className="rounded-xl border border-slate-200 p-3 text-sm"><h4 className="mb-2 font-bold">Job Details</h4><p className="flex justify-between gap-2"><span className="text-slate-500">Customer</span><b>{activeJob.customer}</b></p><p className="mt-1 flex justify-between gap-2"><span className="text-slate-500">Job date</span><b>{activeJob.completionDate || activeJob.scheduledAt?.slice(0, 10) || "—"}</b></p><p className="mt-1 flex justify-between gap-2"><span className="text-slate-500">Job value</span><b>{money(activeJob.invoice?.totalCents || 0)}</b></p><p className="mt-1 flex justify-between gap-2"><span className="text-slate-500">Invoices</span><b>{activeJob.invoice?.items?.length || (activeJob.invoice ? 1 : 0)}</b></p></section><section className="rounded-xl border border-slate-200 p-3 text-sm"><h4 className="mb-2 font-bold">Customer Payment</h4><p className="flex justify-between gap-2"><span className="text-slate-500">Received</span><b className="text-emerald-700">{money(registerTotals([activeJob]).received)}</b></p><p className="mt-1 flex justify-between gap-2"><span className="text-slate-500">Overall status</span><Badge warning={["partial", "pending"].includes(activeJob.paymentStatus)}>{paymentStatusLabel(activeJob.paymentStatus)}</Badge></p><p className="mt-1 flex justify-between gap-2"><span className="text-slate-500">Customer outstanding</span><b>{money((activeJob.invoice?.totalCents || 0) - registerTotals([activeJob]).received)}</b></p><button className={`${button} mt-2`} onClick={() => onOpenJob(activeJob.id)}>Manage customer invoices</button></section></div>
         {!!activeJob.receipts?.length && <section className="space-y-2"><h4 className="font-bold">Invoice Payment Status</h4><div className="grid gap-2 sm:grid-cols-2">{activeJob.receipts.map((receipt, index) => <article key={`${receipt.number}-${index}`} className="rounded-xl border border-slate-200 bg-white p-3 text-xs"><div className="flex items-start justify-between gap-2"><b>{receipt.number}</b><Badge warning={receipt.status === "pending" || receipt.status === "partial"}>{invoicePaymentStatusLabel(receipt.status)}</Badge></div><div className="mt-2 grid grid-cols-3 gap-1 text-slate-600"><span>Total<br /><b className="text-slate-900">{money(receipt.totalCents)}</b></span><span>Received<br /><b className="text-emerald-700">{money(receipt.paidCents)}</b></span><span>Remaining<br /><b className="text-rose-700">{money(receipt.remainingCents)}</b></span></div></article>)}</div></section>}
-        {editorOpen ? <EarningsDetail key={`${activeJob.id}:${activeJob.ledger?.version || 0}:${selected?.id === activeJob.id ? selected.memberId || "details" : "details"}`} job={activeJob} initialMember={selected?.id === activeJob.id ? selected.memberId : undefined} members={data.members} settings={data.settings} onClose={() => { setEditorOpen(false); setSelected(null); }} onChanged={saved} />
+        {editorOpen ? <EarningsDetail key={`${activeJob.id}:${activeJob.ledger?.version || 0}:${selected?.id === activeJob.id ? selected.memberId || "details" : "details"}`} job={activeJob} initialMember={selected?.id === activeJob.id ? selected.memberId : undefined} members={data.members} settings={data.settings} onClose={() => { setEditorOpen(false); setSelected(null); }} onChanged={saved} onExpenseChanged={() => { setNotice("Expense saved to the job record."); void load(); }} />
           : <button className={primary} onClick={() => setEditorOpen(true)}>Manage team shares and payments</button>}
-        <JobExpenses key={`${activeJob.id}:${activeJob.expenseVersion || 0}`} job={activeJob} onChanged={() => { setNotice("Expense saved to the job record."); void load(); }} />
-        <div className="grid gap-2 rounded-xl bg-emerald-50 p-3 text-sm sm:grid-cols-3"><span>Amount received: <b>{money(registerTotals([activeJob]).received)}</b></span><span>Team earnings: <b>{money(activeJob.ledger?.status === "approved" ? registerTotals([activeJob]).earned : 0)}</b></span><span>Manager balance: <b>{money(registerTotals([activeJob]).received - (activeJob.ledger?.status === "approved" ? registerTotals([activeJob]).earned : 0) - (activeJob.expenses || []).filter(expense => !expense.voidedAt).reduce((sum, expense) => sum + expense.amountCents, 0))}</b></span></div>
         <details className="rounded-xl border border-slate-200 bg-white p-3"><summary className="cursor-pointer text-sm font-semibold">Assigned work & visit progress</summary><div className="mt-3"><WorkBreakdown job={activeJob} /></div></details>
       </section> : tab === "jobs" ? <section className={`${panel} p-8 text-center text-sm text-slate-500`}>Select a job to see earnings and payment details.</section> : null}
       <aside className="space-y-4">
