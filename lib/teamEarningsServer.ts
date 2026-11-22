@@ -173,7 +173,8 @@ export async function mutateTeamEarningsExpense(id: string, value: unknown, acto
     return await session.withTransaction(async () => {
       const eventId = `${id}:${requestId}`;
       const previous = await expenseEvents.findOne({ _id: eventId }, { session });
-      let current = await expenses.findOne({ _id: id }, { session });
+      const stored = await expenses.findOne({ _id: id }, { session });
+      let current = stored ? { ...stored, items: stored.items.map(expense => ({ ...expense })) } : null;
       if (previous) {
         if (previous.requestHash !== requestHash) throw new EarningsError("This request was already used with different details.", 409);
         return current || { _id: id, version: 0, items: [] };

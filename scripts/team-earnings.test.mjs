@@ -158,6 +158,8 @@ test("automatic expenses are snapshotted once per eligible job and manual expens
   assert.equal(first.jobs[0].expenses[0].amountCents, 2500);
   const again = await f.api.listTeamEarnings();
   assert.equal(again.jobs[0].expenses.length, 1);
+  assert.equal(f.state.team_earnings_job_expenses[0].version, 1);
+  assert.equal((await f.api.earningsExpenses(leadId)).version, 1);
   const added = await f.api.mutateTeamEarningsExpense(leadId, {
     action: "add", requestId: randomUUID(), version: 1, name: "Materials", amountCents: 5000, date: "2026-01-01",
   }, "manager");
