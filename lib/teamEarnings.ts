@@ -1,6 +1,7 @@
 import type { Lead } from "@/components/admin/types";
 import { invoiceBalance } from "./invoiceBalance";
 import { isPrimaryBooking, leadBookings } from "./leadBookings";
+import type { TeamEarningsSettings } from "./teamEarningsSettings";
 
 export class EarningsError extends Error {
   constructor(message: string, public status = 400) { super(message); }
@@ -17,7 +18,7 @@ export interface EarningsLedger {
   id: string; version: number; status: "draft" | "approved"; basis: EarningsBasis;
   shares: EarningsShare[]; invoice: EarningsInvoice | null; notes: string;
   approvedAt?: string; approvedBy?: string; updatedAt: string;
-  jobLabel: string; customer: string;
+  jobLabel: string; customer: string; completionDate?: string;
 }
 export interface EarningsJob {
   id: string; jobLabel: string; customer: string; service: string; status: string;
@@ -28,14 +29,21 @@ export interface EarningsJob {
   memberWork: { memberId: string; completedVisits: number; totalVisits: number; daysDone: number; daysPlanned: number }[];
   daysDone: number; daysPlanned: number; invoice: EarningsInvoice | null; invoicePaid: boolean;
   eligible: boolean; unavailableReason: string; ledger: EarningsLedger | null; changed: boolean;
+  completionDate: string; defaultShares: EarningsShare[];
+  dailyCapUsage?: { memberId: string; capCents: number; usedCents: number }[];
+  expenses: EarningsExpense[]; expenseVersion?: number;
 }
 export interface EarningsPayment {
   id: string; memberId: string; memberName: string; amountCents: number; date: string;
   method: string; reference: string; note: string; actor: string; createdAt: string;
   voidedAt?: string; voidedBy?: string; voidReason?: string;
 }
+export interface EarningsExpense {
+  id: string; name: string; amountCents: number; date: string; source: "manual" | "automatic";
+  autoRuleId?: string; createdAt: string; createdBy: string; voidedAt?: string; voidedBy?: string;
+}
 export interface EarningsEvent { id: string; action: string; actor: string; createdAt: string; detail: string }
-export interface EarningsData { members: EarningsMember[]; jobs: EarningsJob[] }
+export interface EarningsData { members: EarningsMember[]; jobs: EarningsJob[]; settings?: TeamEarningsSettings; payments?: (EarningsPayment & { jobId: string; jobLabel: string })[] }
 export function earningsBody(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new EarningsError("Invalid request.");
   return value as Record<string, unknown>;
@@ -53,16 +61,16 @@ export function earningsId(value: unknown) {
   if (typeof value !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)) throw new EarningsError("Invalid request ID.");
   return value.toLowerCase();
 }
-export function invoiceForEarnings(lead: InvoiceSource & { earningsInvoices?: InvoiceSource[] }, basis: EarningsBasis): EarningsInvoice | null {
+export function invoiceForEarnings(lead: InvoiceSource & { earningsInvoices?: InvoiceSource[] }, basis: EarningsBasis, defaultGstBps = 1000): EarningsInvoice | null {
   if (lead.earningsInvoices?.length) {
-    const items = [ ...(lead.invoiceNumber ? [lead] : []), ...lead.earningsInvoices ].map(source => invoiceForEarnings({ invoiceNumber: source.invoiceNumber, invoiceAmount: source.invoiceAmount, invoiceDraft: source.invoiceDraft }, basis));
+    const items = [ ...(lead.invoiceNumber ? [lead] : []), ...lead.earningsInvoices ].map(source => invoiceForEarnings({ invoiceNumber: source.invoiceNumber, invoiceAmount: source.invoiceAmount, invoiceDraft: source.invoiceDraft }, basis, defaultGstBps));
     if (items.some(item => !item)) return null;
     const valid = items as EarningsInvoice[];
     return { number: valid.map(item => item.number).join(", "), totalCents: valid.reduce((sum, item) => sum + item.totalCents, 0), baseCents: valid.reduce((sum, item) => sum + item.baseCents, 0), gstBps: valid.every(item => item.gstBps === valid[0].gstBps) ? valid[0].gstBps : -1, items: valid };
   }
   const total = lead.invoiceAmount;
   if (!lead.invoiceNumber || typeof total !== "number" || !Number.isFinite(total) || total <= 0 || total > 1_000_000_000) return null;
-  const gst = lead.invoiceDraft?.gst ?? 10;
+  const gst = lead.invoiceDraft?.gst ?? defaultGstBps / 100;
   if (!Number.isFinite(gst) || gst < 0 || gst > 100) return null;
   const totalCents = Math.round(total * 100), gstBps = Math.round(gst * 100);
   return { number: lead.invoiceNumber, totalCents, gstBps, baseCents: basis === "inclusive" ? totalCents : Math.round(totalCents * 10000 / (10000 + gstBps)) };
@@ -98,6 +106,16 @@ export function calculateEarnings(shares: EarningsShare[], baseCents: number): E
   for (const row of order) if (remainder-- > 0) values[row.index].earnedCents++;
   return values;
 }
+export function applyDailyEarningsCaps(
+  shares: EarningsShare[],
+  capUsage: { memberId: string; capCents: number; usedCents: number }[] = [],
+): EarningsShare[] {
+  const usage = new Map(capUsage.map(row => [row.memberId, row]));
+  return shares.map(share => {
+    const cap = usage.get(share.memberId);
+    return cap ? { ...share, earnedCents: Math.min(share.earnedCents, Math.max(0, cap.capCents - cap.usedCents)) } : { ...share };
+  });
+}
 function resolveMember(members: EarningsMember[], ids: (string | undefined)[], names: (string | undefined)[]) {
   for (const id of ids.filter(Boolean)) {
     const member = members.find(m => m.id === id || m.aliases.includes(id!));
@@ -111,12 +129,18 @@ function resolveMember(members: EarningsMember[], ids: (string | undefined)[], n
     if (matches.length === 1) return matches[0];
   }
 }
-export function earningsJob(lead: EarningsSourceLead, members: EarningsMember[], ledger: EarningsLedger | null): EarningsJob {
+export function earningsCompletionDate(lead: EarningsSourceLead): string {
+  const completed = leadBookings(lead).filter(booking => booking.type === "job" && booking.status === "Job Done");
+  if (completed.length) return completed.map(booking => booking.date).sort().at(-1)!;
+  const active = leadBookings(lead).filter(booking => booking.type === "job" && booking.status !== "Cancelled");
+  return active.map(booking => booking.date).sort().at(-1) || lead.jobAt?.slice(0, 10) || lead.createdAt?.slice(0, 10) || "";
+}
+export function earningsJob(lead: EarningsSourceLead, members: EarningsMember[], ledger: EarningsLedger | null, settings: TeamEarningsSettings = { basis: "ex_gst", gstRateBps: 1000, employeeSettings: [], automaticExpenses: [] }): EarningsJob {
   const visits = leadBookings(lead).filter(b => b.type === "job" && b.status !== "Cancelled");
   const assignments = [resolveMember(members, [lead.technicianId], [lead.technicianUsername, lead.technician]), resolveMember(members, [lead.inspectorId], [lead.inspectorUsername, lead.assigned]),
     ...visits.map(b => resolveMember(members, [b.technicianId], [b.technicianUsername, b.technician])),
     ...leadBookings(lead).filter(b => b.type === "inspection" && b.status !== "Cancelled").map(b => resolveMember(members, [b.inspectorId], [b.inspectorUsername, b.assigned]))].filter((m): m is EarningsMember => !!m);
-  const invoice = invoiceForEarnings(lead, ledger?.basis || "ex_gst");
+  const invoice = invoiceForEarnings(lead, ledger?.basis || settings.basis, settings.gstRateBps);
   const hasJobVisits = leadBookings(lead).some(b => b.type === "job");
   const incompleteSavedVisit = lead.bookings?.some(b => b.type === "job" && b.status && !["Job Done", "Cancelled"].includes(b.status) && !(lead.status === "Completed" && isPrimaryBooking(lead, b)));
   const completed = incompleteSavedVisit ? false : visits.length ? visits.every(b => b.status === "Job Done") : !hasJobVisits && ["Job Done", "Invoice Sent", "Payment Pending", "Payment Received", "Warranty Sent", "Completed"].includes(lead.status);
@@ -138,11 +162,23 @@ export function earningsJob(lead: EarningsSourceLead, members: EarningsMember[],
   }
   const receiptSources = [...(lead.invoiceNumber ? [lead] : []), ...(lead.earningsInvoices || [])];
   const receipts = receiptSources.filter(source => invoiceForEarnings(source, "inclusive")).map(source => ({ number: source.invoiceNumber!, ...invoiceBalance({ ...source, invoiceStatus: source.invoiceStatus || (source.paymentType === "full" ? "Paid" : undefined) }) }));
+  const completionDate = ledger?.completionDate || earningsCompletionDate(lead);
+  const employeeSettings = new Map(settings.employeeSettings.map(setting => [setting.memberId, setting]));
+  const defaultShares = [...new Set(assignments.map(member => member.id))].map(memberId => {
+    const member = members.find(item => item.id === memberId)!;
+    const setting = employeeSettings.get(memberId);
+    return {
+      memberId, name: member.name, rateBps: setting?.mode === "percent" ? setting.rateBps : 0,
+      ...(setting?.mode === "amount" && setting.fixedAmountCents ? { fixedAmountCents: setting.fixedAmountCents } : {}),
+      earnedCents: 0, paidCents: 0,
+    };
+  });
   return { scheduledAt: lead.jobAt || (visits[0] ? `${visits[0].date}T${visits[0].time}` : undefined), receipts, id: lead.id, jobLabel: lead.jobNo || `Lead-${lead.id.slice(-6)}`, customer: lead.name || "Customer", service: lead.service || "", status: lead.status,
     assignedIds: [...new Set(assignments.map(m => m.id))], assignedNames: [...new Set([lead.assigned, lead.technician, ...assignments.map(m => m.name), ...visits.map(b => b.technician)].filter((s): s is string => !!s))],
     workVisits, memberWork: [...memberWork.values()], completedVisits: visits.filter(b => b.status === "Job Done").length, totalVisits: visits.length,
     daysDone: visits.length ? visits.reduce((sum, b) => sum + safeDays(b.jobDaysDone), 0) : safeDays(lead.jobDaysDone), daysPlanned: visits.length ? visits.reduce((sum, b) => sum + safeDays(b.jobTotalDays), 0) : safeDays(lead.jobTotalDays),
     invoice, invoicePaid: !!invoice && receipts.length > 0 && receipts.every(receipt => receipt.remainingCents === 0), eligible: !unavailableReason, unavailableReason, ledger,
+    completionDate, defaultShares, expenses: [],
     changed: ledger?.status === "approved" && (!sameEarningsInvoice(ledger.invoice, invoice) || !!unavailableReason) || false };
 }
 
@@ -152,5 +188,4 @@ export function validateEarningsTotal(shares: EarningsShare[], baseCents: number
   }
 }
 
-// Display whole dollars by dropping cents, while retaining exact ledger amounts.
-export const formatEarningsMoney = (cents: number) => Math.trunc(cents / 100).toLocaleString("en-AU", { style: "currency", currency: "AUD", minimumFractionDigits: 0, maximumFractionDigits: 0 });
+export const formatEarningsMoney = (cents: number) => (cents / 100).toLocaleString("en-AU", { style: "currency", currency: "AUD", minimumFractionDigits: 2, maximumFractionDigits: 2 });

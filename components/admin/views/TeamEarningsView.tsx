@@ -1,18 +1,19 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
-import { CheckCircle2, Download, History, Loader2, Plus, RefreshCcw, Search, Wallet, X } from "lucide-react";
-import { calculateEarnings, formatEarningsMoney as money, type EarningsShare, type EarningsBasis, type EarningsData, type EarningsEvent, type EarningsJob, type EarningsLedger, type EarningsMember, type EarningsPayment } from "@/lib/teamEarnings";
+import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { CheckCircle2, Download, History, Loader2, Plus, RefreshCcw, Search, Users, Wallet, X } from "lucide-react";
+import { applyDailyEarningsCaps, calculateEarnings, formatEarningsMoney as money, type EarningsShare, type EarningsBasis, type EarningsData, type EarningsEvent, type EarningsJob, type EarningsLedger, type EarningsMember, type EarningsPayment } from "@/lib/teamEarnings";
+import { defaultTeamEarningsSettings, type TeamEarningsSettings } from "@/lib/teamEarningsSettings";
 
-import { formatAppt } from "@/lib/scheduling";
 import { compareRegisterJobs, matchesRegisterFilter, registerFilters, registerTotals, type RegisterFilter } from "@/lib/teamEarningsRegister";
 import { earningsJobsCsv, earningsMembersCsv, earningsStatus as label, estimatedEarningsShares as estimatedShares } from "@/lib/teamEarningsCsv";
+import { Settings, Trash2 } from "lucide-react";
 
 const input = "w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none disabled:opacity-60";
 const button = "inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50";
 const primary = "inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed";
 type ShareRow = { memberId: string; mode: "percent" | "amount"; value: string };
-const shareRow = (share: EarningsShare): ShareRow => ({ memberId: share.memberId, mode: share.fixedAmountCents !== undefined ? "amount" : "percent", value: String(share.fixedAmountCents !== undefined ? share.fixedAmountCents / 100 : share.rateBps / 100) });
+const shareRow = (share: EarningsShare): ShareRow => ({ memberId: share.memberId, mode: share.fixedAmountCents !== undefined ? "amount" : "percent", value: share.fixedAmountCents === undefined && share.rateBps === 0 ? "" : String(share.fixedAmountCents !== undefined ? share.fixedAmountCents / 100 : share.rateBps / 100) });
 const emptyRow = (memberId = ""): ShareRow => ({ memberId, mode: "percent", value: "" });
 const sharePayload = (row: ShareRow) => row.mode === "amount" ? { memberId: row.memberId, rateBps: 0, fixedAmountCents: Math.round(Number(row.value) * 100) } : { memberId: row.memberId, rateBps: Math.round(Number(row.value) * 100) };
 const shareLabel = (share: EarningsShare): string => share.fixedAmountCents !== undefined ? "Fixed amount" : `${share.rateBps / 100}%`;
@@ -35,9 +36,9 @@ function WorkBreakdown({ job }: { job: EarningsJob }) {
   </div>)}</div>;
 }
 interface HistoryData { events: EarningsEvent[]; payments: EarningsPayment[]; hasMore: boolean }
-function EarningsDetail({ job, members, onClose, onChanged, initialMember }: { job: EarningsJob; members: EarningsMember[]; onClose: () => void; onChanged: (ledger: EarningsLedger) => void; initialMember?: string }) {
-  const [basis, setBasis] = useState<EarningsBasis>(job.ledger?.basis || "ex_gst");
-  const [rows, setRows] = useState<ShareRow[]>(() => job.ledger?.shares.map(shareRow) || (job.assignedIds.length ? job.assignedIds.slice(0, 20).map(emptyRow) : [emptyRow()]));
+function EarningsDetail({ job, members, settings, onClose, onChanged, onRefresh, initialMember }: { job: EarningsJob; members: EarningsMember[]; settings?: TeamEarningsSettings; onClose: () => void; onChanged: (ledger: EarningsLedger) => void; onRefresh: () => void; initialMember?: string }) {
+  const [basis, setBasis] = useState<EarningsBasis>(job.ledger?.basis || settings?.basis || "ex_gst");
+  const [rows, setRows] = useState<ShareRow[]>(() => job.ledger?.shares.map(shareRow) || (job.defaultShares.length ? job.defaultShares.slice(0, 20).map(shareRow) : job.assignedIds.length ? job.assignedIds.slice(0, 20).map(emptyRow) : [emptyRow()]));
   const [notes, setNotes] = useState(job.ledger?.notes || "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -54,8 +55,9 @@ function EarningsDetail({ job, members, onClose, onChanged, initialMember }: { j
   const totalRate = rows.reduce((sum, row) => sum + (row.mode === "percent" ? Number(row.value || 0) : 0), 0);
   const invoice = job.invoice;
   const previewBase = invoice ? basis === "inclusive" ? invoice.totalCents : (invoice.items || [invoice]).reduce((sum, item) => sum + Math.round(item.totalCents * 10000 / (10000 + item.gstBps)), 0) : 0;
-  const preview = calculateEarnings(rows.map(row => ({ ...sharePayload(row), name: "", earnedCents: 0, paidCents: 0 })), previewBase);
-  const exceedsBase = !!invoice && preview.reduce((sum, share) => sum + share.earnedCents, 0) > previewBase;
+  const rawPreview = calculateEarnings(rows.map(row => ({ ...sharePayload(row), name: "", earnedCents: 0, paidCents: 0 })), previewBase);
+  const preview = applyDailyEarningsCaps(rawPreview, job.dailyCapUsage);
+  const exceedsBase = !!invoice && rawPreview.reduce((sum, share) => sum + share.earnedCents, 0) > previewBase;
   const dirty = basis !== (ledger?.basis || "ex_gst") || notes !== (ledger?.notes || "") || JSON.stringify(rows) !== JSON.stringify(ledger?.shares.map(shareRow) || []);
   useEffect(() => {
     const controller = new AbortController();
@@ -90,7 +92,7 @@ function EarningsDetail({ job, members, onClose, onChanged, initialMember }: { j
     {!approved ? <form onSubmit={save} className="space-y-4">
       <fieldset disabled={busy} className="space-y-4">
         <Field name="Commission basis"><select className={input} value={basis} onChange={e => setBasis(e.target.value as EarningsBasis)}><option value="ex_gst">Invoice amount excluding GST</option><option value="inclusive">Full invoice amount including GST</option></select></Field>
-        <p className="text-xs text-slate-500">{invoice ? `Invoice GST: ${invoice.gstBps < 0 ? "mixed rates" : `${invoice.gstBps / 100}%`}. Calculation base: ${money(previewBase)}.` : "Save an invoice to calculate estimates. Shares can be planned now."} Choose a percentage share or a fixed AUD amount for each worker. Shares apply once to all saved invoices for this job. Fixed amounts are charged once per job. Work days provide context and do not multiply the percentage.</p>
+        <p className="text-xs text-slate-500">{invoice ? `Invoice GST: ${invoice.gstBps < 0 ? "mixed rates" : `${invoice.gstBps / 100}%`}. Calculation base: ${money(previewBase)}.` : "Save an invoice to calculate estimates. Shares can be planned now."} Defaults come from Earnings Settings. Daily maximums apply across all approved jobs for each worker on this completion date. Fixed amounts apply once per job; work days do not multiply the share.</p>
         <div className="overflow-x-auto"><table className="w-full min-w-[850px] text-left text-sm"><thead className="bg-blue-50 text-xs text-slate-600"><tr>{["Team member", "Role", "Share type", "Share / Amount", "Estimated earnings", "Action"].map(title => <th key={title} className="p-3">{title}</th>)}</tr></thead><tbody>{rows.map((row, index) => <tr key={index} className="border-b border-slate-100">
           <td className="min-w-48 p-3"><select required aria-label={`Team member ${index + 1}`} className={input} value={row.memberId} onChange={e => setRows(old => old.map((r, i) => i === index ? { ...r, memberId: e.target.value } : r))}><option value="">Choose member</option>{members.filter(m => m.active || ledger?.shares.some(s => s.memberId === m.id)).map(m => <option key={m.id} value={m.id}>{m.name}{!m.active ? " (inactive)" : ""}</option>)}</select></td>
           <td className="p-3 text-xs">{members.find(m => m.id === row.memberId)?.role || "—"}</td>
@@ -123,25 +125,140 @@ function EarningsDetail({ job, members, onClose, onChanged, initialMember }: { j
 
 
 const panel = "min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xs";
-const dateTime = (value?: string) => formatAppt(value, { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) || "—";
 function Badge({ children, warning = false }: { children: ReactNode; warning?: boolean }) {
   return <span className={`inline-block whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold ${warning ? "bg-amber-100 text-amber-800" : "bg-blue-50 text-blue-800"}`}>{children}</span>;
+}
+
+type EmployeeSettingForm = { memberId: string; mode: "percent" | "amount"; value: string; dailyMaximum: string };
+function EarningsSettingsDialog({ members, current, onClose, onSaved, onManageTeam }: {
+  members: EarningsMember[]; current?: TeamEarningsSettings; onClose: () => void; onSaved: (settings: TeamEarningsSettings) => void; onManageTeam: () => void;
+}) {
+  const savedSettings = current || defaultTeamEarningsSettings;
+  const [basis, setBasis] = useState<EarningsBasis>(savedSettings.basis);
+  const [gstRate, setGstRate] = useState(String(savedSettings.gstRateBps / 100));
+  const [employeeRows, setEmployeeRows] = useState<EmployeeSettingForm[]>(() => members.map(member => {
+    const saved = savedSettings.employeeSettings.find(setting => setting.memberId === member.id);
+    return { memberId: member.id, mode: saved?.mode || "percent", value: saved ? String(saved.mode === "amount" ? (saved.fixedAmountCents || 0) / 100 : saved.rateBps / 100) : "", dailyMaximum: saved?.dailyCapCents == null ? "" : String(saved.dailyCapCents / 100) };
+  }));
+  const [rules, setRules] = useState(savedSettings.automaticExpenses.map(rule => ({ ...rule, amount: (rule.amountCents / 100).toFixed(2) })));
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  async function save(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (busy) return;
+    setBusy(true); setError("");
+    try {
+      const saved = await api<TeamEarningsSettings>("/api/admin/team-earnings/settings", {
+        method: "POST",
+        body: JSON.stringify({
+          basis, gstRateBps: Math.round(Number(gstRate) * 100),
+          employeeSettings: employeeRows.map(row => ({
+            memberId: row.memberId, mode: row.mode,
+            rateBps: row.mode === "percent" ? Math.round(Number(row.value || 0) * 100) : 0,
+            fixedAmountCents: row.mode === "amount" ? Math.round(Number(row.value || 0) * 100) : undefined,
+            dailyCapCents: row.dailyMaximum.trim() ? Math.round(Number(row.dailyMaximum) * 100) : null,
+          })),
+          automaticExpenses: rules.map(({ amount, ...rule }) => ({ ...rule, amountCents: Math.round(Number(amount) * 100) })),
+        }),
+      });
+      onSaved(saved);
+    } catch (e) { setError((e as Error).message); } finally { setBusy(false); }
+  }
+  function addRule() {
+    setRules(old => [...old, { id: crypto.randomUUID(), name: "", amountCents: 0, amount: "", active: true, activeFrom: today() }]);
+  }
+  return <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-950/50 p-3 sm:p-6" role="presentation">
+    <section role="dialog" aria-modal="true" aria-labelledby="earnings-settings-title" className="my-auto max-h-[94vh] w-full max-w-5xl overflow-y-auto rounded-2xl bg-white shadow-2xl">
+      <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white px-5 py-4"><div><h2 id="earnings-settings-title" className="text-lg font-bold">Team Earnings Settings</h2><p className="text-xs text-slate-500">Settings apply to new drafts and automatic expenses only. Approved earnings remain unchanged.</p></div><button className={button} type="button" onClick={onClose}>Close</button></div>
+      <form onSubmit={save} className="space-y-6 p-5">
+        <ErrorBox error={error} />
+        <section className="grid gap-4 rounded-xl border border-slate-200 p-4 sm:grid-cols-2">
+          <div className="sm:col-span-2"><h3 className="font-bold">Invoice GST Setting</h3><p className="mt-1 text-xs text-slate-500">The GST saved on each CRM invoice is used when available. These values set the default basis and fallback GST rate for legacy invoices.</p></div>
+          <Field name="Invoice entry mode"><select className={input} value={basis} onChange={e => setBasis(e.target.value as EarningsBasis)}><option value="ex_gst">Excluding GST</option><option value="inclusive">Including GST</option></select></Field>
+          <Field name="GST rate (%)"><input className={input} type="number" min="0" max="100" step="0.01" required value={gstRate} onChange={e => setGstRate(e.target.value)} /></Field>
+        </section>
+        <section className="space-y-3 rounded-xl border border-slate-200 p-4">
+          <div><h3 className="font-bold">Default Share, Daily Maximum & Role</h3><p className="mt-1 text-xs text-slate-500">Defaults prefill new job shares. Daily maximum caps one worker's combined approved earnings across all jobs on the same completion date. Roles are managed in the CRM team roster.</p></div>
+          <div className="overflow-x-auto"><table className="w-full min-w-[720px] text-left text-sm"><thead className="bg-slate-50 text-xs text-slate-500"><tr>{["Employee", "Share type", "Default share / amount", "Daily max (AUD)", "Role"].map(title => <th key={title} className="p-2">{title}</th>)}</tr></thead><tbody>{employeeRows.map((row, index) => {
+            const member = members.find(item => item.id === row.memberId);
+            return <tr key={row.memberId} className="border-b border-slate-100">
+              <td className="p-2 font-semibold">{member?.name || "Former member"}{member && !member.active && <span className="ml-1 text-xs text-slate-400">Inactive</span>}</td>
+              <td className="min-w-36 p-2"><select className={input} value={row.mode} onChange={e => setEmployeeRows(old => old.map((item, i) => i === index ? { ...item, mode: e.target.value as EmployeeSettingForm["mode"] } : item))}><option value="percent">Percentage %</option><option value="amount">Fixed $</option></select></td>
+              <td className="min-w-40 p-2"><input className={input} type="number" min="0" step="0.01" aria-label={`${member?.name || "Employee"} default ${row.mode}`} placeholder="No default" value={row.value} onChange={e => setEmployeeRows(old => old.map((item, i) => i === index ? { ...item, value: e.target.value } : item))} /></td>
+              <td className="min-w-36 p-2"><input className={input} type="number" min="0.01" step="0.01" aria-label={`${member?.name || "Employee"} daily maximum`} placeholder="No maximum" value={row.dailyMaximum} onChange={e => setEmployeeRows(old => old.map((item, i) => i === index ? { ...item, dailyMaximum: e.target.value } : item))} /></td>
+              <td className="p-2 text-xs capitalize">{member?.role || "former member"}</td>
+            </tr>;
+          })}{!employeeRows.length && <tr><td colSpan={5} className="p-5 text-center text-sm text-slate-500">No CRM team members found. Add employees in the CRM team page first.</td></tr>}</tbody></table></div>
+          <button type="button" className={button} onClick={onManageTeam}><Plus className="h-4 w-4" />Manage CRM employees</button>
+        </section>
+        <section className="space-y-3 rounded-xl border border-slate-200 p-4">
+          <div><h3 className="font-bold">Automatic Job Expenses</h3><p className="mt-1 text-xs text-slate-500">Active fixed expenses are added once to each eligible job from the rule's start date. Changing a rule will not rewrite expenses already recorded.</p></div>
+          {rules.map((rule, index) => <div key={rule.id} className="grid gap-2 rounded-lg bg-slate-50 p-3 sm:grid-cols-[minmax(180px,1fr)_160px_150px_auto_auto] sm:items-end">
+            <Field name="Expense name"><input className={input} required maxLength={100} placeholder="e.g. Fuel" value={rule.name} onChange={e => setRules(old => old.map((item, i) => i === index ? { ...item, name: e.target.value } : item))} /></Field>
+            <Field name="Amount (AUD)"><input className={input} type="number" min="0.01" step="0.01" required value={rule.amount} onChange={e => setRules(old => old.map((item, i) => i === index ? { ...item, amount: e.target.value } : item))} /></Field>
+            <Field name="Start date"><input className={input} type="date" required value={rule.activeFrom} onChange={e => setRules(old => old.map((item, i) => i === index ? { ...item, activeFrom: e.target.value } : item))} /></Field>
+            <label className="flex items-center gap-2 pb-2 text-xs font-semibold"><input type="checkbox" checked={rule.active} onChange={e => setRules(old => old.map((item, i) => i === index ? { ...item, active: e.target.checked } : item))} />Active</label>
+            <button type="button" className={button} aria-label={`Remove ${rule.name || "expense"} rule`} onClick={() => setRules(old => old.filter((_, i) => i !== index))}><Trash2 className="h-4 w-4" /></button>
+          </div>)}
+          <button type="button" className={button} onClick={addRule}><Plus className="h-4 w-4" />Add automatic expense rule</button>
+        </section>
+        <div className="flex justify-end gap-2"><button type="button" className={button} onClick={onClose} disabled={busy}>Cancel</button><button type="submit" className={primary} disabled={busy}>{busy && <Loader2 className="h-4 w-4 animate-spin" />}Save settings</button></div>
+      </form>
+    </section>
+  </div>;
+}
+
+function JobExpenses({ job, onChanged }: { job: EarningsJob; onChanged: () => void }) {
+  const [name, setName] = useState("");
+  const [amount, setAmount] = useState("");
+  const [date, setDate] = useState(today());
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const activeExpenses = job.expenses.filter(expense => !expense.voidedAt);
+  async function mutate(payload: Record<string, unknown>) {
+    setBusy(true); setError("");
+    try {
+      await api(`/api/admin/team-earnings/${job.id}/expenses`, { method: "POST", body: JSON.stringify({ ...payload, version: job.expenseVersion || 0, requestId: crypto.randomUUID() }) });
+      setName(""); setAmount(""); onChanged();
+    } catch (e) { setError((e as Error).message); } finally { setBusy(false); }
+  }
+  return <section className="space-y-3 rounded-xl border border-slate-200 bg-white p-4">
+    <div className="flex items-center justify-between gap-3"><h3 className="font-bold">Job Expenses</h3><span className="text-sm font-semibold">{money(activeExpenses.reduce((sum, expense) => sum + expense.amountCents, 0))}</span></div>
+    <div className="divide-y divide-slate-100">{activeExpenses.map(expense => <div key={expense.id} className="flex items-center justify-between gap-3 py-2 text-sm"><span>{expense.name}<span className="ml-2 text-xs text-slate-400">{expense.source === "automatic" ? "Automatic" : "Manual"} · {expense.date}</span></span><span className="flex items-center gap-3 font-semibold">{money(expense.amountCents)}<button className={button} type="button" disabled={busy} aria-label={`Remove expense ${expense.name}`} onClick={() => void mutate({ action: "remove", expenseId: expense.id })}><Trash2 className="h-3.5 w-3.5" /></button></span></div>)}
+      {!activeExpenses.length && <p className="py-2 text-xs text-slate-500">No job expenses recorded.</p>}
+    </div>
+    <ErrorBox error={error} />
+    <form className="grid gap-2 sm:grid-cols-[minmax(140px,1fr)_130px_150px_auto]" onSubmit={event => { event.preventDefault(); void mutate({ action: "add", name, amountCents: Math.round(Number(amount) * 100), date }); }}>
+      <input className={input} aria-label="Expense name" required maxLength={100} placeholder="Expense name, e.g. Materials" value={name} onChange={e => setName(e.target.value)} />
+      <input className={input} aria-label="Expense amount" required type="number" min="0.01" step="0.01" placeholder="AUD" value={amount} onChange={e => setAmount(e.target.value)} />
+      <input className={input} aria-label="Expense date" required type="date" max={today()} value={date} onChange={e => setDate(e.target.value)} />
+      <button className={button} type="submit" disabled={busy}><Plus className="h-4 w-4" />Add expense</button>
+    </form>
+  </section>;
 }
 
 export function TeamEarningsView({ query, onQueryChange, onOpenJob, onAddJob, onManageTeam, refreshKey }: {
   query: string; onQueryChange: (value: string) => void; onOpenJob: (id: string) => void;
   onAddJob: () => void; onManageTeam: () => void; refreshKey?: boolean;
 }) {
-  const [data, setData] = useState<EarningsData>({ members: [], jobs: [] });
+  const [data, setData] = useState<EarningsData>({ members: [], jobs: [], settings: defaultTeamEarningsSettings, payments: [] });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [memberId, setMemberId] = useState("");
   const [status, setStatus] = useState("");
   const [filter, setFilter] = useState<RegisterFilter>("All Jobs");
-  const [page, setPage] = useState(1);
+  const [, setPage] = useState(1);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [selected, setSelected] = useState<{ id: string; memberId?: string } | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [tab, setTab] = useState<"jobs" | "employees" | "payments">("jobs");
+  const [period, setPeriod] = useState<"month" | "last" | "custom" | "all">("month");
+  const initialMonth = monthRange(0);
+  const [fromDate, setFromDate] = useState(initialMonth.from);
+  const [toDate, setToDate] = useState(initialMonth.to);
+  const [activeJobId, setActiveJobId] = useState("");
+  const [editorOpen, setEditorOpen] = useState(true);
   const sequence = useRef(0);
   const load = useCallback(async () => {
     const current = ++sequence.current; setLoading(true); setError("");
@@ -156,11 +273,21 @@ export function TeamEarningsView({ query, onQueryChange, onOpenJob, onAddJob, on
   }, [load, refreshKey]);
   function saved() { setSelected(null); setNotice("Saved to the team earnings ledger."); void load(); }
   const related = (job: EarningsJob, id: string) => job.assignedIds.includes(id) || job.ledger?.shares.some(s => s.memberId === id);
-  const relevant = data.jobs.filter(job => !memberId || related(job, memberId));
+  const inPeriod = (job: EarningsJob) => {
+    if (period === "all") return true;
+    const date = job.completionDate || job.scheduledAt?.slice(0, 10) || "";
+    const start = period === "month" ? initialMonth.from : period === "last" ? monthRange(-1).from : fromDate;
+    const end = period === "month" ? initialMonth.to : period === "last" ? monthRange(-1).to : toDate;
+    return !!date && date >= start && date <= end;
+  };
+  const relevant = data.jobs.filter(job => inPeriod(job) && (!memberId || related(job, memberId)));
   const searched = relevant.filter(job => (!status || label(job) === status) && [job.jobLabel, job.customer, job.service, job.invoice?.number || "", ...job.assignedNames, ...(job.ledger?.shares.map(s => s.name) || [])].some(value => value.toLowerCase().includes(query.trim().toLowerCase())));
   const filtered = searched.filter(job => matchesRegisterFilter(job, filter)).sort(compareRegisterJobs);
   const totals = registerTotals(filtered);
-  const totalPages = Math.max(1, Math.ceil(filtered.length / 20)), currentPage = Math.min(page, totalPages);
+  const activeJob = filtered.find(job => job.id === activeJobId) || filtered[0];
+  const expenseTotal = filtered.reduce((sum, job) => sum + job.expenses.filter(expense => !expense.voidedAt).reduce((value, expense) => value + expense.amountCents, 0), 0);
+  const managerGross = totals.value - totals.earned;
+  const managerFinal = managerGross - expenseTotal;
   const memberRows = data.members.filter(m => !memberId || m.id === memberId).map(member => {
     const jobs = filtered.filter(job => related(job, member.id));
     let earned = 0, paid = 0, estimated = 0;
@@ -177,52 +304,71 @@ export function TeamEarningsView({ query, onQueryChange, onOpenJob, onAddJob, on
   }
   function toggleJob(id: string) {
     setExpanded(old => { const next = new Set(old); if (next.has(id)) next.delete(id); else next.add(id); return next; });
-    setSelected(null);
+    setActiveJobId(id); setEditorOpen(true); setSelected(null);
   }
   function edit(job: EarningsJob, member?: string) {
-    setExpanded(old => new Set(old).add(job.id)); setSelected({ id: job.id, memberId: member });
+    setExpanded(old => new Set(old).add(job.id)); setActiveJobId(job.id); setEditorOpen(true); setSelected({ id: job.id, memberId: member });
   }
+  const dateFilteredPayments = (data.payments || []).filter(payment => period === "all" || (period === "month" ? payment.date >= initialMonth.from && payment.date <= initialMonth.to : period === "last" ? payment.date >= monthRange(-1).from && payment.date <= monthRange(-1).to : payment.date >= fromDate && payment.date <= toDate));
   const cards = [
-    ["Total Jobs", String(filtered.length)], ["Total Invoices", String(totals.invoices)], ["Invoice Value", money(totals.value)],
-    ["Customer Received", money(totals.received)], ["Team Earnings", money(totals.earned)], ["Paid to Team", money(totals.paid)], ["Team Outstanding", money(totals.earned - totals.paid)],
+    ["Total Jobs", String(filtered.length)], ["Job Value", money(totals.value)], ["Received", money(totals.received)],
+    ["Team Earnings", money(totals.earned)], ["Paid to Team", money(totals.paid)], ["Team Outstanding", money(totals.earned - totals.paid)], ["Manager Balance", money(managerFinal)],
   ];
   return <div className="space-y-4">
-    <div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="text-xl font-bold text-slate-900">Team Earnings · Working Register</h2><p className="mt-1 text-sm text-slate-500">Jobs, customer invoices and team payments in one register.</p></div><div className="flex flex-wrap gap-2"><button className={primary} onClick={onAddJob}><Plus className="h-4 w-4" />Add job</button><button className={button} onClick={onManageTeam}><Plus className="h-4 w-4" />Manage team</button><button className={button} disabled={loading || !!error || !filtered.length} onClick={() => exportCsv()}><Download className="h-4 w-4" />Export CSV</button><button className={button} disabled={loading} onClick={() => { setNotice(""); setSelected(null); void load(); }}><RefreshCcw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />Refresh</button></div></div>
+    <div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="flex items-center gap-2 text-xl font-bold text-slate-900"><Users className="h-5 w-5 text-blue-600" />Job & Team Payment Management</h2><p className="mt-1 text-sm text-slate-500">Monthly jobs, employee earnings, customer receipts, expenses and worker payments.</p></div><div className="flex flex-wrap items-center gap-2">
+      <select className={`${input} w-auto`} aria-label="Earnings date preset" value={period} onChange={e => setPeriod(e.target.value as typeof period)}><option value="month">This Month</option><option value="last">Last Month</option><option value="custom">Custom range</option><option value="all">All Time</option></select>
+      {period === "custom" && <><input className={`${input} w-auto`} aria-label="Earnings start date" type="date" value={fromDate} onChange={e => setFromDate(e.target.value)} /><input className={`${input} w-auto`} aria-label="Earnings end date" type="date" value={toDate} onChange={e => setToDate(e.target.value)} /></>}
+      <button className={button} onClick={() => setSettingsOpen(true)}><Settings className="h-4 w-4" />Settings</button><button className={button} disabled={loading || !!error || !filtered.length} onClick={() => exportCsv()}><Download className="h-4 w-4" />Export</button><button className={primary} onClick={onAddJob}><Plus className="h-4 w-4" />Add Job</button>
+    </div></div>
     <ErrorBox error={error} />{notice && <p role="status" className="rounded-xl bg-emerald-50 p-3 text-sm text-emerald-800">{notice}</p>}
-    <div className="grid grid-cols-2 gap-2 md:grid-cols-4 2xl:grid-cols-7">{cards.map(([title, value]) => <div key={title} className={`${panel} p-3`}><p className="text-xs font-semibold text-slate-500">{title}</p><p className="mt-1 break-words text-xl font-bold text-slate-900">{loading || error ? "—" : value}</p></div>)}</div>
-    <div className="flex flex-wrap gap-2"><div className="relative min-w-48 flex-1"><Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" /><input className={`${input} pl-9`} aria-label="Search team earnings" placeholder="Search job, customer, invoice or member…" value={query} onChange={e => { onQueryChange(e.target.value); setPage(1); }} /></div><select className={`${input} sm:w-auto`} aria-label="Filter team member" value={memberId} onChange={e => { setMemberId(e.target.value); setPage(1); }}><option value="">All team members</option>{data.members.map(m => <option key={m.id} value={m.id}>{m.name}{m.active ? "" : " (inactive)"}</option>)}</select><select className={`${input} sm:w-auto`} aria-label="Filter earnings status" value={status} onChange={e => { setStatus(e.target.value); setPage(1); }}><option value="">All earnings statuses</option>{["Not configured", "Draft", "Approved", "Settled", "Needs review"].map(value => <option key={value}>{value}</option>)}</select></div>
+    <div className="grid grid-cols-2 gap-2 md:grid-cols-4 2xl:grid-cols-7">{cards.map(([title, value]) => <div key={title} className={`${panel} p-3`}><p className="text-xs font-semibold text-slate-500">{title}</p><p className="mt-1 break-words text-lg font-bold text-slate-900">{loading || error ? "—" : value}</p></div>)}</div>
     <div className="flex flex-wrap gap-2" aria-label="Job status filters">{registerFilters.map(value => <button key={value} aria-pressed={filter === value} className={filter === value ? primary : button} onClick={() => { setFilter(value); setPage(1); }}>{value} ({loading || error ? "—" : searched.filter(job => matchesRegisterFilter(job, value)).length})</button>)}</div>
-    <p className="text-xs text-slate-500">All totals and summaries follow the displayed filters, across every page. Job filters can overlap. Team earnings are approved amounts; draft estimates of {loading || error ? "—" : money(totals.estimated)} are separate. A member filter shows whole related jobs, including their other workers.</p>
-    <section className={panel}>
-      <div className="flex flex-wrap items-center justify-between gap-2 p-4"><h3 className="font-bold">All Jobs & Invoices</h3><span className="text-xs text-slate-500">Invoiced jobs appear first. Expand a job to edit team shares.</span></div>
-      {loading ? <div role="status" className="flex items-center justify-center gap-2 p-12 text-sm text-slate-500"><Loader2 className="h-5 w-5 animate-spin" />Loading team earnings…</div> : error ? <div className="p-8 text-center"><button className={button} onClick={() => void load()}>Retry</button></div> : <>
-        <div className="overflow-x-auto"><table className="w-full min-w-[1250px] text-left text-sm"><thead className="bg-slate-900 text-xs text-white"><tr>{["Job / Customer", "Invoices", "Job Date & Time", "Job Status", "Invoice Value", "Received", "Payment Status", "Team Share", "Team Paid", "Outstanding", "Manager Balance", "Actions"].map(title => <th key={title} className="whitespace-nowrap px-3 py-3">{title}</th>)}</tr></thead><tbody className="divide-y divide-slate-100">{filtered.slice((currentPage - 1) * 20, currentPage * 20).map(job => {
-          const approved = job.ledger?.status === "approved", open = expanded.has(job.id);
-          const total = registerTotals([job]);
-          const invoices = job.invoice?.items || (job.invoice ? [job.invoice] : []);
-          return <Fragment key={job.id}><tr className={`cursor-pointer align-top ${open ? "bg-blue-50" : "hover:bg-slate-50"}`} onClick={event => { if (!(event.target as HTMLElement).closest("button, a, input, select, textarea")) toggleJob(job.id); }}>
-            <td className="min-w-44 px-3 py-4"><button className="text-left font-bold text-blue-700 hover:underline" aria-expanded={open} aria-controls={`earnings-job-${job.id}`} onClick={() => toggleJob(job.id)}>{open ? "▾" : "▸"} {job.jobLabel}</button><p className="mt-1 font-medium">{job.customer}</p><p className="text-xs text-slate-500">{job.service}</p></td>
-            <td className="px-3 py-4">{total.invoices}</td><td className="min-w-36 px-3 py-4 text-xs">{dateTime(job.scheduledAt)}</td><td className="px-3 py-4"><Badge>{job.status}</Badge><p className="mt-2 text-xs text-slate-500">{job.completedVisits}/{job.totalVisits} visits done</p></td>
-            <td className="px-3 py-4 font-semibold">{job.invoice ? money(total.value) : "—"}</td><td className="px-3 py-4 text-emerald-700">{money(total.received)}</td><td className="px-3 py-4"><Badge warning={!!job.invoice && !job.invoicePaid}>{!job.invoice ? "No invoice" : job.invoicePaid ? "Paid" : total.received > 0 ? "Partial" : "Pending"}</Badge></td>
-            <td className="px-3 py-4 font-semibold">{money(approved ? total.earned : total.estimated)}{!approved && <p className="text-xs font-normal text-slate-500">Draft estimate</p>}</td><td className="px-3 py-4">{approved ? money(total.paid) : "—"}</td><td className="px-3 py-4 font-semibold text-rose-700">{approved ? money(total.earned - total.paid) : "—"}</td><td className="px-3 py-4">{approved ? money(total.received - total.earned) : "—"}<p className="text-xs text-slate-500">Before expenses</p></td>
-            <td className="space-y-2 px-3 py-4"><button className={button} onClick={() => edit(job)}>{approved ? "Payments / details" : "Set team shares"}</button>{job.status !== "Source unavailable" && <button className={button} onClick={() => onOpenJob(job.id)}>Open job</button>}</td>
-          </tr>{open && <tr id={`earnings-job-${job.id}`}><td colSpan={12} className="bg-blue-50/40 p-4"><div className="space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-2"><h4 className="font-bold">Invoices & Team Shares · {job.jobLabel}</h4><Badge warning={job.changed}>{label(job)}</Badge></div>
-            {invoices.length ? <div className="grid gap-3 lg:grid-cols-2">{invoices.map((invoice, index) => {
-              const receipt = job.receipts?.[index];
-              return <section key={`${invoice.number}-${index}`} className="overflow-hidden rounded-xl border border-blue-100 bg-white"><div className="flex flex-wrap justify-between gap-2 bg-blue-100/60 px-4 py-3"><h5 className="font-bold">{invoice.number}</h5><span className="text-xs">GST {invoice.gstBps / 100}%</span></div><dl className="grid grid-cols-3 gap-2 p-4 text-xs"><div><dt className="text-slate-500">Invoice value</dt><dd className="mt-1 font-bold">{money(invoice.totalCents)}</dd></div><div><dt className="text-slate-500">Received</dt><dd className="mt-1 font-bold text-emerald-700">{receipt ? money(receipt.paidCents) : "—"}</dd></div><div><dt className="text-slate-500">Customer due</dt><dd className="mt-1 font-bold text-rose-700">{receipt ? money(receipt.remainingCents) : "—"}</dd></div></dl><div className="px-4 pb-3"><button className={button} onClick={() => onOpenJob(job.id)}>Manage customer invoices</button></div></section>;
-            })}</div> : <p className="rounded-xl bg-white p-4 text-sm text-slate-500">This lead has no saved invoice in the CRM. Team shares can be planned below; earnings require a saved invoice.</p>}
-            <EarningsDetail key={`${job.id}:${job.ledger?.version || 0}:${selected?.id === job.id ? selected.memberId || "details" : "details"}`} job={job} initialMember={selected?.id === job.id ? selected.memberId : undefined} members={data.members} onClose={() => { setExpanded(old => { const next = new Set(old); next.delete(job.id); return next; }); setSelected(null); }} onChanged={saved} />
-            {job.changed && <p className="rounded-xl bg-amber-100 p-3 text-sm text-amber-900">This job changed after approval. Earnings are preserved; review the record before recording further payments.</p>}
-            <div className="flex flex-wrap justify-between gap-3 rounded-xl bg-amber-50 p-4 text-sm"><span>Customer received: <b>{money(total.received)}</b></span><span>Approved team earnings: <b>{money(total.earned)}</b></span><span>Manager balance before expenses: <b>{money(total.received - total.earned)}</b></span></div>
-            <details className="rounded-xl border border-slate-200 bg-white p-4"><summary className="cursor-pointer text-sm font-semibold">Assigned work & visit progress</summary><div className="mt-3"><WorkBreakdown job={job} /></div></details>
-
-          </div></td></tr>}</Fragment>;
-        })}{!filtered.length && <tr><td colSpan={12} className="p-12 text-center text-slate-500">No jobs match these filters. CRM jobs and invoices appear automatically.</td></tr>}</tbody></table></div>
-        <div className="flex items-center justify-between border-t border-slate-100 p-4 text-xs text-slate-500"><span>{filtered.length} jobs · Page {currentPage} of {totalPages}</span><div className="flex gap-2"><button className={button} disabled={currentPage === 1} onClick={() => setPage(currentPage - 1)}>Previous</button><button className={button} disabled={currentPage === totalPages} onClick={() => setPage(currentPage + 1)}>Next</button></div></div>
-      </>}
-    </section>
-    {!loading && !error && <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(280px,1fr)]"><section className={panel}><div className="flex flex-wrap justify-between gap-2 p-4"><h3 className="font-bold">Payment Summary · Team Members</h3><button className={button} onClick={() => exportCsv(true)} disabled={!memberRows.length}>Export team CSV</button></div><div className="overflow-x-auto"><table className="w-full min-w-[650px] text-left text-sm"><thead className="bg-slate-900 text-xs text-white"><tr>{["Employee", "Role", "Draft Estimate", "Total Earnings", "Total Paid", "Outstanding", "Action"].map(title => <th key={title} className="px-3 py-3">{title}</th>)}</tr></thead><tbody className="divide-y divide-slate-100">{memberRows.map(member => <tr key={member.id}><td className="px-3 py-3 font-semibold">{member.name}{!member.active && <p className="text-xs font-normal text-slate-500">Inactive</p>}</td><td className="px-3 py-3 text-xs">{member.role}</td><td className="px-3 py-3">{money(member.estimated)}</td><td className="px-3 py-3 font-semibold">{money(member.earned)}</td><td className="px-3 py-3 text-emerald-700">{money(member.paid)}</td><td className="px-3 py-3 font-semibold text-rose-700">{money(member.earned - member.paid)}</td><td className="px-3 py-3"><button className={button} onClick={() => { setMemberId(member.id); setPage(1); }}>View jobs / pay</button></td></tr>)}{!memberRows.length && <tr><td colSpan={7} className="p-6 text-center text-slate-500">No team members found.</td></tr>}</tbody><tfoot className="bg-blue-50 font-bold"><tr><td colSpan={2} className="p-3">Total</td>{["estimated", "earned", "paid", "outstanding"].map(key => <td key={key} className="p-3">{money(memberRows.reduce((sum, member) => sum + (key === "outstanding" ? member.earned - member.paid : member[key as "estimated" | "earned" | "paid"]), 0))}</td>)}<td /></tr></tfoot></table></div></section><section className={`${panel} p-5`}><h3 className="font-bold">Manager Summary · Groutix</h3><dl className="mt-4 space-y-4 text-sm">{[["Customer receipts", totals.received], ["Less: approved team earnings", -totals.earned], ["Balance before expenses", totals.received - totals.earned], ["Draft team estimates (not approved)", totals.estimated], ["Paid to team", totals.paid], ["Team still outstanding", totals.earned - totals.paid]].map(([title, value]) => <div key={title} className="flex justify-between gap-3"><dt>{title}</dt><dd className="font-bold">{money(value as number)}</dd></div>)}</dl><p className="mt-4 text-xs text-slate-500">Customer receipts come from saved CRM invoice payments. The balance reserves all approved team earnings, including amounts still owed. Expenses are not recorded in this ledger, so this balance is before expenses and is not net profit. Draft estimates still need approval.</p></section></div>}
-    <p className="text-xs text-slate-500">Saved in the CRM database. Payments record money already paid to workers; they do not transfer money. Amounts display whole AUD dollars; calculations, payment inputs and exports retain cents.</p>
+    <div className="flex flex-wrap items-center gap-2"><div className="relative min-w-48 flex-1"><Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" /><input className={`${input} pl-9`} aria-label="Search team earnings" placeholder="Search job, customer or employee..." value={query} onChange={e => { onQueryChange(e.target.value); setPage(1); }} /></div><select className={`${input} sm:w-auto`} aria-label="Filter team member" value={memberId} onChange={e => { setMemberId(e.target.value); setPage(1); }}><option value="">All team members</option>{data.members.map(member => <option key={member.id} value={member.id}>{member.name}{member.active ? "" : " (inactive)"}</option>)}</select><select className={`${input} sm:w-auto`} aria-label="Filter earnings status" value={status} onChange={e => { setStatus(e.target.value); setPage(1); }}><option value="">All earnings statuses</option>{["Not configured", "Draft", "Approved", "Settled", "Needs review"].map(value => <option key={value}>{value}</option>)}</select></div>
+    <div role="tablist" aria-label="Team earnings sections" className="flex flex-wrap gap-2 border-b border-slate-200 pb-2">{([["jobs", "Jobs Register"], ["employees", "Employee Summary"], ["payments", "Payments History"]] as const).map(([id, title]) => <button key={id} type="button" role="tab" aria-selected={tab === id} onClick={() => setTab(id)} className={tab === id ? primary : button}>{title}</button>)}</div>
+    <p className="text-xs text-slate-500">Totals follow the selected date range and filters. Approved earnings are fixed; draft estimates of {loading || error ? "—" : money(totals.estimated)} are not payable yet. Manager balance is invoice value less approved team earnings and recorded job expenses.</p>
+    {loading ? <div role="status" className={`${panel} flex items-center justify-center gap-2 p-12 text-sm text-slate-500`}><Loader2 className="h-5 w-5 animate-spin" />Loading team earnings...</div> : error ? <div className={`${panel} p-8 text-center`}><button className={button} onClick={() => void load()}>Retry</button></div> : <div className="grid items-start gap-4 xl:grid-cols-[minmax(230px,0.85fr)_minmax(440px,2fr)_minmax(270px,1fr)]">
+      <section className={`${panel} ${tab !== "jobs" ? "xl:col-span-2" : ""}`}>
+        {tab === "jobs" && <><div className="flex items-center justify-between border-b border-slate-200 p-4"><h3 className="font-bold">Jobs ({filtered.length})</h3><span className="text-xs text-slate-500">This period</span></div><div className="max-h-[560px] divide-y divide-slate-100 overflow-y-auto">{filtered.map(job => {
+          const jobTotal = registerTotals([job]); const active = (activeJob?.id || "") === job.id; const earnings = job.ledger?.status === "approved" ? jobTotal.earned : jobTotal.estimated;
+          return <button type="button" key={job.id} aria-expanded={activeJobId === job.id} className={`flex w-full items-start justify-between gap-3 p-3 text-left ${active ? "bg-blue-50" : "hover:bg-slate-50"}`} onClick={() => toggleJob(job.id)}>
+            <span className="min-w-0"><span className="block truncate font-bold text-slate-800">{job.jobLabel}</span><span className="block truncate text-xs text-slate-500">{job.customer}</span><span className="mt-1 inline-block"><Badge warning={["Pending", "Needs review"].includes(label(job))}>{job.status}</Badge></span></span><span className="shrink-0 text-right"><span className="block font-semibold">{money(earnings || job.invoice?.totalCents || 0)}</span><span className="text-[11px] text-slate-500">{job.completionDate || job.scheduledAt?.slice(0, 10) || "No date"}</span></span>
+          </button>;
+        })}{!filtered.length && <p className="p-6 text-center text-sm text-slate-500">No jobs match this period and filter.</p>}</div></>}
+        {tab === "employees" && <><div className="flex items-center justify-between border-b border-slate-200 p-4"><h3 className="font-bold">Employee Summary</h3><button className={button} onClick={() => exportCsv(true)}>Export CSV</button></div><div className="overflow-x-auto"><table className="w-full min-w-[600px] text-left text-sm"><thead className="bg-slate-50 text-xs text-slate-500"><tr>{["Employee", "Role", "Draft", "Earned", "Paid", "Remaining", "Action"].map(title => <th key={title} className="p-3">{title}</th>)}</tr></thead><tbody>{memberRows.map(member => <tr key={member.id} className="border-t border-slate-100"><td className="p-3 font-semibold">{member.name}</td><td className="p-3 capitalize">{member.role}</td><td className="p-3">{money(member.estimated)}</td><td className="p-3">{money(member.earned)}</td><td className="p-3 text-emerald-700">{money(member.paid)}</td><td className="p-3 font-semibold text-rose-700">{money(member.earned - member.paid)}</td><td className="p-3"><button className={button} onClick={() => { setMemberId(member.id); setTab("jobs"); }}>View jobs</button></td></tr>)}</tbody><tfoot className="border-t bg-blue-50 font-bold"><tr><td colSpan={2} className="p-3">Total</td><td className="p-3">{money(memberRows.reduce((sum, row) => sum + row.estimated, 0))}</td><td className="p-3">{money(memberRows.reduce((sum, row) => sum + row.earned, 0))}</td><td className="p-3">{money(memberRows.reduce((sum, row) => sum + row.paid, 0))}</td><td className="p-3">{money(memberRows.reduce((sum, row) => sum + row.earned - row.paid, 0))}</td><td /></tr></tfoot></table></div></>}
+        {tab === "payments" && <><div className="border-b border-slate-200 p-4"><h3 className="font-bold">Payments History</h3></div><div className="overflow-x-auto"><table className="w-full min-w-[650px] text-left text-sm"><thead className="bg-slate-50 text-xs text-slate-500"><tr>{["Date", "Employee", "Job", "Amount", "Method", "Reference", "Status"].map(title => <th key={title} className="p-3">{title}</th>)}</tr></thead><tbody>{dateFilteredPayments.map(payment => <tr key={payment.id} className="border-t border-slate-100"><td className="p-3">{payment.date}</td><td className="p-3 font-semibold">{payment.memberName}</td><td className="p-3">{payment.jobLabel}</td><td className="p-3">{money(payment.amountCents)}</td><td className="p-3">{payment.method}</td><td className="p-3">{payment.reference}</td><td className="p-3">{payment.voidedAt ? "Reversed" : "Recorded"}</td></tr>)}</tbody></table>{!dateFilteredPayments.length && <p className="p-8 text-center text-sm text-slate-500">No team payments in this period.</p>}</div></>}
+      </section>
+      {tab === "jobs" && activeJob ? <section className={`${panel} space-y-4 p-4`}>
+        <div className="flex flex-wrap items-center justify-between gap-2"><div><h3 className="text-lg font-bold">Job # {activeJob.jobLabel}</h3><p className="text-xs text-slate-500">{activeJob.customer} · {activeJob.completionDate || activeJob.scheduledAt?.slice(0, 10) || "No date"} · {activeJob.service}</p></div><div className="flex gap-2"><Badge warning={activeJob.changed}>{label(activeJob)}</Badge>{activeJob.status !== "Source unavailable" && <button className={button} onClick={() => onOpenJob(activeJob.id)}>Edit Job</button>}</div></div>
+        <div className="grid gap-3 md:grid-cols-2"><section className="rounded-xl border border-slate-200 p-3 text-sm"><h4 className="mb-2 font-bold">Job Details</h4><p className="flex justify-between gap-2"><span className="text-slate-500">Customer</span><b>{activeJob.customer}</b></p><p className="mt-1 flex justify-between gap-2"><span className="text-slate-500">Job date</span><b>{activeJob.completionDate || activeJob.scheduledAt?.slice(0, 10) || "—"}</b></p><p className="mt-1 flex justify-between gap-2"><span className="text-slate-500">Job value</span><b>{money(activeJob.invoice?.totalCents || 0)}</b></p><p className="mt-1 flex justify-between gap-2"><span className="text-slate-500">Invoice</span><b>{activeJob.invoice?.number || "Not saved"}</b></p></section><section className="rounded-xl border border-slate-200 p-3 text-sm"><h4 className="mb-2 font-bold">Customer Payment</h4><p className="flex justify-between gap-2"><span className="text-slate-500">Received</span><b className="text-emerald-700">{money(registerTotals([activeJob]).received)}</b></p><p className="mt-1 flex justify-between gap-2"><span className="text-slate-500">Payment status</span><Badge warning={!!activeJob.invoice && !activeJob.invoicePaid}>{!activeJob.invoice ? "No invoice" : activeJob.invoicePaid ? "Paid" : "Pending"}</Badge></p><p className="mt-1 flex justify-between gap-2"><span className="text-slate-500">Customer outstanding</span><b>{money((activeJob.invoice?.totalCents || 0) - registerTotals([activeJob]).received)}</b></p><button className={`${button} mt-2`} onClick={() => onOpenJob(activeJob.id)}>Manage customer invoices</button></section></div>
+        {editorOpen ? <EarningsDetail key={`${activeJob.id}:${activeJob.ledger?.version || 0}:${selected?.id === activeJob.id ? selected.memberId || "details" : "details"}`} job={activeJob} initialMember={selected?.id === activeJob.id ? selected.memberId : undefined} members={data.members} settings={data.settings} onClose={() => { setEditorOpen(false); setSelected(null); }} onChanged={saved} onRefresh={() => void load()} />
+          : <button className={primary} onClick={() => setEditorOpen(true)}>Manage team shares and payments</button>}
+        <JobExpenses key={`${activeJob.id}:${activeJob.expenseVersion || 0}`} job={activeJob} onChanged={() => { setNotice("Expense saved to the job record."); void load(); }} />
+        <div className="grid gap-2 rounded-xl bg-emerald-50 p-3 text-sm sm:grid-cols-3"><span>Amount received: <b>{money(registerTotals([activeJob]).received)}</b></span><span>Team earnings: <b>{money(activeJob.ledger?.status === "approved" ? registerTotals([activeJob]).earned : 0)}</b></span><span>Manager balance: <b>{money(registerTotals([activeJob]).received - (activeJob.ledger?.status === "approved" ? registerTotals([activeJob]).earned : 0) - activeJob.expenses.filter(expense => !expense.voidedAt).reduce((sum, expense) => sum + expense.amountCents, 0))}</b></span></div>
+        <details className="rounded-xl border border-slate-200 bg-white p-3"><summary className="cursor-pointer text-sm font-semibold">Assigned work & visit progress</summary><div className="mt-3"><WorkBreakdown job={activeJob} /></div></details>
+      </section> : tab === "jobs" ? <section className={`${panel} p-8 text-center text-sm text-slate-500`}>Select a job to see earnings and payment details.</section> : null}
+      <aside className="space-y-4">
+        <section className={`${panel} p-4`}><ManagerSummary totals={totals} expenseTotal={expenseTotal} managerGross={managerGross} managerFinal={managerFinal} /></section>
+        <section className={panel}><div className="p-4"><h3 className="font-bold">Team Summary · This Period</h3></div><div className="overflow-x-auto"><table className="w-full min-w-[340px] text-left text-xs"><thead className="bg-slate-50 text-slate-500"><tr><th className="p-2">Employee</th><th className="p-2">Earned</th><th className="p-2">Paid</th><th className="p-2">Remaining</th></tr></thead><tbody>{memberRows.map(row => <tr key={row.id} className="border-t border-slate-100"><td className="p-2 font-semibold">{row.name}</td><td className="p-2">{money(row.earned)}</td><td className="p-2">{money(row.paid)}</td><td className="p-2 font-semibold text-rose-700">{money(row.earned - row.paid)}</td></tr>)}<tr className="border-t bg-blue-50 font-bold"><td className="p-2">Total</td><td className="p-2">{money(totals.earned)}</td><td className="p-2">{money(totals.paid)}</td><td className="p-2">{money(totals.earned - totals.paid)}</td></tr></tbody></table></div></section>
+      </aside>
+    </div>}
+    <p className="text-xs text-slate-500">Payments record money already paid to workers; they do not transfer funds. Customer receipts remain separate. Currency displays cents, and ledger calculations use integer cents.</p>
+    {settingsOpen && <EarningsSettingsDialog members={data.members} current={data.settings} onClose={() => setSettingsOpen(false)} onManageTeam={onManageTeam} onSaved={settings => { setData(current => ({ ...current, settings })); setSettingsOpen(false); setNotice("Team earnings settings saved."); void load(); }} />}
   </div>;
+}
+
+function ManagerSummary({ totals, expenseTotal, managerGross, managerFinal }: {
+  totals: ReturnType<typeof registerTotals>; expenseTotal: number; managerGross: number; managerFinal: number;
+}) {
+  return <><h3 className="font-bold">Manager Summary · Groutix</h3><dl className="mt-3 space-y-3 text-sm">
+    {[["Job value", totals.value], ["Team earnings", -totals.earned], ["Manager gross balance", managerGross], ["Total expenses", -expenseTotal], ["Manager final balance", managerFinal], ["Customer received", totals.received], ["Team still outstanding", totals.earned - totals.paid]].map(([title, value]) => <div key={title} className="flex justify-between gap-3"><dt>{title}</dt><dd className={`font-bold ${title === "Manager final balance" ? "text-emerald-700" : ""}`}>{money(value as number)}</dd></div>)}
+  </dl><p className="mt-3 text-xs text-slate-500">Manager balance is invoice value less approved team earnings and recorded job expenses. It is not net profit; other business expenses are not included.</p></>;
+}
+
+function monthRange(offset: number) {
+  const current = new Date(`${today()}T00:00:00Z`);
+  current.setUTCDate(1);
+  current.setUTCMonth(current.getUTCMonth() + offset);
+  const year = current.getUTCFullYear(), month = current.getUTCMonth();
+  const pad = (value: number) => String(value).padStart(2, "0");
+  return { from: `${year}-${pad(month + 1)}-01`, to: `${year}-${pad(month + 1)}-${pad(new Date(Date.UTC(year, month + 1, 0)).getUTCDate())}` };
 }

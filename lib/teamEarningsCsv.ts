@@ -1,8 +1,9 @@
-import { calculateEarnings, type EarningsJob } from "./teamEarnings";
+import { applyDailyEarningsCaps, calculateEarnings, type EarningsJob } from "./teamEarnings";
 
 export const earningsStatus = (job: EarningsJob) => job.changed ? "Needs review" : job.ledger?.status === "approved" ? job.ledger.shares.every(share => share.paidCents === share.earnedCents) ? "Settled" : "Approved" : job.ledger ? "Draft" : "Not configured";
 export function estimatedEarningsShares(job: EarningsJob) {
-  return job.ledger?.status === "approved" ? job.ledger.shares : calculateEarnings(job.ledger?.shares || [], job.invoice?.baseCents || 0);
+  return job.ledger?.status === "approved" ? job.ledger.shares
+    : applyDailyEarningsCaps(calculateEarnings(job.ledger?.shares || job.defaultShares || [], job.invoice?.baseCents || 0), job.dailyCapUsage);
 }
 
 function cell(value: string | number): string {
