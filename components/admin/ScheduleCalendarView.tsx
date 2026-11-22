@@ -2,7 +2,7 @@
 import { subscribeCrmChanges } from "@/lib/crmChanges";
 
 import { BookingTimingEditor } from "@/components/admin/BookingTimingEditor";
-import { DispatchBookingModal } from "@/components/admin/modals/DispatchBookingModal";
+import { DispatchBookingModal, type DispatchBookingPlan } from "@/components/admin/modals/DispatchBookingModal";
 import { bookingEndForDuration, bookingSegments, type BookingSegment } from "@/lib/bookingSpan";
 import { bookingLead, leadBookings } from "@/lib/leadBookings";
 import { staffBookingRules, staffPlanningRules } from "@/lib/staffBookingRules";
@@ -107,6 +107,12 @@ interface RescheduleModal {
   notifyEmail: boolean;
   notifySms: boolean;
 }
+
+// Staged (not-yet-saved) bookings get a prefixed id so they are never confused
+// with real appointment keys, and so they can be excluded from reordering.
+const PENDING_PREFIX = "pending:";
+const isPendingEntry = (id: string) => id.startsWith(PENDING_PREFIX);
+const pendingKey = (plan: DispatchBookingPlan) => `${PENDING_PREFIX}${plan.leadId}:${plan.type}:${plan.date}:${plan.time}`;
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -307,18 +313,21 @@ function RescheduleDialog({
   );
 }
 
-function AddBookingDialog({ leads, initialDate, initialBooking, initialTime, onBeforeSave, onClose, onSaved }: {
+function AddBookingDialog({ leads, initialDate, initialBooking, initialTime, onBeforeSave, onStaged, onClose, onSaved }: {
   leads: Lead[];
   initialDate: string;
   initialBooking?: { leadId: string; type: JobType };
   initialTime?: string;
   onBeforeSave: () => boolean;
+  // When provided, the confirmed booking is handed back to be staged in the day
+  // instead of being saved immediately.
+  onStaged?: (plan: DispatchBookingPlan) => void;
   onClose: () => void;
   onSaved: (date: string) => void;
 }) {
   const selected = leads.find(lead => lead.id === initialBooking?.leadId);
   return <DispatchBookingModal date={initialDate} time={initialTime ?? "09:00"} staffName={initialBooking?.type === "job" ? selected?.technician : selected?.assigned} initialType={initialBooking?.type || "inspection"}
-    initialLeadId={initialBooking?.leadId} onBeforeSave={onBeforeSave} onClose={onClose} onBooked={date => onSaved(date)} />;
+    initialLeadId={initialBooking?.leadId} onBeforeSave={onBeforeSave} onPlan={onStaged} onClose={onClose} onBooked={date => onSaved(date)} />;
 }
 
 // ─── Selected Booking Sidebar ─────────────────────────────────────────────────
@@ -483,18 +492,22 @@ function RouteTimeline({
         <span className="text-[10px] text-slate-400">({fmtDate(dateStr)})</span>
       </div>
       <div className="flex items-center gap-2 overflow-x-auto pb-1 min-h-[56px]">
-        {entries.map((e, i) => (
+        {entries.map((e, i) => {
+          const pending = isPendingEntry(e.id);
+          return (
           <div key={e.id} className="flex items-center gap-2 shrink-0">
             <div role="button" tabIndex={0}
               onKeyDown={event => { if (event.target === event.currentTarget && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); onSelect(e.id); } }}
-              draggable
-              onDragStart={() => { dragFrom.current = i; }}
+              draggable={!pending}
+              onDragStart={() => { if (!pending) dragFrom.current = i; }}
               onDragOver={(event) => event.preventDefault()}
-              onDrop={() => { if (dragFrom.current !== null) onReorder(dragFrom.current, i); dragFrom.current = null; }}
+              onDrop={() => { if (dragFrom.current !== null && !pending) onReorder(dragFrom.current, i); dragFrom.current = null; }}
               onDragEnd={() => { dragFrom.current = null; }}
               onClick={() => onSelect(e.id)}
               className={`flex flex-col items-center justify-between p-2 rounded-lg border min-w-[120px] transition-all cursor-pointer ${
-                selectedId === e.id
+                pending
+                  ? "border-blue-300 bg-blue-50 ring-1 ring-blue-200"
+                  : selectedId === e.id
                   ? "border-amber-400 bg-amber-50 shadow-sm"
                   : "border-slate-200 bg-slate-50 hover:bg-white hover:shadow-sm"
               }`}
@@ -504,7 +517,8 @@ function RouteTimeline({
                 <span className="text-[11px] font-semibold text-slate-900 truncate leading-tight">
                   {e.customer?.name?.split(" ")[0] || "Customer"}
                 </span>
-                <button type="button" aria-label={`Edit booking for ${e.customer?.name || "Customer"}`} onClick={event => { event.stopPropagation(); onEdit(e); }} className="ml-auto shrink-0 rounded p-1 hover:bg-slate-200"><MoreVertical className="w-3 h-3 text-slate-400" /></button>
+                {pending ? <span className="ml-auto shrink-0 rounded-full bg-blue-600 px-1.5 py-0.5 text-[8px] font-bold uppercase text-white">New</span>
+                  : <button type="button" aria-label={`Edit booking for ${e.customer?.name || "Customer"}`} onClick={event => { event.stopPropagation(); onEdit(e); }} className="ml-auto shrink-0 rounded p-1 hover:bg-slate-200"><MoreVertical className="w-3 h-3 text-slate-400" /></button>}
               </div>
               <span className="text-[10px] text-slate-500 mt-1 self-start pl-0.5">
                 {formatSlotRange(e.time, e.durationMinutes)}
@@ -521,7 +535,8 @@ function RouteTimeline({
               </div>
             )}
           </div>
-        ))}
+          );
+        })}
         {entries.length === 0 && (
           <div className="flex-1 flex items-center justify-center text-[11px] text-slate-400 py-2">
             No bookings for this day
@@ -704,21 +719,26 @@ function JobListPanel({
             No bookings for this day
           </div>
         ) : (
-          entries.map((entry, i) => (
+          entries.map((entry, i) => {
+            const pending = isPendingEntry(entry.id);
+            return (
             <div
               key={entry.id}
-              draggable={!disabled}
-              onDragStart={(event) => onDragStart(event, { kind: "booking", id: entry.id })}
+              draggable={!disabled && !pending}
+              onDragStart={(event) => { if (pending) { event.preventDefault(); return; } onDragStart(event, { kind: "booking", id: entry.id }); }}
               onDrop={(event) => onDropBooking(event, dateStr, entry.id)}
               onDragEnd={onDragEnd}
-              onClick={() => onSelect(selectedId === entry.id ? null : entry.id)}
+              onClick={() => { if (!pending) onSelect(selectedId === entry.id ? null : entry.id); }}
               className={`group flex items-start gap-2.5 px-2.5 py-2 transition-all cursor-pointer relative ${
-                selectedId === entry.id
+                pending
+                  ? "bg-blue-50/60 border-l-2 border-blue-300"
+                  : selectedId === entry.id
                   ? "bg-amber-50 border-l-2 border-amber-400"
                   : "hover:bg-slate-50 border-l-2 border-transparent"
               }`}
             >
               {/* Drag handle */}
+              {!pending && (
               <button
                 aria-label={`Drag ${entry.customer?.name || "booking"} to another day or reorder`}
                 className="mt-0.5 text-slate-300 hover:text-slate-500 cursor-grab active:cursor-grabbing shrink-0 transition-colors"
@@ -726,6 +746,7 @@ function JobListPanel({
               >
                 <GripVertical className="w-4 h-4" />
               </button>
+              )}
 
               {/* Stop number */}
               <StopCircle n={i} type={entry.type} color={entry.type === "job" ? "#059669" : "#2563EB"} />
@@ -734,13 +755,15 @@ function JobListPanel({
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-x-2 gap-y-0.5 flex-wrap">
                   <p className="text-xs font-semibold text-slate-900">{entry.customer?.name || "Customer"}</p>
+                  {pending && <span className="rounded-full bg-blue-600 px-1.5 py-0.5 text-[9px] font-bold uppercase text-white">New</span>}
                   <span className="text-[10px] font-bold text-blue-600 tabular-nums whitespace-nowrap">
                     {formatSlotRange(entry.time, entry.durationMinutes)}
                   </span>
                 </div>
-                <span className="text-rose-500 text-[9px] font-bold hidden group-hover:inline-flex items-center gap-0.5">
+                {!pending && <span className="text-rose-500 text-[9px] font-bold hidden group-hover:inline-flex items-center gap-0.5">
                   Drag to another day or reorder
-                </span>
+                </span>}
+                {pending && <span className="text-blue-600 text-[9px] font-bold">Unsaved — save the route to create this booking</span>}
                 <div className="flex items-center gap-1.5 mt-0.5">
                   <ScheduleBookingBadge type={entry.type} status={entry.status} />
                 </div>
@@ -749,6 +772,7 @@ function JobListPanel({
                 <p className="text-[10px] text-slate-500" title="Estimated distance between suburbs in visit order">{scheduleDistanceLabel(listDetails.get(entry.id)!)}</p>
               </div>
 
+              {!pending && (<>
               <button type="button" disabled={disabled}
                 onClick={event => { event.stopPropagation(); onPlanOnMap(entry); }}
                 className="shrink-0 rounded-lg border border-blue-200 bg-blue-50 px-2 py-1 text-[10px] font-semibold text-blue-700 hover:bg-blue-100 disabled:opacity-50">
@@ -759,8 +783,10 @@ function JobListPanel({
                 className="shrink-0 rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-50">
                 <MoreVertical className="h-3.5 w-3.5" />
               </button>
+              </>)}
             </div>
-          ))
+            );
+          })
         )}
       </div>
     </div>
@@ -799,9 +825,33 @@ export function ScheduleCalendarView({
   const [savedEntries, setEntries] = useState<ScheduleEntry[]>([]);
   const entries = useMemo(() => withScheduleVisitStatuses(savedEntries, leads), [savedEntries, leads]);
   const [originalEntries, setOriginalEntries] = useState<ScheduleEntry[]>([]);
-  const hasChanges = entries.some((entry, index) => entry.id !== originalEntries[index]?.id) || entries.length !== originalEntries.length;
+  // New bookings dragged into a day are staged here and only created when the
+  // day is finalised, so the customer is notified once, on save.
+  const [pendingBookings, setPendingBookings] = useState<DispatchBookingPlan[]>([]);
+  const pendingEntries = useMemo<ScheduleEntry[]>(() => pendingBookings.map((plan) => ({
+    id: pendingKey(plan),
+    leadId: plan.leadId,
+    type: plan.type,
+    date: plan.date,
+    time: plan.time,
+    endAt: plan.endAt,
+    workSegments: plan.segments,
+    durationMinutes: plan.segments.reduce((total, segment) => total + segment.scheduledMinutes, 0) || 30,
+    ...(plan.type === "job"
+      ? { technicianId: plan.assigneeId, technician: plan.assigneeName }
+      : { inspectorId: plan.assigneeId, assigned: plan.assigneeName }),
+    customer: { ...plan.customer, status: "New" },
+    zone: "flexible",
+    suburb: null,
+    reference: "",
+  })), [pendingBookings]);
+  const renderEntries = useMemo(() => [...entries, ...pendingEntries], [entries, pendingEntries]);
+  const routeChanged = entries.some((entry, index) => entry.id !== originalEntries[index]?.id) || entries.length !== originalEntries.length;
+  const hasChanges = routeChanged || pendingBookings.length > 0;
   const [previewOpen, setPreviewOpen] = useState(false);
   const [routeSaving, setRouteSaving] = useState(false);
+  const [notifyEmail, setNotifyEmail] = useState(true);
+  const [notifySms, setNotifySms] = useState(true);
   const [saveError, setSaveError] = useState("");
   const [removingEntry, setRemovingEntry] = useState<ScheduleEntry | null>(null);
   const [removing, setRemoving] = useState(false);
@@ -849,7 +899,12 @@ export function ScheduleCalendarView({
   }, [toast]);
 
   const showToast = (msg: string, ok: boolean) => setToast({ msg, ok });
-  const discardChanges = () => !hasChanges || window.confirm("Discard unsaved route changes?");
+  const discardChanges = () => {
+    if (!hasChanges) return true;
+    if (!window.confirm(pendingBookings.length ? "Discard the unsaved new bookings and route changes?" : "Discard unsaved route changes?")) return false;
+    setPendingBookings([]);
+    return true;
+  };
   const changeVisibleDates = (dates: string[]) => {
     if (!routeSaving && discardChanges()) setVisibleDates(dates);
   };
@@ -948,8 +1003,9 @@ export function ScheduleCalendarView({
   const selectedIndex = useMemo(() => entries.findIndex((e) => e.id === selectedId), [entries, selectedId]);
 
   const activeMapDate = mapDate && visibleDates.includes(mapDate) ? mapDate : currentDate;
-  const mapEntries = useMemo(() => entries.filter((entry) => entry.date === activeMapDate), [entries, activeMapDate]);
+  const mapEntries = useMemo(() => renderEntries.filter((entry) => entry.date === activeMapDate), [renderEntries, activeMapDate]);
   const selectBooking = (id: string | null) => {
+    if (id && isPendingEntry(id)) return;
     setSelectedId(id);
     setSelectedPlanningLeadId(null);
     const entry = entries.find((booking) => booking.id === id);
@@ -958,14 +1014,14 @@ export function ScheduleCalendarView({
 
   // Map items: convert ScheduleEntry[] → DispatchMapItem[] using leads lookup
   const bookedMapItems = useMemo<DispatchMapItem[]>(() =>
-    entries
+    renderEntries
       .map((e) => {
         const lead = leads.find((l) => l.id === e.leadId);
         const mapLead = lead || { id: e.leadId, status: e.customer?.status || "", createdAt: "", name: e.customer?.name, address: e.customer?.address };
         return { lead: mapLead, type: e.type, time: e.time, date: e.date, appointmentId: e.id } as DispatchMapItem;
       })
       .filter((x): x is DispatchMapItem => x !== null),
-  [entries, leads]);
+  [renderEntries, leads]);
   const mapItems = useMemo(() => buildPlanningMapItems(colorPlanningMapItems(bookedMapItems, visibleDates), showUnassigned && showUnassignedOnMap ? unassignedLeads : [])
     .filter(item => mapTypeFilter === "all" || item.type === mapTypeFilter),
   [bookedMapItems, visibleDates, unassignedLeads, showUnassigned, showUnassignedOnMap, mapTypeFilter]);
@@ -975,6 +1031,18 @@ export function ScheduleCalendarView({
     setBookingPreset({ leadId: selectedPlanningLead.lead.id, type: selectedPlanningLead.type });
     setBookingTime(suggestTime(selectedPlanningLead.type, activeMapDate, undefined, selectedPlanningLead.lead.id));
     setBookingDate(activeMapDate);
+  };
+
+  // A booking confirmed from the drag flow is staged (not saved yet) so it joins
+  // the day's unsaved changes and is finalised with the route save.
+  const stageBooking = (plan: DispatchBookingPlan) => {
+    setPendingBookings((prev) => prev.some((item) => pendingKey(item) === pendingKey(plan)) ? prev : [...prev, plan]);
+    setBookingDate(null);
+    setBookingPreset(undefined);
+    setSelectedPlanningLeadId(null);
+    onBookingRequestHandled?.();
+    setMapDate(plan.date);
+    showToast("Booking added to this day. Review and save to finalise the route.", true);
   };
 
   // Navigation
@@ -1117,22 +1185,51 @@ export function ScheduleCalendarView({
     if (routeSaving) return;
     setRouteSaving(true);
     setSaveError("");
+    const warnings: string[] = [];
     try {
-      const response = await fetch("/api/admin/schedule-routes", {
-        method: "PUT", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ routes: visibleDates.filter((date) => {
-          const current = entries.filter((entry) => entry.date === date).map((entry) => entry.id);
-          const original = originalEntries.filter((entry) => entry.date === date).map((entry) => entry.id);
-          return current.join("|") !== original.join("|");
-        }).map((date) => ({ date, order: entries.filter((entry) => entry.date === date).map((entry) => entry.id) })) }),
-      });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error || "Could not save route order.");
+      // 1) Create the staged new bookings first, so the notify choice below is
+      //    applied as each booking is saved and confirmations go out only once.
+      for (const plan of pendingBookings) {
+        const updates = plan.type === "job"
+          ? { jobAt: `${plan.date}T${plan.time}`, jobEndAt: plan.endAt, technicianId: plan.assigneeId, technician: plan.assigneeName }
+          : { inspectionAt: `${plan.date}T${plan.time}`, inspectionEndAt: plan.endAt, inspectorId: plan.assigneeId, assigned: plan.assigneeName };
+        const created = await fetch(`/api/admin/submissions/${plan.leadId}`, {
+          method: "PATCH", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...updates, appendBooking: true, bookingNotifications: { email: notifyEmail, sms: notifySms } }),
+        });
+        const createdResult = await created.json();
+        if (!created.ok) throw new Error(createdResult.error || "Could not save one of the new bookings.");
+        if (createdResult.notificationWarnings?.length) warnings.push(...createdResult.notificationWarnings);
+      }
+
+      // 2) Persist the driving order for the days whose stop order changed.
+      const changedRoutes = visibleDates.filter((date) => {
+        const current = entries.filter((entry) => entry.date === date).map((entry) => entry.id);
+        const original = originalEntries.filter((entry) => entry.date === date).map((entry) => entry.id);
+        return current.join("|") !== original.join("|");
+      }).map((date) => ({ date, order: entries.filter((entry) => entry.date === date).map((entry) => entry.id) }));
+      if (changedRoutes.length) {
+        const response = await fetch("/api/admin/schedule-routes", {
+          method: "PUT", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ routes: changedRoutes }),
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || "Could not save route order.");
+      }
+
+      const skipped = [
+        ...(!notifyEmail && pendingBookings.length ? ["Email not sent by choice."] : []),
+        ...(!notifySms && pendingBookings.length ? ["SMS not sent by choice."] : []),
+        ...warnings,
+      ];
+      setPendingBookings([]);
       setOriginalEntries(entries);
       setPreviewOpen(false);
-      showToast("Route order saved.", true);
+      showToast(`${pendingBookings.length ? "Bookings and route saved." : "Route order saved."}${skipped.length ? ` ${skipped.join(" ")}` : ""}`, true);
+      void load();
+      onBookingsChanged?.();
     } catch (err) {
-      setSaveError(err instanceof Error ? err.message : "Could not save route order.");
+      setSaveError(err instanceof Error ? err.message : "Could not save the schedule.");
     } finally { setRouteSaving(false); }
   };
   const openRemove = (entry: ScheduleEntry) => {
@@ -1284,7 +1381,7 @@ export function ScheduleCalendarView({
         }}>
           <p className="text-[11px] text-slate-500 px-1">Drag a lead into a day to book, or move a booking to another day. Review and confirm before saving.</p>
           {visibleDates.map((date, dayIndex) => {
-            const dayEntries = entries.filter((entry) => entry.date === date);
+            const dayEntries = renderEntries.filter((entry) => entry.date === date);
             return (
               <div key={date} data-schedule-date={date} onDragOver={(event) => {
                 if (!dragItem.current || loading || routeSaving) return;
@@ -1387,14 +1484,14 @@ export function ScheduleCalendarView({
       {/* ── Footer Summary ─────────────────────────────────────────────────── */}
       <div className="shrink-0 mx-3 mb-2 mt-2 rounded-xl overflow-hidden border border-slate-200 shadow-xs">
         <RouteSummaryFooter
-          entries={entries}
+          entries={renderEntries}
           originalEntries={originalEntries}
           hasChanges={hasChanges}
           onPreviewSave={previewSave}
         />
       </div>
 
-      {bookingDate && <AddBookingDialog leads={leads} initialDate={bookingDate} initialBooking={bookingPreset} initialTime={bookingTime} onBeforeSave={() => !routeSaving && discardChanges()} onClose={() => { setBookingDate(null); onBookingRequestHandled?.(); }} onSaved={(date) => {
+      {bookingDate && <AddBookingDialog leads={leads} initialDate={bookingDate} initialBooking={bookingPreset} initialTime={bookingTime} onBeforeSave={() => !routeSaving && discardChanges()} onStaged={stageBooking} onClose={() => { setBookingDate(null); onBookingRequestHandled?.(); }} onSaved={(date) => {
         setBookingDate(null);
         setSelectedPlanningLeadId(null);
         onBookingRequestHandled?.();
@@ -1419,10 +1516,17 @@ export function ScheduleCalendarView({
           <div className="flex items-center justify-between border-b p-4"><h3 id="route-preview-title" className="text-sm font-bold text-slate-900">Review route changes</h3><button type="button" aria-label="Close route preview" disabled={routeSaving} onClick={() => setPreviewOpen(false)} className="p-1 text-slate-500 cursor-pointer"><X className="w-4 h-4" /></button></div>
           <div className="p-4 space-y-3 overflow-y-auto text-xs">
             <p className="rounded-lg bg-amber-50 p-3 text-amber-800">This saves the planned driving order. Customer booking times stay as shown. Reschedule individual bookings if the driving order requires different times.</p>
-            {visibleDates.map((date) => <div key={date}><p className="font-bold text-slate-800 mb-2">{fmtDate(date)}</p><ol className="space-y-1.5">{entries.filter((entry) => entry.date === date).map((entry, index) => <li key={entry.id} className="rounded-lg bg-slate-50 p-2 text-slate-700">{index + 1}. {entry.customer?.name || "Customer"} · {formatSlotRange(entry.time, entry.durationMinutes)}<span className="block text-slate-500 mt-1">{entry.customer?.address || "No address"}</span></li>)}</ol></div>)}
+            {pendingBookings.length > 0 && <p className="rounded-lg bg-blue-50 p-3 text-blue-800">{pendingBookings.length} new booking{pendingBookings.length > 1 ? "s" : ""} will be created when you save. Choose below whether to notify the customer.</p>}
+            {visibleDates.map((date) => <div key={date}><p className="font-bold text-slate-800 mb-2">{fmtDate(date)}</p><ol className="space-y-1.5">{renderEntries.filter((entry) => entry.date === date).map((entry, index) => <li key={entry.id} className={`rounded-lg p-2 ${isPendingEntry(entry.id) ? "bg-blue-50 text-blue-800" : "bg-slate-50 text-slate-700"}`}>{index + 1}. {entry.customer?.name || "Customer"} · {formatSlotRange(entry.time, entry.durationMinutes)}{isPendingEntry(entry.id) && <span className="ml-1 rounded-full bg-blue-600 px-1.5 py-0.5 text-[9px] font-bold uppercase text-white">New</span>}<span className="block text-slate-500 mt-1">{entry.customer?.address || "No address"}</span></li>)}</ol></div>)}
+            {pendingBookings.length > 0 && <fieldset className="rounded-lg border border-slate-200 p-3">
+              <legend className="px-1 font-semibold text-slate-800">Notify the new customer{pendingBookings.length > 1 ? "s" : ""}</legend>
+              <label className="flex items-center gap-2 text-slate-700"><input type="checkbox" aria-label="Send booking confirmation email" checked={notifyEmail} onChange={(event) => setNotifyEmail(event.target.checked)} /> Send email confirmation</label>
+              <label className="mt-1 flex items-center gap-2 text-slate-700"><input type="checkbox" aria-label="Send booking confirmation SMS" checked={notifySms} onChange={(event) => setNotifySms(event.target.checked)} /> Send SMS confirmation</label>
+              <p className="mt-1 text-slate-500">Uncheck either channel to create the booking without sending that message.</p>
+            </fieldset>}
             {saveError && <p role="alert" className="rounded-lg bg-rose-50 p-3 text-rose-700">{saveError}</p>}
           </div>
-          <div className="flex justify-end gap-2 border-t p-4"><button type="button" disabled={routeSaving} onClick={() => setPreviewOpen(false)} className="rounded-lg px-4 py-2 text-xs font-semibold text-slate-600 cursor-pointer">Back</button><button type="button" disabled={routeSaving} onClick={() => void saveRoute()} className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white disabled:opacity-50 cursor-pointer">{routeSaving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}{routeSaving ? "Saving…" : "Save Route Order"}</button></div>
+          <div className="flex justify-end gap-2 border-t p-4"><button type="button" disabled={routeSaving} onClick={() => setPreviewOpen(false)} className="rounded-lg px-4 py-2 text-xs font-semibold text-slate-600 cursor-pointer">Back</button><button type="button" disabled={routeSaving} onClick={() => void saveRoute()} className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white disabled:opacity-50 cursor-pointer">{routeSaving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}{routeSaving ? "Saving…" : pendingBookings.length ? (notifyEmail || notifySms ? "Save & notify" : "Save (no notification)") : "Save Route Order"}</button></div>
         </div>
       </div>}
       {removingEntry && <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4">

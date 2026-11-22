@@ -12,8 +12,24 @@ import { dispatchBookingIssue } from "@/lib/dispatchTimeline";
 import { bookingEndForDuration, bookingSegments, type BookingSegment } from "@/lib/bookingSpan";
 import { todayAU } from "@/lib/scheduling";
 
-export function DispatchBookingModal({ date: initialDate, time: initialTime, staffName, initialEnd, initialType = "inspection", initialLeadId, onBeforeSave, onClose, onBooked }: {
+export type DispatchBookingPlan = {
+  leadId: string;
+  type: "inspection" | "job";
+  date: string;
+  time: string;
+  endAt: string;
+  segments: BookingSegment[];
+  customer: { name: string; email: string; phone: string; address: string };
+  service: string;
+  assigneeId: string;
+  assigneeName: string;
+};
+
+export function DispatchBookingModal({ date: initialDate, time: initialTime, staffName, initialEnd, initialType = "inspection", initialLeadId, onBeforeSave, onPlan, onClose, onBooked }: {
   initialLeadId?: string; onBeforeSave?: () => boolean;
+  // When provided, the confirmed details are handed back instead of being saved
+  // immediately, so the caller can stage the booking and finalise the day in one step.
+  onPlan?: (plan: DispatchBookingPlan) => void;
   initialEnd?: string;
   date: string; time: string; staffName?: string; initialType?: "inspection" | "job"; onClose: () => void; onBooked: (date: string, message: string) => void;
 }) {
@@ -77,10 +93,19 @@ export function DispatchBookingModal({ date: initialDate, time: initialTime, sta
     try {
       if (mode === "existing" && !customerId) throw new Error("Select an existing customer, or choose New customer.");
       if (!customer.name.trim() || !customer.address.trim() || !service.trim() || !assignee) throw new Error("Enter the customer, property address, service and assigned specialist.");
-      if (notifyEmail && !customer.email.trim()) throw new Error("Add an email address for the email confirmation, or turn off email notifications below.");
-      if (notifySms && !customer.phone.trim()) throw new Error("Add a phone number for the SMS confirmation, or turn off SMS notifications below.");
+      if (!onPlan) {
+        if (notifyEmail && !customer.email.trim()) throw new Error("Add an email address for the email confirmation, or turn off email notifications below.");
+        if (notifySms && !customer.phone.trim()) throw new Error("Add a phone number for the SMS confirmation, or turn off SMS notifications below.");
+      }
       await checkAvailability();
       if (!review) { setReview(true); return; }
+      // Staged bookings are created when the caller finalises the day, so the
+      // customer is only notified once the route is saved.
+      if (onPlan && mode === "existing") {
+        const specialist = choices.find(c => c.key === assignee)!;
+        onPlan({ leadId: customerId, type, date, time, endAt, segments, customer, service, assigneeId: assignee, assigneeName: specialist.name });
+        return;
+      }
       // Reuse the selected lead; only a genuinely new customer needs a new record.
       // Keep this ID after a conflict so retrying never creates a second record.
       // Existing selections always PATCH their ID, even after the list refreshes.
@@ -129,7 +154,7 @@ export function DispatchBookingModal({ date: initialDate, time: initialTime, sta
         }
       }}>
       <div className="flex items-center justify-between border-b p-5">
-        <div><h2 id="dispatch-create-title" className="font-bold text-lg">{review ? "Confirm booking" : "New booking"}</h2><p className="text-xs text-slate-500">{review ? (notifyEmail || notifySms ? "Review the details before booking and notifying the customer." : "Review the details before booking. No customer notification will be sent.") : "Choose a time, customer and specialist. All times are Melbourne time."}</p></div>
+        <div><h2 id="dispatch-create-title" className="font-bold text-lg">{review ? "Confirm booking" : "New booking"}</h2><p className="text-xs text-slate-500">{review ? (onPlan ? "Review the details before adding this booking to the day." : notifyEmail || notifySms ? "Review the details before booking and notifying the customer." : "Review the details before booking. No customer notification will be sent.") : "Choose a time, customer and specialist. All times are Melbourne time."}</p></div>
         <button type="button" aria-label="Close booking" disabled={busy} onClick={onClose}><X className="h-5 w-5" /></button>
       </div>
       <form onSubmit={event => { event.preventDefault(); void submit(); }}>
@@ -140,7 +165,9 @@ export function DispatchBookingModal({ date: initialDate, time: initialTime, sta
             <p><strong>{customer.name}</strong><br />{customer.address}</p>
             <p>{service}<br />Assigned to <strong>{choices.find(c => c.key === assignee)?.name}</strong></p>
             <div className="rounded-xl border p-3 space-y-1"><p className="font-semibold">Customer notifications</p><p>Email: {notifyEmail ? customer.email || "Not available — email will not be sent" : "Off (not sent)"}</p><p>SMS: {notifySms ? customer.phone || "Not available — SMS will not be sent" : "Off (not sent)"}</p>{!notifyEmail && !notifySms && <p className="text-xs text-amber-700">No notifications will be sent to the customer.</p>}</div>
-            <p className="text-xs text-slate-500">Confirming creates a new booking record and reserves this time{notifyEmail || notifySms ? " and sends confirmations through the configured email/SMS services" : " without sending any customer notifications"}. Existing bookings remain unchanged.</p>
+            {onPlan
+              ? <p className="text-xs text-slate-500">Adding this booking stages it in the day. You choose whether to notify the customer when you review and save the route.</p>
+              : <p className="text-xs text-slate-500">Confirming creates a new booking record and reserves this time{notifyEmail || notifySms ? " and sends confirmations through the configured email/SMS services" : " without sending any customer notifications"}. Existing bookings remain unchanged.</p>}
           </div> : <>
             <div className="grid grid-cols-2 gap-3">{(["inspection", "job"] as const).map(value => <button key={value} type="button" aria-pressed={type === value} onClick={() => { setType(value); setAssignee(""); setFinish(""); }} className={`rounded-xl border p-3 font-semibold capitalize ${type === value ? "border-blue-600 bg-blue-50 text-blue-700" : "border-slate-200"}`}>{value}</button>)}</div>
             <BookingTimingEditor type={type} start={`${date}T${time}`} end={finish} rules={rules} minDate={todayAU()} disabled={busy}
@@ -161,7 +188,7 @@ export function DispatchBookingModal({ date: initialDate, time: initialTime, sta
           </>}
           {warnings.length > 0 && <p role="alert" className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800">{warnings.join(" ")} Staff override: you can confirm this booking anyway.</p>}
           {error && <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p>}
-          <div className="flex justify-between border-t pt-4"><button type="button" onClick={() => review ? setReview(false) : onClose()} className="flex items-center gap-1 text-sm"><ArrowLeft className="h-4 w-4" />{review ? "Edit details" : "Cancel"}</button><button type="submit" className="flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <CalendarCheck className="h-4 w-4" />}{busy ? "Checking / saving…" : review ? (notifyEmail || notifySms ? "Confirm & notify customer" : "Confirm booking (no notification)") : "Review booking"}</button></div>
+          <div className="flex justify-between border-t pt-4"><button type="button" onClick={() => review ? setReview(false) : onClose()} className="flex items-center gap-1 text-sm"><ArrowLeft className="h-4 w-4" />{review ? "Edit details" : "Cancel"}</button><button type="submit" className="flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <CalendarCheck className="h-4 w-4" />}{busy ? "Checking / saving…" : review ? (onPlan ? "Add to day" : notifyEmail || notifySms ? "Confirm & notify customer" : "Confirm booking (no notification)") : "Review booking"}</button></div>
         </fieldset>
       </form>
     </div>

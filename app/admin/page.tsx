@@ -505,6 +505,7 @@ export default function CrmDashboardPage() {
   const [quoteFullscreen, setQuoteFullscreen] = useState(true);
   const [quoteViewTab, setQuoteViewTab] = useState<"split" | "form" | "preview">("form");
   const [activeQuoteLead, setActiveQuoteLead] = useState<Lead | null>(null);
+  const [checklistSending, setChecklistSending] = useState(false);
   const [customerQuotes, setCustomerQuotes] = useState<CustomerQuote[]>([]);
   const [activeCustomerQuote, setActiveCustomerQuote] = useState<CustomerQuote | null>(null);
   const [customerQuoteTitle, setCustomerQuoteTitle] = useState("");
@@ -2357,6 +2358,33 @@ export default function CrmDashboardPage() {
       void loadData({ silent: true });
     } catch {
       alert("Network error while sending the quote.");
+    }
+  }
+
+  // Re-send the regrouting & resealing checklist email to the customer on demand.
+  async function handleSendChecklist() {
+    if (!activeQuoteLead || checklistSending) return;
+    if (!activeQuoteLead.email) return alert("No email address saved for this customer.");
+    setChecklistSending(true);
+    try {
+      const res = await fetch("/api/admin/checklist/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: activeQuoteLead.id }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) return alert(data.error || "Could not send the checklist.");
+      if (data.item) {
+        ++leadReadVersion.current;
+        setLeads(current => current.map(item => item.id === data.item.id ? { ...item, ...data.item } : item));
+        setActiveQuoteLead(current => current && current.id === data.item.id ? { ...current, ...data.item } : current);
+        publishCrmChange(data.item);
+      }
+      alert(`Checklist emailed to ${activeQuoteLead.email}.`);
+    } catch {
+      alert("Network error while sending the checklist.");
+    } finally {
+      setChecklistSending(false);
     }
   }
 
@@ -5261,10 +5289,22 @@ export default function CrmDashboardPage() {
                       )}
 
                       {/* Regrouting & Resealing Checklist lifecycle + answers */}
-                      {(activeQuoteLead.checklistSentAt || activeQuoteLead.checklistOpenedAt || activeQuoteLead.checklistFilledAt || activeQuoteLead.checklistSubmittedAt || activeQuoteLead.checklist) && (
+                      {(activeQuoteLead.email || activeQuoteLead.checklistSentAt || activeQuoteLead.checklistOpenedAt || activeQuoteLead.checklistFilledAt || activeQuoteLead.checklistSubmittedAt || activeQuoteLead.checklist) && (
                         <div className="p-2.5 rounded-lg bg-white border border-indigo-200 space-y-1.5">
-                          <div className="text-[10px] font-bold text-indigo-700 uppercase tracking-wider">
-                            Regrouting &amp; Resealing Checklist
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="text-[10px] font-bold text-indigo-700 uppercase tracking-wider">
+                              Regrouting &amp; Resealing Checklist
+                            </div>
+                            <button
+                              type="button"
+                              onClick={handleSendChecklist}
+                              disabled={checklistSending || !activeQuoteLead.email}
+                              title={activeQuoteLead.email ? "Email the checklist form to the customer" : "No email address saved"}
+                              className="flex items-center gap-1 px-2 py-1 rounded-md border border-indigo-300 bg-indigo-50 text-indigo-700 text-[10px] font-bold hover:bg-indigo-100 disabled:opacity-50 cursor-pointer shrink-0"
+                            >
+                              {checklistSending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
+                              {checklistSending ? "Sending…" : activeQuoteLead.checklistSentAt ? "Resend Checklist" : "Send Checklist"}
+                            </button>
                           </div>
                           <div className="space-y-1 text-[10px] text-slate-600">
                             {([
