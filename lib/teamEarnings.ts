@@ -1,5 +1,5 @@
 import type { Lead } from "@/components/admin/types";
-import { invoiceBalance } from "./invoiceBalance";
+import { invoiceBalance, invoicePaymentStatus } from "./invoiceBalance";
 import { isPrimaryBooking, leadBookings } from "./leadBookings";
 import type { TeamEarningsSettings } from "./teamEarningsSettings";
 
@@ -12,7 +12,7 @@ export interface EarningsMember {
 }
 export interface EarningsShare { memberId: string; name: string; rateBps: number; fixedAmountCents?: number; earnedCents: number; paidCents: number }
 export interface EarningsInvoice { number: string; totalCents: number; gstBps: number; baseCents: number; items?: EarningsInvoice[] }
-type InvoiceSource = Pick<Lead, "invoiceNumber" | "invoiceAmount" | "invoiceDraft" | "invoiceStatus" | "paymentType" | "amountPaid" | "paymentReceipt">;
+type InvoiceSource = Pick<Lead, "invoiceNumber" | "invoiceAmount" | "invoiceDraft" | "invoiceStatus" | "invoiceSentAt" | "paymentType" | "amountPaid" | "paymentReceipt">;
 export type EarningsSourceLead = Lead & { earningsInvoices?: InvoiceSource[] };
 export interface EarningsLedger {
   id: string; version: number; status: "draft" | "approved"; basis: EarningsBasis;
@@ -23,11 +23,12 @@ export interface EarningsLedger {
 export interface EarningsJob {
   id: string; jobLabel: string; customer: string; service: string; status: string;
   scheduledAt?: string;
-  receipts?: { number: string; totalCents: number; paidCents: number; remainingCents: number }[];
+  receipts?: { number: string; totalCents: number; paidCents: number; remainingCents: number; status: "paid" | "partial" | "pending" | "unsent"; sentAt?: string }[];
   assignedIds: string[]; assignedNames: string[]; completedVisits: number; totalVisits: number;
   workVisits: { type: "inspection" | "job"; memberId?: string; name: string; date: string; status: string; daysDone: number; daysPlanned: number }[];
   memberWork: { memberId: string; completedVisits: number; totalVisits: number; daysDone: number; daysPlanned: number }[];
   daysDone: number; daysPlanned: number; invoice: EarningsInvoice | null; invoicePaid: boolean;
+  paymentStatus: "paid" | "partial" | "pending" | "unsent" | "no_invoice";
   eligible: boolean; unavailableReason: string; ledger: EarningsLedger | null; changed: boolean;
   completionDate: string; defaultShares: EarningsShare[];
   dailyCapUsage?: { memberId: string; capCents: number; usedCents: number }[];
@@ -161,7 +162,14 @@ export function earningsJob(lead: EarningsSourceLead, members: EarningsMember[],
     memberWork.set(worker.id, work);
   }
   const receiptSources = [...(lead.invoiceNumber ? [lead] : []), ...(lead.earningsInvoices || [])];
-  const receipts = receiptSources.filter(source => invoiceForEarnings(source, "inclusive")).map(source => ({ number: source.invoiceNumber!, ...invoiceBalance({ ...source, invoiceStatus: source.invoiceStatus || (source.paymentType === "full" ? "Paid" : undefined) }) }));
+  const receipts = receiptSources.filter(source => invoiceForEarnings(source, "inclusive")).map(source => {
+    const balanceSource = { ...source, invoiceStatus: source.invoiceStatus || (source.paymentType === "full" ? "Paid" : undefined) };
+    const balance = invoiceBalance(balanceSource);
+    const status = invoicePaymentStatus(balanceSource);
+    return { number: source.invoiceNumber!, ...balance, status, sentAt: source.invoiceSentAt };
+  });
+  const invoicePaid = receipts.length > 0 && receipts.every(receipt => receipt.status === "paid");
+  const paymentStatus = !invoice ? "no_invoice" : invoicePaid ? "paid" : receipts.some(receipt => receipt.paidCents > 0) ? "partial" : receipts.some(receipt => receipt.status === "pending") ? "pending" : "unsent";
   const completionDate = ledger?.completionDate || earningsCompletionDate(lead);
   const employeeSettings = new Map(settings.employeeSettings.map(setting => [setting.memberId, setting]));
   const defaultShares = [...new Set(assignments.map(member => member.id))].map(memberId => {
@@ -177,7 +185,7 @@ export function earningsJob(lead: EarningsSourceLead, members: EarningsMember[],
     assignedIds: [...new Set(assignments.map(m => m.id))], assignedNames: [...new Set([lead.assigned, lead.technician, ...assignments.map(m => m.name), ...visits.map(b => b.technician)].filter((s): s is string => !!s))],
     workVisits, memberWork: [...memberWork.values()], completedVisits: visits.filter(b => b.status === "Job Done").length, totalVisits: visits.length,
     daysDone: visits.length ? visits.reduce((sum, b) => sum + safeDays(b.jobDaysDone), 0) : safeDays(lead.jobDaysDone), daysPlanned: visits.length ? visits.reduce((sum, b) => sum + safeDays(b.jobTotalDays), 0) : safeDays(lead.jobTotalDays),
-    invoice, invoicePaid: !!invoice && receipts.length > 0 && receipts.every(receipt => receipt.remainingCents === 0), eligible: !unavailableReason, unavailableReason, ledger,
+    invoice, invoicePaid, paymentStatus, eligible: !unavailableReason, unavailableReason, ledger,
     completionDate, defaultShares, expenses: [],
     changed: ledger?.status === "approved" && (!sameEarningsInvoice(ledger.invoice, invoice) || !!unavailableReason) || false };
 }

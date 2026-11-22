@@ -68,6 +68,21 @@ test("invoice basis uses saved total, GST and no quote fallback", () => {
   assert.equal(rules.invoiceForEarnings({ ...baseLead, invoiceDraft: { gst: 0 } }, "ex_gst").baseCents, 110000);
   for (const invoiceAmount of [undefined, NaN, Infinity, 0, -1, "100"]) assert.equal(rules.invoiceForEarnings({ ...baseLead, invoiceAmount, quoteAmount: 100 }, "ex_gst"), null);
 });
+test("each invoice has an independent sent and payment state within one job", () => {
+  const invoice = rules.earningsJob({
+    ...baseLead, invoiceSentAt: "2026-11-20T10:00:00.000Z",
+    earningsInvoices: [{ invoiceNumber: "INV-ADDON", invoiceAmount: 220, invoiceStatus: "Unpaid" }],
+  }, [member], null);
+  assert.equal(Array.from(invoice.receipts, receipt => receipt.status).join(","), "pending,unsent");
+  assert.equal(invoice.paymentStatus, "pending");
+  const paid = rules.earningsJob({
+    ...baseLead, invoiceStatus: "Paid", amountPaid: 1100,
+    earningsInvoices: [{ invoiceNumber: "INV-ADDON", invoiceAmount: 220, invoiceStatus: "Unpaid" }],
+  }, [member], null);
+  assert.equal(Array.from(paid.receipts, receipt => receipt.status).join(","), "paid,unsent");
+  assert.equal(paid.paymentStatus, "partial");
+  assert.equal(paid.invoicePaid, false);
+});
 test("shares require valid members, integer precision, unique recipients and total at most 100%", () => {
   const parse = shares => rules.parseEarningsShares(shares, [member, second]);
   for (const shares of [[], [{ memberId, rateBps: 0 }], [{ memberId, rateBps: 1.5 }], [{ memberId, rateBps: 10001 }], [{ memberId: "unknown", rateBps: 100 }], [{ memberId, rateBps: 5000 }, { memberId, rateBps: 5000 }], [{ memberId, rateBps: 8000 }, { memberId: secondId, rateBps: 3000 }]]) assert.throws(() => parse(shares));
@@ -242,7 +257,7 @@ test("mixed allocation preserves exact fixed cents and currency displays cents",
   const shares = rules.parseEarningsShares([{ memberId, fixedAmountCents: 101 }, { memberId: secondId, rateBps: 3333 }], [member, second]);
   const result = rules.calculateEarnings(shares, 1001);
   assert.deepEqual(result.map(s => s.earnedCents), [101, 334]);
-  for (const cents of [30000, 30040, 30090, 30099]) assert.equal(rules.formatEarningsMoney(cents), "$300.00");
+  for (const [cents, expected] of [[30000, "$300.00"], [30040, "$300.40"], [30090, "$300.90"], [30099, "$300.99"]]) assert.equal(rules.formatEarningsMoney(cents), expected);
   assert.equal(rules.formatEarningsMoney(99), "$0.99");
 });
 

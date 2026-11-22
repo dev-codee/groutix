@@ -87,6 +87,20 @@ test('receipt, payment status, open tracking and QBO result belong to their invo
   assert.equal((await api.getInvoiceSubmission(b.id)).qboCustomerId, 'shared-qbo-customer');
 });
 
+test('sending one invoice leaves its sibling unsent instead of copying the parent pending state', async () => {
+  const api = setup();
+  const a = await api.createQuoteInvoice('customer', 'customer~a');
+  const b = await api.createQuoteInvoice('customer', 'customer~b');
+  await api.updateInvoiceSubmission(a.id, { invoiceSentAt: '2026-11-20T10:00:00.000Z' });
+  const sent = await api.getInvoiceSubmission(a.id);
+  const unsent = await api.getInvoiceSubmission(b.id);
+  assert.equal(sent.status, 'Payment Pending');
+  assert.equal(unsent.status, 'Job Done');
+  assert.equal(sent.invoiceSentAt, '2026-11-20T10:00:00.000Z');
+  assert.equal(unsent.invoiceSentAt, undefined);
+  assert.equal(api.leads.get('customer').status, 'Payment Pending');
+});
+
 test('quote snapshots and amounts are preserved after a source quote changes; legacy invoice is reused', async () => {
   const api = setup();
   const a = await api.createQuoteInvoice('customer', 'customer~a');

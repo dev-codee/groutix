@@ -5,3 +5,14 @@ export function invoiceBalance(invoice: { invoiceAmount?: number; invoiceStatus?
   const paidCents = Math.round(Number(paid || 0) * 100);
   return { totalCents, paidCents, remainingCents: Math.max(0, totalCents - paidCents) };
 }
+
+export type InvoicePaymentStatus = "paid" | "partial" | "pending" | "unsent";
+export function invoicePaymentStatus(invoice: {
+  invoiceAmount?: number; invoiceStatus?: string; amountPaid?: number;
+  paymentReceipt?: { total?: number }; invoiceSentAt?: string;
+}): InvoicePaymentStatus {
+  const balance = invoiceBalance(invoice);
+  if (balance.totalCents > 0 && balance.remainingCents === 0) return "paid";
+  if (balance.paidCents > 0) return "partial";
+  return invoice.invoiceSentAt ? "pending" : "unsent";
+}

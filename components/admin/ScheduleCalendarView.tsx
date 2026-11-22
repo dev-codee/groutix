@@ -104,6 +104,8 @@ interface RescheduleModal {
   newTime: string;
   saving: boolean;
   error: string;
+  notifyEmail: boolean;
+  notifySms: boolean;
 }
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -207,10 +209,12 @@ function RescheduleDialog({
   modal,
   onClose,
   onSave,
+  onNotificationChange,
 }: {
   modal: RescheduleModal;
   onClose: () => void;
   onSave: (date: string, time: string, endAt?: string) => void;
+  onNotificationChange: (key: "notifyEmail" | "notifySms", value: boolean) => void;
 }) {
   const [date, setDate] = useState(modal.newDate);
   const [time, setTime] = useState(modal.newTime);
@@ -259,6 +263,20 @@ function RescheduleDialog({
 
           <BookingTimingEditor type={modal.entry.type} start={`${date}T${time}`} end={endAt} rules={rules} disabled={modal.saving} minDate={inputDateToday()}
             onChange={(start, end) => { setDate(start.slice(0, 10)); setTime(start.slice(11, 16)); setFinish(end); }} />
+          <fieldset disabled={modal.saving} className="space-y-2 rounded-xl border border-slate-200 bg-white p-3">
+            <legend className="px-1 text-xs font-semibold text-slate-800">Customer notifications</legend>
+            <label className="flex cursor-pointer items-center gap-2 text-xs text-slate-700">
+              <input type="checkbox" aria-label="Send reschedule email" checked={modal.notifyEmail}
+                onChange={event => onNotificationChange("notifyEmail", event.target.checked)} />
+              <span>Email {modal.entry.customer?.email ? `to ${modal.entry.customer.email}` : "(no email saved)"}</span>
+            </label>
+            <label className="flex cursor-pointer items-center gap-2 text-xs text-slate-700">
+              <input type="checkbox" aria-label="Send reschedule SMS" checked={modal.notifySms}
+                onChange={event => onNotificationChange("notifySms", event.target.checked)} />
+              <span>SMS {modal.entry.customer?.phone ? `to ${modal.entry.customer.phone}` : "(no phone saved)"}</span>
+            </label>
+            <p className="text-[11px] text-slate-500">Uncheck either channel to save the schedule change without sending that message.</p>
+          </fieldset>
           {modal.error && (
             <div className="flex items-center gap-2 text-xs text-rose-600 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2">
               <AlertCircle className="w-3.5 h-3.5 shrink-0" />
@@ -1008,7 +1026,7 @@ export function ScheduleCalendarView({
     setMapDate(date);
     if (proposal.kind === "reschedule") {
       const entry = entries.find((entry) => entry.id === proposal.entry.id)!;
-      setRescheduleModal({ entry, newDate: date, newTime: suggestTime(entry.type, date, entry.time, entry.leadId), saving: false, error: "" });
+      setRescheduleModal({ entry, newDate: date, newTime: suggestTime(entry.type, date, entry.time, entry.leadId), saving: false, error: "", notifyEmail: true, notifySms: true });
     } else {
       if (!unassignedLeads.some(({ lead, type }) => lead.id === proposal.leadId && type === proposal.type)) return;
       setBookingPreset({ leadId: proposal.leadId, type: proposal.type });
@@ -1029,7 +1047,7 @@ export function ScheduleCalendarView({
 
   // Reschedule
   const openReschedule = (entry: ScheduleEntry) => {
-    setRescheduleModal({ entry, newDate: entry.date, newTime: entry.time, saving: false, error: "" });
+    setRescheduleModal({ entry, newDate: entry.date, newTime: entry.time, saving: false, error: "", notifyEmail: true, notifySms: true });
   };
 
   const saveReschedule = async (newDate: string, newTime: string, newEndAt?: string) => {
@@ -1062,11 +1080,17 @@ export function ScheduleCalendarView({
           [rescheduleModal.entry.type === "inspection" ? "inspectionEndAt" : "jobEndAt"]: finish,
           bookingId: rescheduleModal.entry.bookingId,
           bookingOriginalStart: rescheduleModal.entry.bookingStart || `${rescheduleModal.entry.date}T${rescheduleModal.entry.time}`,
+          bookingNotifications: { email: rescheduleModal.notifyEmail, sms: rescheduleModal.notifySms },
         }),
       });
       const result = await res.json();
       if (!res.ok) throw new Error(result.error || "Failed to reschedule");
-      showToast("Booking rescheduled successfully!", true);
+      const skipped = [
+        ...(!rescheduleModal.notifyEmail ? ["Email not sent by choice."] : []),
+        ...(!rescheduleModal.notifySms ? ["SMS not sent by choice."] : []),
+        ...(result.notificationWarnings || []),
+      ];
+      showToast(`Booking rescheduled successfully.${skipped.length ? ` ${skipped.join(" ")}` : ""}`, true);
       setRescheduleModal(null);
       void load();
       onBookingsChanged?.();
@@ -1430,6 +1454,7 @@ export function ScheduleCalendarView({
           modal={rescheduleModal}
           onClose={() => { if (!rescheduleModal.saving) setRescheduleModal(null); }}
           onSave={saveReschedule}
+          onNotificationChange={(key, value) => setRescheduleModal(modal => modal ? { ...modal, [key]: value } : modal)}
         />
       )}
 

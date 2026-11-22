@@ -10,20 +10,20 @@ function render({ open = false, pay = false, failed = false, draft = false } = {
   let index = 0;
   const mocked = { ...React, useState: initial => {
     const position = index++;
-    const overrides = { 0: { members: [member], jobs: [draft ? { ...job, ledger: null } : job] }, 1: false, 2: failed ? 'Connection failed' : '', 8: new Set(open ? [job.id] : []), 9: pay ? { id: job.id, memberId: member.id } : null };
+    const overrides = { 0: { members: [member], jobs: [draft ? { ...job, ledger: null } : job] }, 1: false, 2: failed ? 'Connection failed' : '', 8: new Set(open ? [job.id] : []), 9: pay ? { id: job.id, memberId: member.id } : null, 12: 'all', 15: open ? job.id : '' };
     return [Object.hasOwn(overrides, position) ? overrides[position] : typeof initial === 'function' ? initial() : initial, () => {}];
   }, useEffect: () => {}, useCallback: fn => fn, useRef: value => ({ current: value }) };
   const { TeamEarningsView } = loadTs('components/admin/views/TeamEarningsView.tsx', { react: mocked });
   return renderToStaticMarkup(React.createElement(TeamEarningsView, { query: '', onQueryChange() {}, onOpenJob() {}, onAddJob() {}, onManageTeam() {} }));
 }
-test('register renders receipts, employee balances and manager reserve from the same jobs', () => {
+test('monthly register renders receipts, employee balances and manager reserve from the same jobs', () => {
   const html = render();
-  for (const text of ['Working Register', 'Customer Received', 'Test Worker', 'Payment Summary', 'Manager Summary', '$500', '$250', '$150', 'Open job', 'Add job', 'Manage team']) assert.ok(html.includes(text), text);
+  for (const text of ['Job &amp; Team Payment Management', 'Received', 'Test Worker', 'Employee Summary', 'Manager Summary', '$500.00', '$250.00', '$150.00', 'Edit Job', 'Add Job', 'Settings']) assert.ok(html.includes(text), text);
   assert.ok(html.includes('aria-expanded="false"'));
 });
-test('expanded register exposes invoices and direct worker payment form inline', () => {
+test('selected job exposes team shares and direct worker payment form inline', () => {
   const html = render({ open: true, pay: true });
-  for (const text of ['INV-TEST', 'Customer due', '$600', 'Team shares &amp; payments', 'Save payment record', 'Payment reference', 'Payments &amp; audit log']) assert.ok(html.includes(text), text);
+  for (const text of ['INV-TEST', 'Remaining', '$600.00', 'Team shares &amp; payments', 'Save payment record', 'Payment reference', 'Payments &amp; audit log']) assert.ok(html.includes(text), text);
   assert.ok(html.includes('aria-expanded="true"'));
   assert.ok(!html.includes('<dialog'));
 });
@@ -35,7 +35,7 @@ test('failed refresh hides stale balances and exposes retry', () => {
   assert.ok(!html.includes('Manager Summary'));
 });
 
-test('expanding an unconfigured job immediately renders editable CRM members and share amounts', () => {
+test('unconfigured jobs immediately render editable CRM members and share amounts', () => {
   const html = render({ open: true, draft: true });
   for (const text of ['Team member 1', 'Share type 1', 'Percentage %', 'Fixed AUD', 'Save draft shares', 'Test Worker', 'Add worker payment share']) assert.ok(html.includes(text), text);
   assert.ok(html.includes('type="number"'));

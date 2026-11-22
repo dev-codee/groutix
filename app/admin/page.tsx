@@ -12,7 +12,7 @@ import { statusFilterAfterChange } from "@/lib/statusFilterTransition";
 
 import { useInvoiceDeliveries, notifyInvoiceDeliveryChanged } from "@/components/admin/InvoiceDeliveryHistory";
 import { SendInvoiceToQuickBooksButton } from "@/components/admin/SendInvoiceToQuickBooksButton";
-import { invoiceBalance } from "@/lib/invoiceBalance";
+import { invoiceBalance, invoicePaymentStatus } from "@/lib/invoiceBalance";
 import { invoiceDraftForLead } from "@/lib/invoiceDraft";
 import { uploadJobPhotos } from "@/lib/uploadJobPhotos";
 import { DEFAULT_INVOICE_ACCOUNT_NUMBER, invoiceAccountNumber as resolveInvoiceAccountNumber } from "@/lib/invoicePayment";
@@ -8208,11 +8208,13 @@ export default function CrmDashboardPage() {
                 <div className="flex flex-wrap gap-2">
                   {customerInvoices.map(item => {
                     const delivery = invoiceDelivery?.invoices.find(invoice => invoice.id === item.id) || item;
+                    const invoiceStatus = invoicePaymentStatus({ ...item, invoiceSentAt: delivery.invoiceSentAt || item.invoiceSentAt });
+                    const invoiceStatusLabel = invoiceStatus === "paid" ? "Paid" : invoiceStatus === "partial" ? "Partially paid" : invoiceStatus === "pending" ? "Payment pending" : "Not sent";
                     return <div key={item.id} className={`space-y-2 rounded-lg border p-3 ${item.id === activeInvoiceLead.id ? "border-teal-600 bg-teal-50" : "bg-white"}`}>
                       <button type="button" disabled={invoiceListBusy || savingInvoice || sendingInvoice}
                         onClick={() => { if (item.id === activeInvoiceLead.id || window.confirm("Switch invoice? Unsaved edits will be discarded.")) selectInvoice(item); }}
                         className="w-full text-left">
-                        <span className="block font-bold">{item.invoiceNumber} · ${Number(item.invoiceAmount || 0).toFixed(2)} · {item.invoiceStatus || "Unpaid"}</span>
+                        <span className="block font-bold">{item.invoiceNumber} · ${Number(item.invoiceAmount || 0).toFixed(2)} · {invoiceStatusLabel}</span>
                         <span>{item.sourceQuoteNumber ? `Quote ${item.sourceQuoteNumber}` : "Existing job invoice"} · {item.qboInvoiceId ? "QuickBooks synced" : "Not synced"}</span>
                       </button>
                       {delivery.invoiceSentAt || delivery.invoiceOpenedAt
@@ -8221,7 +8223,7 @@ export default function CrmDashboardPage() {
                     </div>;
                   })}
                 </div>
-                <p>Total invoiced: ${customerInvoices.reduce((sum, item) => sum + Number(item.invoiceAmount || 0), 0).toFixed(2)} · Outstanding: ${customerInvoices.filter(item => item.invoiceStatus !== "Paid").reduce((sum, item) => sum + Math.max(0, Number(item.invoiceAmount || 0) - Number(item.amountPaid || 0)), 0).toFixed(2)}</p>
+                <p>Total invoiced: ${customerInvoices.reduce((sum, item) => sum + Number(item.invoiceAmount || 0), 0).toFixed(2)} · Outstanding: ${(customerInvoices.reduce((sum, item) => sum + invoiceBalance(item).remainingCents, 0) / 100).toFixed(2)}</p>
                 {["finance", "manager", "super_admin"].includes(role) && <select aria-label="Create invoice from accepted quote" value="" disabled={invoiceListBusy || savingInvoice || sendingInvoice}
                   className="w-full rounded-lg border p-2" onChange={event => { if (event.target.value && window.confirm("Open the invoice for this accepted quote? Unsaved edits will be discarded.")) void createInvoiceForQuote(event.target.value); }}>
                   <option value="">{invoiceListBusy ? "Loading invoices…" : "Create / open invoice from an accepted quote…"}</option>
