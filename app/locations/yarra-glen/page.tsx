@@ -8,7 +8,7 @@ import { getReviews, getBusinessRating } from "@/lib/reviews";
 export const metadata: Metadata = {
   title: "Shower Regrouting Yarra Glen",
   description:
-    "Shower regrouting in Yarra Glen by Groutix. Leaking shower repairs, epoxy grout and silicone replacement. Rated 5.0 from 296 Google reviews.",
+    "Shower regrouting in Yarra Glen by Groutix. Leaking shower repairs, epoxy grout and silicone replacement. Rated 5.0 from 301 Google reviews.",
   alternates: { canonical: "/locations/yarra-glen" },
   openGraph: {
     title: "Shower Regrouting Yarra Glen | Groutix",
@@ -83,7 +83,7 @@ Our process is built to fix the cause, not cover it. The old grout is removed me
 
 Groutix covers shower regrouting, leaking shower repair, tile regrouting, epoxy grout, silicone recaulking and balcony regrouting across Yarra Glen, Christmas Hills, Dixons Creek, Steels Creek and Tarrawarra. The same service suits the family bathroom, the farmhouse ensuite and the guest bathroom in a holiday stay or rental property, where a leaking shower cannot wait for a full renovation.
 
-Most standard single showers cost about $550 to $1,500 to regrout, and your exact price is quoted free before any work starts. Every complete job is backed by a 10 year waterproof warranty, and Groutix is rated 5.0 from 296 Google reviews. Find your suburb below or call (03) 7023 8094 for a free quote.`;
+Most standard single showers cost about $550 to $1,500 to regrout, and your exact price is quoted free before any work starts. Every complete job is backed by a 10 year waterproof warranty, and Groutix is rated 5.0 from 301 Google reviews. Find your suburb below or call (03) 7023 8094 for a free quote.`;
 
 export default async function YarraglenPage() {
   const [reviews, rating] = await Promise.all([getReviews(4), getBusinessRating()]);
@@ -109,3 +109,4 @@ export default async function YarraglenPage() {
     </>
   );
 }
+
