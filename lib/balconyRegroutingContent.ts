@@ -1,5 +1,5 @@
 export const BALCONY_REGROUTING_META_TITLE = "Balcony Regrouting Melbourne | Epoxy, No Tiles Removed | Groutix";
-export const BALCONY_REGROUTING_META_DESCRIPTION = "Balcony regrouting in Melbourne. Failed grout removed and replaced with weatherproof epoxy, movement joints resealed, tiles stay in place. Rated 5.0 from 296 reviews. Free quote.";
+export const BALCONY_REGROUTING_META_DESCRIPTION = "Balcony regrouting in Melbourne. Failed grout removed and replaced with weatherproof epoxy, movement joints resealed, tiles stay in place. Rated 5.0 from 301 reviews. Free quote.";
 export const balconyRegroutingIntro = "Groutix regrouts balconies across Melbourne. We remove failed, cracked grout and rebuild the joints with weatherproof epoxy grout, then reseal the movement joints and edges, all without removing your tiles. It is the proper fix for tired, stained or crumbling balcony grout, done before small gaps in the joints turn into leaks. Eligible work carries a 10 year warranty, with the scope confirmed in your free quote.";
 
 export const balconyRegroutingFaqs = [
