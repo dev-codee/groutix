@@ -15,7 +15,7 @@ export const OG_IMAGE = "/new_logo.jpeg";
 export const OG_SHARE_IMAGE = "/dark-grey-shower-floor-regrouting.webp";
 
 // Shared marketing review count; keep every badge and metadata label consistent.
-export const GOOGLE_REVIEW_COUNT = 296;
+export const GOOGLE_REVIEW_COUNT = 301;
 export const GOOGLE_REVIEW_COUNT_LABEL = `${GOOGLE_REVIEW_COUNT}+`;
 
 export const BUSINESS = {
@@ -166,3 +166,4 @@ export function faqJsonLd(faqs: { q: string; a: string }[]) {
     })),
   };
 }
+
