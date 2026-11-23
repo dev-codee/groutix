@@ -1,7 +1,7 @@
 // Regrouting & Resealing quote checklist.
 //
-// After a customer submits the website quote form we email them this detailed
-// checklist (see CHECKLIST FINAL). Their answers are stored on the lead and are
+// The website quote confirmation links to this detailed checklist (see
+// CHECKLIST FINAL). Their answers are stored on the lead and are
 // translated into standard catalog quote items so the quote "auto-picks" the
 // right line items without staff retyping anything.
 //

@@ -15,7 +15,7 @@ import { getZoneRules } from "@/lib/zoneRulesServer";
 import { formatHHmm, hoursEnvelope, fromMinutes } from "@/lib/bookingRules";
 import { updateSubmission, appendActivity, getNextJobNo, assignInspectorOnBooking } from "@/lib/submissions";
 import { isCloudinaryConfigured, uploadBufferToCloudinary } from "@/lib/cloudinary";
-import { sendChecklistEmail } from "@/lib/checklistDelivery";
+import { checklistInvitationHtml, recordChecklistEmailSent } from "@/lib/checklistDelivery";
 
 export const runtime = "nodejs";
 // Give the retry sequence room to finish before the platform kills the
@@ -559,6 +559,8 @@ export async function POST(req: NextRequest) {
 
       ${inspectionBookingHtml}
 
+      ${submissionId ? checklistInvitationHtml(submissionId) : ""}
+
       <p style="margin:28px 0 0;font-size:16px;font-weight:700;color:#001f97;">
         Stay Sealed. Stay Smiling.
       </p>`;
@@ -572,18 +574,15 @@ export async function POST(req: NextRequest) {
         subject: "We've received your request | Groutix",
         html: wrapEmailHtml(customerHtml, "We've received your quote request and a Groutix specialist will be in touch shortly.", logoUrl),
       });
+      if (submissionId) {
+        try {
+          await recordChecklistEmailSent(submissionId, email);
+        } catch (err) {
+          console.error("checklist delivery tracking failed (non-fatal):", err);
+        }
+      }
     } catch (err) {
       logSendError("customer confirmation", err);
-    }
-
-    // Email the detailed regrouting/resealing checklist so the customer can
-    // confirm the exact scope, which then auto-picks the quote line items.
-    if (submissionId && email) {
-      try {
-        await sendChecklistEmail(submissionId, { toEmail: email, name: fullName });
-      } catch (err) {
-        console.error("checklist email failed (non-fatal):", err);
-      }
     }
 
     // Acknowledge by multipart SMS, preserving the entire signed booking URL.

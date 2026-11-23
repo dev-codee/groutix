@@ -4,21 +4,25 @@ import { loadTs } from "./test-ts-loader.mjs";
 
 for (const booked of [true, false]) {
   test(`quote submission sends matching three-hour email and SMS for a ${booked ? "confirmed" : "requested"} inspection`, async () => {
-    const emails = [], texts = [], submissions = [];
+    const emails = [], texts = [], submissions = [], updates = [], activities = [];
     const rules = structuredClone(loadTs("lib/bookingRules.ts").DEFAULT_BOOKING_RULES);
     rules.inspection.slotMinutes = 180;
     const scheduling = loadTs("lib/scheduling.ts");
+    const submissionApi = {
+      recordSubmission: async (...args) => { submissions.push(args); return "lead"; },
+      updateSubmission: async (...args) => { updates.push(args); return true; },
+      updateEmailDelivered: async () => {},
+      appendActivity: async (...args) => { activities.push(args); },
+      getNextJobNo: async () => "Job No-123", assignInspectorOnBooking: async () => {},
+    };
     const { POST } = loadTs("app/api/quote/route.ts", {
       "next/server": { NextResponse: { json: (body, options) => ({ body, status: options?.status || 200 }) } },
       "@/lib/rateLimit": { rateLimit: () => true },
-      "@/lib/submissions": {
-        recordSubmission: async (...args) => { submissions.push(args); return "lead"; }, updateSubmission: async () => true,
-        updateEmailDelivered: async () => {}, appendActivity: async () => {},
-        getNextJobNo: async () => "Job No-123", assignInspectorOnBooking: async () => {},
-      },
+      "@/lib/submissions": submissionApi,
+      "./submissions": submissionApi,
       "@/lib/siteContentServer": { getSiteContent: async () => ({ business: { phone: "(03) 7023 8094" } }) },
       "@/lib/email": {
-        isEmailConfigured: () => true, getEmailLogoUrl: async () => "",
+        isEmailConfigured: () => true, isInternalEmailAlertEnabled: () => false, getEmailLogoUrl: async () => "",
         wrapEmailHtml: html => html, sendEmail: async email => { emails.push(email); },
       },
       "@/lib/sms": { sendSms: async sms => { texts.push(sms); return { ok: true }; } },
@@ -54,7 +58,14 @@ for (const booked of [true, false]) {
     });
     assert.equal(response.status, 200);
     assert.ok(JSON.stringify(submissions).includes(fields.areas));
-    const customerEmail = emails.find(email => email.toEmail === fields.email);
+    const customerEmails = emails.filter(email => email.toEmail === fields.email);
+    assert.equal(customerEmails.length, 1);
+    const customerEmail = customerEmails[0];
+    assert.match(customerEmail.html, /Fill in My Checklist/);
+    assert.match(customerEmail.html, /\/checklist\/lead\?token=/);
+    assert.match(customerEmail.html, /\/api\/track\/checklist\/lead\?token=/);
+    assert.ok(updates.some(([, changes]) => changes.checklistSentAt));
+    assert.ok(activities.some(([, entry]) => entry.action === "Checklist emailed"));
     assert.ok(customerEmail.html.includes("9:00 AM – 12:00 PM"));
     assert.equal(texts.length, 1);
     assert.ok(texts[0].body.includes("9:00 AM – 12:00 PM"));
@@ -68,5 +79,6 @@ for (const booked of [true, false]) {
       formData: async () => ({ get: key => coverage[key] ?? null, getAll: () => [] }),
     });
     assert.equal(callback.status, 200);
+    assert.equal(emails.filter(email => email.toEmail === fields.email).length, 2);
   });
 }

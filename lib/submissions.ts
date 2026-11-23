@@ -257,7 +257,7 @@ export interface SubmissionDoc {
   ip?: string;
   userAgent?: string;
   emailDelivered?: boolean;
-  // Regrouting & resealing checklist (emailed after the website quote form).
+  // Regrouting & resealing checklist (included in the website confirmation email).
   checklist?: import("@/lib/checklist").ChecklistDoc;
   checklistSentAt?: string; // checklist email delivered
   checklistOpenedAt?: string; // checklist email opened (tracking pixel)

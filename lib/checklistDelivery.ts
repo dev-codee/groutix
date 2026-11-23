@@ -1,9 +1,8 @@
 // Checklist email delivery + lifecycle tracking.
 //
-// We email the regrouting/resealing checklist right after the customer submits
-// the website quote form so they can fill it in and get an accurate quote. The
-// email carries a 1x1 tracking pixel so the CRM can show when it was opened,
-// and the checklist form reports when the customer starts and submits it.
+// The website quote confirmation includes the checklist invitation. Staff can
+// also resend the checklist on its own. The invitation carries a tracking pixel
+// so the CRM can show when it was opened.
 
 import { getSubmission, updateSubmission, appendActivity } from "./submissions";
 import { buildChecklistUrl, checklistTrackingPixel, type ChecklistAnswers } from "./checklist";
@@ -11,13 +10,12 @@ import { sendEmail, wrapEmailHtml, getEmailLogoUrl } from "./email";
 
 const FROM_EMAIL = process.env.SMTP_FROM || process.env.SMTP_USER || "info@groutix.com";
 
-function checklistHtml(id: string, name?: string): string {
+export function checklistInvitationHtml(id: string): string {
   const url = buildChecklistUrl(id);
-  const firstName = (name || "").trim().split(/\s+/)[0] || "there";
   return `
-    <h2 style="margin:0 0 14px;color:#001f97;font-size:24px;">Hi ${firstName}, one quick step to your quote</h2>
+    <h3 style="margin:24px 0 14px;color:#001f97;font-size:19px;">One quick step to your quote</h3>
     <p style="margin:0 0 14px;font-size:15px;line-height:1.5;color:#1e293b;">
-      Thanks for your enquiry. To prepare an accurate instant quote, please complete our short
+      To prepare an accurate quote, please complete our short
       <strong>Shower / Balcony Grouting &amp; Resealing Checklist</strong>.
     </p>
     <p style="margin:0 0 20px;font-size:15px;line-height:1.5;color:#1e293b;">
@@ -30,11 +28,19 @@ function checklistHtml(id: string, name?: string): string {
       </a>
       <p style="margin:14px 0 0;font-size:13px;color:#64748b;">Add one page per shower or balcony — just tap “Add Another”.</p>
     </div>
-    <p style="margin:0 0 4px;font-size:14px;line-height:1.5;color:#334155;">
-      If you have any questions, simply reply to this email or call us.
-    </p>
-    <p style="margin:20px 0 0;font-size:16px;font-weight:700;color:#001f97;">Stay Sealed. Stay Smiling.</p>
     ${checklistTrackingPixel(id)}`;
+}
+
+/** Record a successful email containing the checklist invitation. */
+export async function recordChecklistEmailSent(id: string, toEmail: string): Promise<void> {
+  const now = new Date().toISOString();
+  await updateSubmission(id, { checklistSentAt: now });
+  await appendActivity(id, {
+    time: now,
+    actor: "system",
+    action: "Checklist emailed",
+    detail: toEmail,
+  });
 }
 
 /** Email the checklist link and record that it was sent. Never throws. */
@@ -47,6 +53,7 @@ export async function sendChecklistEmail(
     const toEmail = options.toEmail || lead?.email;
     if (!toEmail) return false;
     const name = options.name || lead?.name;
+    const firstName = (name || "").trim().split(/\s+/)[0].replace(/[&<>"']/g, "") || "there";
     const logoUrl = await getEmailLogoUrl();
     await sendEmail({
       toEmail,
@@ -54,19 +61,16 @@ export async function sendChecklistEmail(
       fromEmail: FROM_EMAIL,
       subject: "Complete your Groutix regrouting & resealing checklist",
       html: wrapEmailHtml(
-        checklistHtml(id, name),
+        `<h2 style="margin:0 0 14px;color:#001f97;font-size:24px;">Hi ${firstName},</h2>
+         <p>Thanks for your enquiry.</p>
+         ${checklistInvitationHtml(id)}
+         <p>If you have any questions, simply reply to this email or call us.</p>
+         <p style="margin:20px 0 0;font-size:16px;font-weight:700;color:#001f97;">Stay Sealed. Stay Smiling.</p>`,
         "One quick checklist so we can price your regrouting & resealing accurately.",
         logoUrl
       ),
     });
-    const now = new Date().toISOString();
-    await updateSubmission(id, { checklistSentAt: now });
-    await appendActivity(id, {
-      time: now,
-      actor: "system",
-      action: "Checklist emailed",
-      detail: toEmail,
-    });
+    await recordChecklistEmailSent(id, toEmail);
     return true;
   } catch (err) {
     console.error("sendChecklistEmail failed (non-fatal):", err);
