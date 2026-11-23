@@ -1,6 +1,6 @@
 export const LEAKING_SHOWER_META = {
   title: "Leaking Shower Repairs Melbourne | No Tile Removal | Groutix",
-  description: "Leaking shower repairs in Melbourne. We find the leak source and fix failed grout and silicone, often without removing tiles. Rated 5.0 from 296 reviews, 10 year warranty. Free quote.",
+  description: "Leaking shower repairs in Melbourne. We find the leak source and fix failed grout and silicone, often without removing tiles. Rated 5.0 from 301 reviews, 10 year warranty. Free quote.",
 };
 
 export const LEAKING_SHOWER_FAQS = [
