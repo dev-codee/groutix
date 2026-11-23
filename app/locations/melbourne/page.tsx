@@ -9,12 +9,12 @@ import { OG_SHARE_IMAGE } from "@/lib/seo";
 export const metadata: Metadata = {
   title: "Regrouting Melbourne | Shower & Balcony Grout Repair",
   description:
-    "Showers, balconies and tiled floors regrouted and resealed across Melbourne, tiles kept in place. 5.0 stars from 296 reviews, 10 year warranty. Free quote.",
+    "Showers, balconies and tiled floors regrouted and resealed across Melbourne, tiles kept in place. 5.0 stars from 301 reviews, 10 year warranty. Free quote.",
   alternates: { canonical: "/locations/melbourne" },
   openGraph: {
     title: "Regrouting Melbourne | Shower & Balcony Grout Repair",
     description:
-      "Showers, balconies and tiled floors regrouted and resealed across Melbourne, tiles kept in place. 5.0 stars from 296 reviews, 10 year warranty. Free quote.",
+      "Showers, balconies and tiled floors regrouted and resealed across Melbourne, tiles kept in place. 5.0 stars from 301 reviews, 10 year warranty. Free quote.",
     url: "/locations/melbourne",
     type: "website",
     images: [{ url: OG_SHARE_IMAGE, width: 1920, height: 1440, alt: "Shower regrouting in Melbourne by Groutix" }],
@@ -135,7 +135,7 @@ Our process is built to fix the cause, not cover it. The old grout is removed me
 
 Beyond showers, Groutix regrouts and reseals balconies for homeowners and owners corporations, regrouts kitchen and laundry tiles, replaces drummy or cracked tiles and renews silicone throughout the bathroom. Landlords and property managers across Melbourne use us to turn leaking bathrooms around between tenants without a renovation.
 
-Most standard single showers cost about $550 to $1,500 to regrout, and your exact price is quoted free before any work starts. Every complete job is backed by a 10 year waterproof warranty, and Groutix is rated 5.0 from 296 Google reviews by Melbourne customers. Find your suburb below or call (03) 7023 8094 for a free quote.`;
+Most standard single showers cost about $550 to $1,500 to regrout, and your exact price is quoted free before any work starts. Every complete job is backed by a 10 year waterproof warranty, and Groutix is rated 5.0 from 301 Google reviews by Melbourne customers. Find your suburb below or call (03) 7023 8094 for a free quote.`;
 
 
 const melbourneFaqs: Array<{ question: string; answer: string }> = [
@@ -229,4 +229,5 @@ export default async function MelbournePage() {
     </>
   );
 }
+
 
