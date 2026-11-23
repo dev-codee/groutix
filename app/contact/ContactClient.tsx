@@ -199,7 +199,7 @@ export default function ContactClient() {
                 </li>
                 <li className="flex gap-2.5">
                   <Star className="h-5 w-5 flex-shrink-0 text-white/80" />
-                  <span><strong>5.0-star rated</strong> from 296+ Google reviews</span>
+                  <span><strong>5.0-star rated</strong> from 301+ Google reviews</span>
                 </li>
               </ul>
               <div className="mt-5 bg-white rounded-xl p-3 flex items-center justify-center">
@@ -331,3 +331,4 @@ export default function ContactClient() {
     </main>
   );
 }
+
