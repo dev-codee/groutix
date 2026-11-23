@@ -1,5 +1,5 @@
 export const BALCONY_META_TITLE = "Balcony Regrouting & Leak Repairs Melbourne | Free Quote | Groutix";
-export const BALCONY_META_DESCRIPTION = "Balcony regrouting and leak repairs in Melbourne. Cracked grout replaced with exterior grade waterproof epoxy, no tile removal. Rated 5.0 from 296 reviews, 10 year warranty on eligible work. Free quote.";
+export const BALCONY_META_DESCRIPTION = "Balcony regrouting and leak repairs in Melbourne. Cracked grout replaced with exterior grade waterproof epoxy, no tile removal. Rated 5.0 from 301 reviews, 10 year warranty on eligible work. Free quote.";
 export const balconyIntro = "Groutix repairs leaking balconies across Melbourne. We find where water gets in, then fix failed grout, seals or membranes. Many jobs need no tile removal. Eligible waterproof work carries a 10 year warranty, with scope confirmed in your free quote. We serve homes, apartments and strata buildings.";
 
 export const balconyFaqs = [
