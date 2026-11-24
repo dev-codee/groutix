@@ -11,6 +11,7 @@ import { FieldLeadRow } from "@/components/admin/rows/FieldLeadRow";
 import { TechnicianLeadRow } from "@/components/admin/rows/TechnicianLeadRow";
 import { FinanceLeadRow } from "@/components/admin/rows/FinanceLeadRow";
 import { StandardLeadCard } from "@/components/admin/rows/StandardLeadCard";
+import { SendChecklistButton } from "@/components/admin/SendChecklistButton";
 import { STATUS_LIST, MANAGER_STATUS_FILTER_LIST } from "@/lib/adminHelpers";
 
 const PAGE_SIZE = 20;
@@ -162,7 +163,16 @@ export function LeadsView({ preview = false }: { preview?: boolean }) {
                 : role === "inspection" || role === "field" ? <FieldLeadRow l={l} />
                 : role === "technician" ? <TechnicianLeadRow l={l} />
                 : role === "finance" ? <FinanceLeadRow l={l} /> : <StandardLeadCard l={l} />;
-              return <div key={leadRowKey(l)}>{row}<LeadBookings lead={l} /></div>;
+              return <div key={leadRowKey(l)}>
+                {row}
+                {(role === "intake" || role === "manager" || role === "super_admin") && (
+                  <div className="flex items-center gap-2 px-3 pb-3">
+                    <SendChecklistButton lead={l} />
+                    {l.checklistSentAt && <span className="text-[11px] text-slate-500">Checklist sent</span>}
+                  </div>
+                )}
+                <LeadBookings lead={l} />
+              </div>;
             })}
             {!preview && filteredLeads.length === 0 && (
               <div className="py-16 text-center text-slate-400">
