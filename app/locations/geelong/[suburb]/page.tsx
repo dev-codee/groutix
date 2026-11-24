@@ -7,6 +7,7 @@ import CityPageClient from "@/app/locations/CityPageClient";
 import type { SuburbGroup } from "@/app/locations/CityPageClient";
 import WhittingtonPage from "@/components/WhittingtonPage";
 import DrumcondraPage from "@/components/DrumcondraPage";
+import AnakiePage from "@/components/AnakiePage";
 import { getReviews, getBusinessRating } from "@/lib/reviews";
 
 // Helper to format suburb slug to readable name
@@ -24,6 +25,22 @@ type Props = {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { suburb } = await params;
   if (!(GEELONG_SUBURB_SLUGS as readonly string[]).includes(suburb)) notFound();
+  if (suburb === "anakie") {
+    const rating = await getBusinessRating();
+    const reviewsText = `${rating.value.toFixed(1)} stars from ${rating.count}+ reviews`;
+    return {
+      title: "Shower & Balcony Regrouting Anakie | Free Quote",
+      description: `Shower, bathroom and balcony regrouting in Anakie, Staughton Vale and Lara. No tile removal, 10 year waterproof warranty, ${reviewsText}. Free quote.`,
+      alternates: { canonical: "/locations/geelong/anakie" },
+      openGraph: {
+        title: "Regrouting in Anakie | Groutix",
+        description: `Shower, bathroom and balcony regrouting in Anakie, Staughton Vale and Lara. No tile removal, 10 year waterproof warranty, ${reviewsText}. Free quote.`,
+        url: "/locations/geelong/anakie",
+        type: "website",
+      },
+      robots: "index, follow",
+    };
+  }
   if (suburb === "drumcondra") {
     const rating = await getBusinessRating();
     const reviewsText = `${rating.value.toFixed(1)} stars from ${rating.count}+ reviews`;
@@ -141,6 +158,10 @@ export default async function GeelongSuburbPage({ params }: Props) {
   if (suburb === "drumcondra") {
     const [dReviews, dRating] = await Promise.all([getReviews(4), getBusinessRating()]);
     return <DrumcondraPage reviews={dReviews} rating={dRating} />;
+  }
+  if (suburb === "anakie") {
+    const [aReviews, aRating] = await Promise.all([getReviews(4), getBusinessRating()]);
+    return <AnakiePage reviews={aReviews} rating={aRating} />;
   }
   const [reviews, rating] = await Promise.all([getReviews(4), getBusinessRating()]);
   const apiKey = process.env.GOOGLE_PLACES_API_KEY || "";
