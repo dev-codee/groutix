@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
-import { CheckCircle2, Download, History, Loader2, Plus, Search, Users, Wallet, X } from "lucide-react";
+import { BriefcaseBusiness, CheckCircle2, CircleDollarSign, Clock3, Download, History, Layers3, Loader2, Plus, Search, TrendingUp, Users, Wallet, X } from "lucide-react";
 import { applyDailyEarningsCaps, calculateEarnings, formatEarningsMoney as money, type EarningsShare, type EarningsBasis, type EarningsData, type EarningsEvent, type EarningsJob, type EarningsLedger, type EarningsMember, type EarningsPayment } from "@/lib/teamEarnings";
 import { defaultTeamEarningsSettings, type TeamEarningsSettings } from "@/lib/teamEarningsSettings";
 
@@ -94,7 +94,14 @@ function EarningsDetail({ job, members, settings, onClose, onChanged, onExpenseC
     setBusy(true); setError("");
     try {
       let draft = ledger;
-      if (!draft || dirty) {
+      if (draft?.status === "approved") {
+        const reopened = await api<{ ledger: EarningsLedger }>(`/api/admin/team-earnings/${job.id}`, {
+          method: "POST",
+          body: JSON.stringify({ action: "reopen", reason: "Updated team shares on the job page", version: draft.version, requestId: crypto.randomUUID() }),
+        });
+        draft = reopened.ledger;
+      }
+      if (!draft || dirty || ledger?.status === "approved") {
         const saved = await api<{ ledger: EarningsLedger }>(`/api/admin/team-earnings/${job.id}`, {
           method: "POST",
           body: JSON.stringify({ action: "save", basis, notes, shares: rows.map(sharePayload), version: draft?.version || 0, requestId: crypto.randomUUID() }),
@@ -119,7 +126,7 @@ function EarningsDetail({ job, members, settings, onClose, onChanged, onExpenseC
     <ErrorBox error={error} />
     {job.changed && <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800">The invoice, completion status or source lead changed after approval. Approved amounts are preserved. Review the history, reverse any recorded payments if correcting the approval, then reopen and approve the updated earnings.</p>}
     {/* Team Shares table */}
-    {!approved ? <form onSubmit={save} className="space-y-3">
+    {!approved || totalPaid === 0 ? <form onSubmit={save} className="space-y-3">
       <fieldset disabled={busy} className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h3 className="text-sm font-bold text-slate-900">Team Shares <span className="text-xs font-normal text-slate-500">(This Job)</span></h3>
@@ -157,15 +164,14 @@ function EarningsDetail({ job, members, settings, onClose, onChanged, onExpenseC
         <Field name="Manager notes"><textarea className={input} maxLength={2000} rows={2} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Agreed rate, shared work or other context" /></Field>
       </fieldset>
       <div className="flex flex-wrap items-center justify-end gap-2 border-t border-slate-100 pt-3">
-        <button className={button} disabled={busy || totalRate > 100 || exceedsBase} type="submit">{busy && <Loader2 className="h-4 w-4 animate-spin" />}Save draft shares</button>
-        <button type="button" className={primary} disabled={busy || !job.eligible || !invoice || !rows.length || rows.some(row => !row.memberId || !Number.isFinite(Number(row.value)) || Number(row.value) <= 0) || totalRate > 100 || exceedsBase} title={job.unavailableReason} onClick={() => void createDues()}><CheckCircle2 className="h-4 w-4" />Add to pending dues</button>
+        {!approved && <button className={button} disabled={busy || totalRate > 100 || exceedsBase} type="submit">{busy && <Loader2 className="h-4 w-4 animate-spin" />}Save draft shares</button>}
+        <button type="button" className={primary} disabled={busy || !job.eligible || !invoice || (approved && !dirty) || !rows.length || rows.some(row => !row.memberId || !Number.isFinite(Number(row.value)) || Number(row.value) <= 0) || totalRate > 100 || exceedsBase} title={job.unavailableReason} onClick={() => void createDues()}><CheckCircle2 className="h-4 w-4" />{approved ? "Save share changes" : "Add to pending dues"}</button>
       </div>
       {!job.eligible && <p className="text-xs text-amber-700">{job.unavailableReason}</p>}
-      {job.eligible && <p className="text-xs text-slate-500">Calculated from the job invoice and the share settings above. Adding dues locks in these amounts and updates Team Summary; use Pay after money is sent.</p>}
+      {job.eligible && <p className="text-xs text-slate-500">Calculated from the job invoice and the share settings above. Saving updates Team Summary and pending dues; use Pay after money is sent.</p>}
     </form> : <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="text-sm font-bold text-slate-900">Team Shares <span className="text-xs font-normal text-slate-500">(This Job) · {ledger.basis === "ex_gst" ? "ex GST" : "incl GST"}</span></h3>
-        <button className={button} disabled={busy || ledger.shares.some(s => s.paidCents > 0)} onClick={() => setMode("reopen")}>Reopen for edits</button>
       </div>
       <div className="overflow-x-auto rounded-lg border border-slate-200">
         <table className="w-full min-w-[640px] text-left text-sm">
@@ -210,7 +216,7 @@ function EarningsDetail({ job, members, settings, onClose, onChanged, onExpenseC
     </div>
     {approved ? <form onSubmit={recordPayment} className="rounded-lg border border-blue-200 bg-blue-50/50 p-3">
       <h4 className="flex items-center gap-1.5 text-sm font-bold text-slate-800"><Wallet className="h-4 w-4 text-blue-600" />Record Payment</h4>
-      <p className="mb-2 text-xs text-slate-500">Log money already paid to a team member. Select a row's <b>Pay</b> button to prefill the amount, or enter it manually.</p>
+      <p className="mb-2 text-xs text-slate-500">Log money already paid to a team member. Select a row&apos;s <b>Pay</b> button to prefill the amount, or enter it manually.</p>
       <fieldset disabled={busy} className="grid gap-2 sm:grid-cols-4">
         <label className="text-xs font-semibold text-slate-600">Employee<select className={input} required value={paymentMember} onChange={e => { setPaymentMember(e.target.value); const s = ledger.shares.find(x => x.memberId === e.target.value); if (s) setPaymentAmount(String((s.earnedCents - s.paidCents) / 100)); }}><option value="">Select</option>{ledger.shares.filter(s => s.earnedCents > s.paidCents).map(s => <option key={s.memberId} value={s.memberId}>{s.name} · {money(s.earnedCents - s.paidCents)} due</option>)}</select></label>
         <label className="text-xs font-semibold text-slate-600">Amount ($)<input className={input} type="number" required min="0.01" max={paymentShare ? (paymentShare.earnedCents - paymentShare.paidCents) / 100 : undefined} step="0.01" value={paymentAmount} onChange={e => setPaymentAmount(e.target.value)} /></label>
@@ -221,10 +227,10 @@ function EarningsDetail({ job, members, settings, onClose, onChanged, onExpenseC
       <div className="mt-2 flex justify-end"><button type="submit" className={primary} disabled={busy || !paymentMember || !paymentAmount}>{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}Mark as Paid</button></div>
     </form> : <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-3 text-center text-xs text-slate-500">Approve earnings first to record worker payments.</div>}
     {mode === "reopen" && <form onSubmit={e => { e.preventDefault(); void mutate({ action: "reopen", reason: new FormData(e.currentTarget).get("reason") }); }} className="space-y-3 rounded-lg border border-amber-200 bg-amber-50 p-4"><h3 className="font-bold">Reopen for correction</h3><p className="text-sm text-slate-600">The previous approval remains in audit history. Save and approve the revised shares afterwards.</p><Field name="Reason *"><textarea className={input} name="reason" required maxLength={500} disabled={busy} /></Field><div className="flex gap-2"><button className={primary} disabled={busy}>Reopen</button><button type="button" className={button} disabled={busy} onClick={() => setMode(null)}>Cancel</button></div></form>}
-    <section className="space-y-3 border-t border-slate-100 pt-4"><h3 className="flex items-center gap-2 text-sm font-bold"><History className="h-4 w-4" />Payments & audit log</h3><ErrorBox error={historyError} />{historyError && <button className={button} onClick={() => setHistoryRetry(v => v + 1)}>Retry history</button>}{!history && !historyError && <p role="status" className="text-sm text-slate-500">Loading history…</p>}
+    <details className="space-y-3 border-t border-slate-100 pt-2"><summary className="flex cursor-pointer items-center gap-2 text-xs font-semibold text-slate-600"><History className="h-3.5 w-3.5" />Payments & audit log</summary><ErrorBox error={historyError} />{historyError && <button className={button} onClick={() => setHistoryRetry(v => v + 1)}>Retry history</button>}{!history && !historyError && <p role="status" className="text-sm text-slate-500">Loading history…</p>}
       {history && <><div className="space-y-2">{history.payments.map(p => <div key={p.id} className="rounded-lg border border-slate-200 p-3"><div className="flex flex-wrap items-start justify-between gap-2"><div><p className="text-sm font-semibold">{p.memberName} · {money(p.amountCents)}{p.voidedAt && <span className="ml-2 text-xs text-rose-600">Reversed</span>}</p><p className="text-xs text-slate-500">{p.date} · {p.method} · Recorded by {p.actor}</p>{p.note && <p className="mt-1 break-words text-xs text-slate-500">{p.note}</p>}{p.voidedAt && <p className="mt-1 break-words text-xs text-rose-600">{p.voidedBy}: {p.voidReason}</p>}</div>{!p.voidedAt && <button className={button} disabled={busy} onClick={() => setVoidId(p.id)}>Reverse</button>}</div>{voidId === p.id && <form className="mt-3 space-y-2" onSubmit={e => { e.preventDefault(); void mutate({ action: "void_payment", paymentId: p.id, reason: new FormData(e.currentTarget).get("reason") }); }}><p className="text-xs text-amber-700">Correct the ledger only after confirming this payment was entered incorrectly or returned. This does not recover transferred money.</p><Field name="Reversal reason *"><input className={input} name="reason" required maxLength={500} disabled={busy} /></Field><div className="flex gap-2"><button className={button} disabled={busy}>Confirm reversal</button><button className={button} type="button" disabled={busy} onClick={() => setVoidId(null)}>Cancel</button></div></form>}</div>)}{!history.payments.length && <p className="text-xs text-slate-500">No team payments recorded.</p>}</div>
       <ol className="divide-y divide-slate-100">{history.events.map(event => <li key={event.id} className="py-2"><p className="text-xs font-semibold text-slate-500">{new Date(event.createdAt).toLocaleString("en-AU")} · {event.actor} · {event.action.replaceAll("_", " ")}</p><p className="mt-1 whitespace-pre-wrap break-words text-sm text-slate-700">{event.detail}</p></li>)}</ol>{!history.events.length && <p className="text-xs text-slate-500">No earnings changes yet.</p>}<div className="flex items-center justify-between"><button className={button} disabled={historyPage === 1} onClick={() => setHistoryPage(p => p - 1)}>Previous</button><span className="text-xs text-slate-500">Audit page {historyPage}</span><button className={button} disabled={!history.hasMore} onClick={() => setHistoryPage(p => p + 1)}>Next</button></div></>}
-    </section>
+    </details>
   </section>;
 }
 
@@ -420,6 +426,15 @@ export function TeamEarningsView({ query, onQueryChange, onOpenJob, onAddJob, on
     ["Total Jobs", String(filtered.length)], ["Job Value", money(totals.value)], ["Received", money(totals.received)],
     ["Team Earnings", money(totals.earned)], ["Paid to Team", money(totals.paid)], ["Team Outstanding", money(totals.earned - totals.paid)], ["Manager Balance", money(managerFinal)],
   ];
+  const cardIcons: Record<string, ReactNode> = {
+    "Total Jobs": <BriefcaseBusiness className="h-4 w-4 text-emerald-600" />,
+    "Job Value": <Layers3 className="h-4 w-4 text-blue-600" />,
+    Received: <CircleDollarSign className="h-4 w-4 text-emerald-600" />,
+    "Team Earnings": <Users className="h-4 w-4 text-amber-600" />,
+    "Paid to Team": <Wallet className="h-4 w-4 text-violet-600" />,
+    "Team Outstanding": <Clock3 className="h-4 w-4 text-rose-600" />,
+    "Manager Balance": <TrendingUp className="h-4 w-4 text-blue-600" />,
+  };
   return <div className="space-y-2.5">
     <div className="flex flex-wrap items-center justify-between gap-2"><h2 className="flex items-center gap-2 text-lg font-bold text-slate-900"><Users className="h-4 w-4 text-blue-600" />Job & Team Payment Management</h2><div className="flex flex-wrap items-center gap-1.5">
       <select className={`${input} w-auto`} aria-label="Earnings date preset" value={period} onChange={e => setPeriod(e.target.value as typeof period)}><option value="month">This Month</option><option value="last">Last Month</option><option value="custom">Custom range</option><option value="all">All Time</option></select>
@@ -427,7 +442,7 @@ export function TeamEarningsView({ query, onQueryChange, onOpenJob, onAddJob, on
       <button className={button} onClick={() => setSettingsOpen(true)}><Settings className="h-4 w-4" />Settings</button><button className={button} disabled={loading || !!error || !filtered.length} onClick={() => exportCsv()}><Download className="h-4 w-4" />Export</button><button className={primary} onClick={onAddJob}><Plus className="h-4 w-4" />Add Job</button>
     </div></div>
     <ErrorBox error={error} />{notice && <p role="status" className="rounded-xl bg-emerald-50 p-3 text-sm text-emerald-800">{notice}</p>}
-    <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4 2xl:grid-cols-7">{cards.map(([title, value]) => <div key={title} className={`${panel} px-3 py-2`}><p className="text-[11px] font-semibold text-slate-500">{title}</p><p className="break-words text-base font-bold text-slate-900">{loading || error ? "—" : value}</p></div>)}</div>
+    <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4 2xl:grid-cols-7">{cards.map(([title, value]) => <div key={title} className={`${panel} flex items-center gap-2 px-3 py-2`}><span className="rounded-lg bg-slate-50 p-1.5">{cardIcons[title]}</span><div className="min-w-0"><p className="text-[11px] font-semibold text-slate-500">{title}</p><p className="break-words text-base font-bold text-slate-900">{loading || error ? "—" : value}</p></div></div>)}</div>
     <div className="flex flex-wrap gap-1.5" aria-label="Job status filters">{registerFilters.map(value => <button key={value} aria-pressed={filter === value} className={filter === value ? primary : button} onClick={() => { setFilter(value); setPage(1); }}>{value} ({loading || error ? "—" : searched.filter(job => matchesRegisterFilter(job, value)).length})</button>)}</div>
     <div className="flex flex-wrap items-center gap-2"><div className="relative min-w-48 flex-1"><Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" /><input className={`${input} pl-9`} aria-label="Search team earnings" placeholder="Search job, customer or employee..." value={query} onChange={e => { onQueryChange(e.target.value); setPage(1); }} /></div><select className={`${input} sm:w-auto`} aria-label="Filter team member" value={memberId} onChange={e => { setMemberId(e.target.value); setPage(1); }}><option value="">All team members</option>{data.members.map(member => <option key={member.id} value={member.id}>{member.name}{member.active ? "" : " (inactive)"}</option>)}</select><select className={`${input} sm:w-auto`} aria-label="Filter earnings status" value={status} onChange={e => { setStatus(e.target.value); setPage(1); }}><option value="">All earnings statuses</option>{["Not configured", "Draft", "Approved", "Settled", "Needs review"].map(value => <option key={value}>{value}</option>)}</select></div>
     <div role="tablist" aria-label="Team earnings sections" className="flex flex-wrap gap-2 border-b border-slate-200 pb-2">{([["jobs", "Jobs Register"], ["employees", "Employee Summary"], ["payments", "Payments History"]] as const).map(([id, title]) => <button key={id} type="button" role="tab" aria-selected={tab === id} onClick={() => setTab(id)} className={tab === id ? primary : button}>{title}</button>)}</div>
