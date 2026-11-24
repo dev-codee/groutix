@@ -26,10 +26,18 @@
    use the live useGoogleRating() hook.
    Route title: "Regrouting Geelong | Shower, Tile & Balcony |
    Groutix". Drop in: components/GeelongHubPage.tsx wired into
-   the geelong hub route (see parent notes). */
+   the geelong hub route (see parent notes).
+   STRENGTHENING 2026-11-24 (Phase 2, Ballarat rule, additions
+   only, no existing heading or paragraph changed): GSC 3 months
+   7 clicks / 927 imp / pos 26.4. Added TrustedMarquee, Bathroom
+   Regrouting section (71 imp query @ 26.8 had no section), Grout
+   Repairs section with a cleaning versus repair box (57 imp @
+   32.0), Real Work sliders, a Reviews section (the route already
+   passed reviews, never rendered), FAQs 10 to 13. */
 
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Phone, Star, ChevronDown } from "lucide-react";
@@ -39,6 +47,7 @@ import Footer from "@/components/Footer";
 import AnimatedSection from "@/components/AnimatedSection";
 import HeroContactBadges from "@/components/HeroContactBadges";
 import QuoteFormV2 from "@/components/home/QuoteFormV2";
+import TrustedMarquee from "@/components/TrustedMarquee";
 import { useGoogleRating } from "@/components/useGoogleRating";
 import type { Review, BusinessRating } from "@/lib/reviews";
 
@@ -56,6 +65,46 @@ function FaqItem({ q, a }: { q: string; a: string }) {
     </li>
   );
 }
+
+
+/* ─── Before / after drag slider (Ballarat hub pattern) ─── */
+function BeforeAfter({ before, after, title }: { before: string; after: string; title: string }) {
+  const [pos, setPos] = useState(100);
+  const handle = Math.min(96, Math.max(4, pos));
+  const layer = (src: string) => (
+    <div className="absolute inset-0">
+      <Image src={src} alt="" fill sizes="(min-width:768px) 33vw, 100vw" className="object-cover" />
+    </div>
+  );
+  return (
+    <figure className="m-0">
+      <div className="relative aspect-square select-none overflow-hidden rounded-lg border border-slate-200 bg-slate-200 sm:aspect-[4/4.2]">
+        <div className="absolute inset-0 overflow-hidden" role="img" aria-label={`${title}, before`}>{layer(before)}</div>
+        <div className="absolute inset-0 overflow-hidden" style={{ clipPath: `inset(0 0 0 ${pos}%)` }} role="img" aria-label={`${title}, after`}>{layer(after)}</div>
+        <span className="pointer-events-none absolute left-3 top-3 rounded bg-black/75 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider text-white">Before</span>
+        <span className="pointer-events-none absolute right-3 top-3 rounded bg-[#001F97]/90 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider text-white">After</span>
+        <span className="pointer-events-none absolute inset-y-0 w-[3px] -translate-x-1/2 bg-white shadow-[0_0_6px_rgba(0,0,0,0.35)]" style={{ left: `${handle}%` }} aria-hidden="true" />
+        <span className="pointer-events-none absolute top-1/2 flex h-10 w-10 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-white text-lg font-black text-[#001F97] shadow-[0_2px_10px_rgba(0,0,0,0.3)]" style={{ left: `${handle}%` }} aria-hidden="true">↔</span>
+        <input
+          type="range"
+          min={0}
+          max={100}
+          value={pos}
+          onChange={(e) => setPos(Number(e.target.value))}
+          aria-label={`Drag to compare before and after: ${title}`}
+          className="absolute inset-0 h-full w-full cursor-ew-resize appearance-none bg-transparent opacity-0"
+        />
+      </div>
+      <figcaption className="mt-3 font-bold text-slate-900">{title}</figcaption>
+    </figure>
+  );
+}
+
+const REAL_JOBS = [
+  { before: "/epoxy-grout-shower-before.webp", after: "/epoxy-grout-shower-after.webp", title: "Shower floor regrouted in epoxy" },
+  { before: "/epoxy-grout-floor-before.webp", after: "/epoxy-grout-floor-after.webp", title: "Floor regrouted in epoxy" },
+  { before: "/damp-patch-leak-before.webp", after: "/damp-patch-leak-after.webp", title: "Leaking shower, damp patch fixed at the source" },
+];
 
 const FAQS = [
   {
@@ -97,6 +146,18 @@ const FAQS = [
   {
     q: "How long will a regrout last?",
     a: "A proper regrout, where the old grout is fully removed and the joints rebuilt, is made to last for years, and eligible complete shower regrouting is backed by our 10 year waterproof warranty. Surface jobs that smear new grout over old grout are the ones that fail early, which is why we never do them.",
+  },
+  {
+    q: "Do you do small grout repairs in Geelong, or only full regrouting jobs?",
+    a: "Both. Plenty of Geelong work is a repair, not a full regrout: one cracked corner, a shower base letting water through, a single wall where the joints have gone. We repair what has failed and leave sound grout alone. If the failure turns out to be everywhere, we will say a full regrout is the better spend, because patching joint after joint costs more over a few years.",
+  },
+  {
+    q: "Does bathroom regrouting cover the floor and walls, or just the shower?",
+    a: "The whole room, if you want it. Most Geelong bathroom jobs do the shower, the floor and the wall tiles in one visit, so the grout colour and finish match everywhere and the room is watertight as one system. You can also do the shower alone now and the floor later, we will match the grout when we come back.",
+  },
+  {
+    q: "Can you just clean our grout instead of regrouting it?",
+    a: "If the grout is sound and only surface stained, a proper clean can be all it needs, and we will tell you that from a photo. Cleaning cannot mend grout that is cracked, crumbling or missing, and it cannot clean mould out of silicone, because the mould grows inside it. Around the coast, perished silicone is usually the real problem. Send us a photo and we will tell you plainly which one yours is.",
   },
 ];
 
@@ -184,6 +245,8 @@ export default function GeelongHubPage({
             </div>
           </div>
         </section>
+
+        <TrustedMarquee />
 
         {/* ═════════ 2. STATS STRIP ═════════ */}
         <AnimatedSection className="bg-white py-12 lg:py-16">
@@ -287,6 +350,45 @@ export default function GeelongHubPage({
                 </Link>
               </div>
             </div>
+          </div>
+        </AnimatedSection>
+
+        {/* ═════════ 4B. BATHROOM REGROUTING (added 2026-11-24) ═════════ */}
+        <AnimatedSection className="bg-white py-16 lg:py-24">
+          <div className="mx-auto max-w-[1460px] space-y-10 px-4 sm:px-6 lg:px-10">
+            <div className="mx-auto max-w-3xl space-y-4 text-center">
+              <h2 className="text-3xl font-bold leading-tight text-neutral-900 lg:text-[42px]">
+                Bathroom Regrouting in Geelong
+              </h2>
+              <p className="text-base leading-relaxed text-neutral-600 sm:text-lg">
+                A bathroom is one wet system, not three separate jobs. The shower joints, the floor grout and the wall tiles age together, and in most Geelong bathrooms they fail together too. Bathroom regrouting in Geelong does the whole room in one visit: every failed joint cut out and rebuilt, every seal renewed, so the finish matches from the shower screen to the skirting.
+              </p>
+            </div>
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+              {[
+                { title: "The Whole Room, One Visit", text: "Shower, floor and walls regrouted together, one grout colour, one finish, no second call out." },
+                { title: "Ensuites", text: "The small room that gets used hardest. Ensuite grout and silicone renewed while the main bathroom carries the load." },
+                { title: "Family Bathrooms", text: "Belmont and Highton family bathrooms done in a single visit, with honest timings for when each area can be used again." },
+                { title: "Rentals and Pre Sale", text: "A tired bathroom dates a whole listing. Regrouting is the fastest way to make it photograph clean again." },
+              ].map((c, i) => (
+                <motion.div
+                  key={c.title}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: i * 0.1, duration: 0.4 }}
+                  className="space-y-3 rounded-sm border border-neutral-200 bg-neutral-50 p-6"
+                >
+                  <h3 className="text-lg font-bold text-neutral-900">{c.title}</h3>
+                  <p className="text-base leading-relaxed text-neutral-600">{c.text}</p>
+                </motion.div>
+              ))}
+            </div>
+            <p className="mx-auto max-w-3xl text-center text-base text-neutral-600">
+              Just the shower needs doing? That is our{" "}
+              <Link href="/shower-regrouting" className="font-bold text-accent hover:underline">shower regrouting</Link>{" "}
+              service, and the floor can follow later with the grout matched.
+            </p>
           </div>
         </AnimatedSection>
 
@@ -405,6 +507,48 @@ export default function GeelongHubPage({
           </div>
         </AnimatedSection>
 
+        {/* ═════════ 7B. GROUT REPAIRS (added 2026-11-24) ═════════ */}
+        <AnimatedSection className="bg-white py-16 lg:py-24">
+          <div className="mx-auto max-w-[1460px] space-y-10 px-4 sm:px-6 lg:px-10">
+            <div className="mx-auto max-w-3xl space-y-4 text-center">
+              <h2 className="text-3xl font-bold leading-tight text-neutral-900 lg:text-[42px]">
+                Grout Repairs in Geelong
+              </h2>
+              <p className="text-base leading-relaxed text-neutral-600 sm:text-lg">
+                Not every tired bathroom needs a full regrout. Grout repairs in Geelong cover the jobs in between: the one corner that has cracked open, the shower base letting water through, the wall where the joints have crumbled while the rest of the room is sound. We repair what has failed, and only what has failed.
+              </p>
+            </div>
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+              {[
+                { title: "Cracked Corners and Bases", text: "The joints that move most fail first. Failed sections cut out and rebuilt so the corner seals again." },
+                { title: "One Failed Wall", text: "A single wall or splashback with crumbling joints, repaired and matched to the grout around it." },
+                { title: "Silicone Only Rescues", text: "When the grout is sound and only the silicone has perished, a strip out and reseal is the whole job." },
+                { title: "Repair or Full Regrout?", text: "If joints are failing in several places at once, patching costs more over time. We will show you which side of that line your bathroom sits on." },
+              ].map((c, i) => (
+                <motion.div
+                  key={c.title}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: i * 0.1, duration: 0.4 }}
+                  className="space-y-3 rounded-sm border border-neutral-200 bg-neutral-50 p-6"
+                >
+                  <h3 className="text-lg font-bold text-neutral-900">{c.title}</h3>
+                  <p className="text-base leading-relaxed text-neutral-600">{c.text}</p>
+                </motion.div>
+              ))}
+            </div>
+            <div className="mx-auto max-w-3xl rounded-sm border-l-4 border-accent bg-neutral-50 p-6">
+              <h3 className="mb-2 text-lg font-bold text-neutral-900">Cleaning or Repair? The Honest Test</h3>
+              <p className="text-base leading-relaxed text-neutral-600">
+                Run a fingernail along the joint. If the grout is hard and whole and only the surface is stained, cleaning is the right spend. If it crumbles, cracks, or the silicone has gone black inside, no clean will hold, and the repair is to cut the failed material out. That is the same test we run on your photos before quoting, and it is why our{" "}
+                <Link href="/tile-regrouting" className="font-bold text-accent hover:underline">tile regrouting</Link>{" "}
+                quotes sometimes come back as "you do not need us yet".
+              </p>
+            </div>
+          </div>
+        </AnimatedSection>
+
         {/* ═════════ 8. BALCONIES, ALFRESCOS, OUTDOOR ═════════ */}
         <AnimatedSection className="bg-white py-16 lg:py-24">
           <div className="mx-auto max-w-[1460px] space-y-10 px-4 sm:px-6 lg:px-10">
@@ -461,6 +605,24 @@ export default function GeelongHubPage({
             </figure>
           </div>
         </section>
+
+        {/* ═════════ 9B. REAL WORK (added 2026-11-24) ═════════ */}
+        <AnimatedSection className="bg-white py-16 lg:py-24">
+          <div className="mx-auto max-w-[1460px] space-y-10 px-4 sm:px-6 lg:px-10">
+            <div className="mx-auto max-w-3xl space-y-4 text-center">
+              <p className="text-sm font-black uppercase tracking-[0.15em] text-accent">Real Work</p>
+              <h2 className="text-3xl font-bold leading-tight text-neutral-900 lg:text-[42px]">
+                Before and After: Real Regrouting Results
+              </h2>
+              <p className="text-base leading-relaxed text-neutral-600 sm:text-lg">
+                Real Groutix jobs, not stock photos. Drag the slider to see the after. This is the standard we bring to every Geelong bathroom.
+              </p>
+            </div>
+            <div className="grid gap-8 md:grid-cols-3">
+              {REAL_JOBS.map((j) => <BeforeAfter key={j.title} before={j.before} after={j.after} title={j.title} />)}
+            </div>
+          </div>
+        </AnimatedSection>
 
         {/* ═════════ 10. AREAS WE COVER (alt bg) ═════════ */}
         <AnimatedSection className="bg-[#eef1f8] py-16 lg:py-24">
@@ -729,6 +891,45 @@ export default function GeelongHubPage({
             </div>
           </div>
         </AnimatedSection>
+
+        {/* ═════════ 14B. REVIEWS (added 2026-11-24) ═════════ */}
+        <section className="bg-white py-16 lg:py-24">
+          <div className="mx-auto max-w-[1460px] space-y-10 px-4 sm:px-6 lg:px-10">
+            <div className="mx-auto max-w-3xl space-y-4 text-center">
+              <p className="text-sm font-black uppercase tracking-[0.15em] text-accent">Customer Feedback</p>
+              <h2 className="text-3xl font-bold leading-tight text-neutral-900 lg:text-[42px]">
+                What Our Customers Say
+              </h2>
+              <p className="text-base leading-relaxed text-neutral-600 sm:text-lg">
+                Rated {rating.value.toFixed(1)} from {gr.countLabel} Google reviews.
+              </p>
+            </div>
+            <div className="mx-auto grid max-w-5xl grid-cols-1 gap-6 sm:grid-cols-2">
+              {reviews.map((r) => (
+                <blockquote key={r.name} className="m-0 flex flex-col gap-3 rounded-sm border border-neutral-200 bg-neutral-50 p-6">
+                  <div className="flex items-center gap-3">
+                    {r.photoUri ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={r.photoUri} alt="" referrerPolicy="no-referrer" className="h-11 w-11 rounded-full object-cover" />
+                    ) : (
+                      <span className="flex h-11 w-11 items-center justify-center rounded-full bg-[#EEF3FF] font-bold text-[#001F97]">{r.name.charAt(0).toUpperCase()}</span>
+                    )}
+                    <span className="min-w-0">
+                      <b className="block truncate text-neutral-900">{r.name}</b>
+                      <span className="text-[13px] text-neutral-500">{r.suburb}</span>
+                    </span>
+                    <span className="ml-auto flex gap-0.5">
+                      {[...Array(5)].map((_, j) => (
+                        <Star key={j} className="h-4 w-4 fill-[#FBBC04] text-[#FBBC04]" />
+                      ))}
+                    </span>
+                  </div>
+                  <p className="text-[15px] leading-relaxed text-neutral-700">&ldquo;{r.review}&rdquo;</p>
+                </blockquote>
+              ))}
+            </div>
+          </div>
+        </section>
 
         {/* ═════════ 15. FAQ ═════════ */}
         <AnimatedSection className="bg-white py-16 lg:py-24">
