@@ -29,9 +29,9 @@ test("equal timestamps have deterministic pagination and invalid dates fall back
   assert.deepEqual(ids(refreshed), ids(first));
 });
 
-const { dashboardLeadsFirst } = loadTs("lib/leadOrder.ts");
+const { dashboardLeadsFirst, roleVisitVisibleThroughDay } = loadTs("lib/leadOrder.ts");
 
-test("inspection queues sort upcoming visits by Melbourne date and time, then recent past and undated leads", () => {
+test("inspection queues keep today's started visits ahead of older visits", () => {
   const leads = [
     { id: "later", inspectionAt: "2026-10-28T09:00" },
     { id: "past", inspectionAt: "2026-10-26T15:00" },
@@ -44,9 +44,22 @@ test("inspection queues sort upcoming visits by Melbourne date and time, then re
   const original = ids(leads);
   const now = Date.parse("2026-10-27T09:00:00+11:00");
   for (const role of ["inspection", "field"]) {
-    assert.deepEqual(ids(dashboardLeadsFirst(leads, role, now)), ["next", "today-later", "later", "recent", "past", "undated", "invalid"]);
+    assert.deepEqual(ids(dashboardLeadsFirst(leads, role, now)), ["recent", "next", "today-later", "later", "past", "undated", "invalid"]);
   }
   assert.deepEqual(ids(leads), original);
+});
+
+test("started field visits stay visible until Melbourne date end", () => {
+  const started = { inspectionAt: "2026-10-27T08:00", jobAt: "2026-10-27T08:00" };
+  const duringDay = Date.parse("2026-10-27T17:00:00+11:00");
+  const nextDay = Date.parse("2026-10-28T00:00:00+11:00");
+  for (const role of ["inspection", "field", "technician"]) {
+    assert.equal(roleVisitVisibleThroughDay(started, role, duringDay), true);
+    assert.equal(roleVisitVisibleThroughDay(started, role, nextDay), false);
+  }
+  const multiDay = { jobAt: "2026-10-27T08:00", jobWorkSegments: [{ date: "2026-10-27" }, { date: "2026-10-28" }] };
+  assert.equal(roleVisitVisibleThroughDay(multiDay, "technician", nextDay), true);
+  assert.equal(roleVisitVisibleThroughDay(multiDay, "technician", Date.parse("2026-10-29T00:00:00+11:00")), false);
 });
 
 test("technician queues use the individual visit time and other dashboards remain newest first", () => {

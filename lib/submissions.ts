@@ -508,7 +508,7 @@ export async function pickAssigneeForRole(
 }
 
 /**
- * Hand a freshly booked inspection to the inspection team.
+ * Hand a customer-booked inspection to Johny, the dedicated inspector.
  *
  * Without this the lead keeps whatever assignee it had — usually none, since new
  * leads are created with `assigned: ""` — and the inspection dashboard only shows
@@ -530,7 +530,8 @@ export async function assignInspectorOnBooking(
 ): Promise<string | null> {
   try {
     const inspectors = await getActiveUsersByRole("inspection");
-    if (inspectors.length === 0) return null;
+    const johny = inspectors.find(u => u.name.trim().toLowerCase() === "johny" || u.username.trim().toLowerCase() === "johny");
+    if (!johny) return null;
 
     // Already with an inspector? Leave their choice alone.
     const held = (currentAssigned || "").trim().toLowerCase();
@@ -541,11 +542,18 @@ export async function assignInspectorOnBooking(
       if (alreadyInspection) return null;
     }
 
-    const name = await pickAssigneeForRole("inspection");
-    if (!name || name === "Unassigned") return null;
+    const name = johny.name;
     if (name.trim().toLowerCase() === held) return null;
 
-    await updateSubmission(id, { assigned: name });
+    const lead = await getSubmission(id);
+    await updateSubmission(id, { assigned: name, inspectorId: johny.id, inspectorUsername: johny.username });
+    if (lead?.inspectionAt) {
+      const db = await getDb();
+      await db.collection("bookings").updateOne(
+        { leadId: id, type: "inspection", date: lead.inspectionAt.slice(0, 10), time: lead.inspectionAt.slice(11, 16), status: { $ne: "Cancelled" } },
+        { $set: { assigned: name, inspectorId: johny.id, inspectorUsername: johny.username } }
+      );
+    }
     await appendActivity(id, {
       time: new Date().toISOString(),
       actor: "system",

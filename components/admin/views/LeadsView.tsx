@@ -168,7 +168,6 @@ export function LeadsView({ preview = false }: { preview?: boolean }) {
                 {(role === "intake" || role === "manager" || role === "super_admin") && (
                   <div className="flex items-center gap-2 px-3 pb-3">
                     <SendChecklistButton lead={l} />
-                    {l.checklistSentAt && <span className="text-[11px] text-slate-500">Checklist sent</span>}
                   </div>
                 )}
                 <LeadBookings lead={l} />

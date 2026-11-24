@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, use } from "react";
 import { useSearchParams } from "next/navigation";
-import { CHECKLIST_OPTIONS } from "@/lib/checklistOptions";
+import { DEFAULT_CHECKLIST_FORM, checklistOptions, type ChecklistForm } from "@/lib/checklistForm";
 import {
   AlertCircle,
   CheckCircle2,
@@ -266,9 +266,10 @@ export default function ChecklistPage({ params }: { params: Promise<{ id: string
   const searchParams = useSearchParams();
   const token = searchParams.get("token") || searchParams.get("t") || "";
 
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(Boolean(id && token));
+  const [error, setError] = useState<string | null>(id && token ? null : "This checklist link is missing or invalid.");
   const [customer, setCustomer] = useState<Customer | null>(null);
+  const [form, setForm] = useState<ChecklistForm>(DEFAULT_CHECKLIST_FORM);
   const [pages, setPages] = useState<PageState[]>([blankPage()]);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
@@ -276,11 +277,7 @@ export default function ChecklistPage({ params }: { params: Promise<{ id: string
   const startedRef = useRef(false);
 
   useEffect(() => {
-    if (!id || !token) {
-      setError("This checklist link is missing or invalid.");
-      setLoading(false);
-      return;
-    }
+    if (!id || !token) return;
     fetch(`/api/checklist/${id}?token=${encodeURIComponent(token)}`, { cache: "no-store" })
       .then((res) => res.json())
       .then((data) => {
@@ -289,6 +286,7 @@ export default function ChecklistPage({ params }: { params: Promise<{ id: string
           return;
         }
         setCustomer(data.customer || null);
+        if (data.form) setForm(data.form);
         const saved = data.answers?.pages;
         if (Array.isArray(saved) && saved.length) {
           setPages(saved.map((p: Partial<PageState>, i: number) => hydratePage(p, i)));
@@ -404,18 +402,17 @@ export default function ChecklistPage({ params }: { params: Promise<{ id: string
 
         <div className="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-xs">
           <h1 className="text-xl sm:text-2xl font-black text-slate-900">
-            Shower / Balcony Grouting &amp; Resealing Checklist
+            {form.title}
           </h1>
           <p className="text-sm text-slate-600 mt-1">
-            {customer?.name ? `Hi ${customer.name.split(" ")[0]}, ` : ""}answer the questions below so
-            we can prepare your accurate quote. Add one page per shower or balcony.
+            {customer?.name ? `Hi ${customer.name.split(" ")[0]}, ` : ""}{form.intro}
           </p>
         </div>
 
         {pages.map((page, index) => (
           <section key={page.id} className={card}>
             <div className="flex items-center justify-between">
-              <h2 className="text-base font-black text-[#001f97]">Shower / Balcony {index + 1}</h2>
+              <h2 className="text-base font-black text-[#001f97]">{form.pageTitle} {index + 1}</h2>
               {pages.length > 1 && (
                 <button
                   type="button"
@@ -429,15 +426,15 @@ export default function ChecklistPage({ params }: { params: Promise<{ id: string
 
             {/* 1. Leakage */}
             <div className="space-y-2">
-              <label className={label}>1. Is the shower leaking?</label>
+              <label className={label}>1. {form.fields.showerLeakage}</label>
               <Chips
-                options={CHECKLIST_OPTIONS.yesNo}
+                options={checklistOptions(form, "yesNo")}
                 value={page.showerLeakage}
                 onChange={(v) => updatePage(index, { showerLeakage: v })}
               />
               <input
                 className={inputCls}
-                placeholder="Any additional information (optional)"
+                placeholder={form.placeholders.leakageNotes}
                 value={page.leakageNotes}
                 onChange={(e) => updatePage(index, { leakageNotes: e.target.value })}
               />
@@ -445,9 +442,9 @@ export default function ChecklistPage({ params }: { params: Promise<{ id: string
 
             {/* 2. Shower type */}
             <div className="space-y-2">
-              <label className={label}>2. Shower type</label>
+              <label className={label}>2. {form.fields.showerType}</label>
               <Chips
-                options={CHECKLIST_OPTIONS.showerType}
+                options={checklistOptions(form, "showerType")}
                 value={page.showerType}
                 onChange={(v) => updatePage(index, { showerType: v })}
               />
@@ -455,9 +452,9 @@ export default function ChecklistPage({ params }: { params: Promise<{ id: string
 
             {/* 3. Wall height */}
             <div className="space-y-2">
-              <label className={label}>3. Wall height</label>
+              <label className={label}>3. {form.fields.wallHeight}</label>
               <Chips
-                options={CHECKLIST_OPTIONS.wallHeight}
+                options={checklistOptions(form, "wallHeight")}
                 value={page.wallHeight}
                 onChange={(v) => updatePage(index, { wallHeight: v })}
               />
@@ -465,15 +462,15 @@ export default function ChecklistPage({ params }: { params: Promise<{ id: string
 
             {/* 4. Work required */}
             <div className="space-y-2">
-              <label className={label}>4. Work required</label>
+              <label className={label}>4. {form.fields.workRequired}</label>
               <Chips
-                options={CHECKLIST_OPTIONS.workRequired}
+                options={checklistOptions(form, "workRequired")}
                 value={page.workRequired}
                 onChange={(v) => updatePage(index, { workRequired: v })}
               />
               <input
                 className={inputCls}
-                placeholder="Selective areas? Please specify (e.g. 2–3 tiles high / floor)"
+                placeholder={form.placeholders.selectiveAreas}
                 value={page.selectiveAreas}
                 onChange={(e) => updatePage(index, { selectiveAreas: e.target.value })}
               />
@@ -481,9 +478,9 @@ export default function ChecklistPage({ params }: { params: Promise<{ id: string
 
             {/* 5. Number of walls */}
             <div className="space-y-2">
-              <label className={label}>5. Number of tiled walls</label>
+              <label className={label}>5. {form.fields.numberOfWalls}</label>
               <Chips
-                options={CHECKLIST_OPTIONS.numberOfWalls}
+                options={checklistOptions(form, "numberOfWalls")}
                 value={page.numberOfWalls}
                 onChange={(v) => updatePage(index, { numberOfWalls: v })}
               />
@@ -491,9 +488,9 @@ export default function ChecklistPage({ params }: { params: Promise<{ id: string
 
             {/* 6. Tile size */}
             <div className="space-y-2">
-              <label className={label}>6. Tile size</label>
+              <label className={label}>6. {form.fields.tileSize}</label>
               <Chips
-                options={CHECKLIST_OPTIONS.tileSize}
+                options={checklistOptions(form, "tileSize")}
                 value={page.tileSize}
                 onChange={(v) => updatePage(index, { tileSize: v })}
               />
@@ -501,9 +498,9 @@ export default function ChecklistPage({ params }: { params: Promise<{ id: string
 
             {/* 7. Mosaic */}
             <div className="space-y-2">
-              <label className={label}>7. Mosaic tiles?</label>
+              <label className={label}>7. {form.fields.mosaic}</label>
               <Chips
-                options={CHECKLIST_OPTIONS.yesNo}
+                options={checklistOptions(form, "yesNo")}
                 value={page.mosaic}
                 onChange={(v) => updatePage(index, { mosaic: v })}
               />
@@ -511,9 +508,9 @@ export default function ChecklistPage({ params }: { params: Promise<{ id: string
 
             {/* 8. Shower screen */}
             <div className="space-y-2">
-              <label className={label}>8. Shower screen</label>
+              <label className={label}>8. {form.fields.showerScreen}</label>
               <Chips
-                options={CHECKLIST_OPTIONS.showerScreen}
+                options={checklistOptions(form, "showerScreen")}
                 value={page.showerScreen}
                 onChange={(v) => updatePage(index, { showerScreen: v })}
               />
@@ -521,9 +518,9 @@ export default function ChecklistPage({ params }: { params: Promise<{ id: string
 
             {/* 9. Silicone joints */}
             <div className="space-y-2">
-              <label className={label}>9. Silicone joints needing replacement</label>
+              <label className={label}>9. {form.fields.siliconeJoints}</label>
               <CheckboxGroup
-                options={CHECKLIST_OPTIONS.siliconeJoints}
+                options={checklistOptions(form, "siliconeJoints")}
                 value={page.siliconeJoints}
                 onChange={(v) => updatePage(index, { siliconeJoints: v })}
               />
@@ -532,30 +529,30 @@ export default function ChecklistPage({ params }: { params: Promise<{ id: string
             {/* 10. Cracked tiles */}
             <div className="space-y-3">
               <label className={label}>
-                10. Cracked / loose / drummy / lifted tiles (for repair or replacement)
+                10. {form.fields.crackedTiles}
               </label>
               <div className="grid sm:grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <span className="text-[12px] font-semibold text-slate-500">Wall tiles</span>
+                  <span className="text-[12px] font-semibold text-slate-500">{form.fields.wallTiles}</span>
                   <Chips
-                    options={CHECKLIST_OPTIONS.tileCount}
+                    options={checklistOptions(form, "tileCount")}
                     value={page.crackedWallTiles}
                     onChange={(v) => updatePage(index, { crackedWallTiles: v })}
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <span className="text-[12px] font-semibold text-slate-500">Floor tiles</span>
+                  <span className="text-[12px] font-semibold text-slate-500">{form.fields.floorTiles}</span>
                   <Chips
-                    options={CHECKLIST_OPTIONS.tileCount}
+                    options={checklistOptions(form, "tileCount")}
                     value={page.crackedFloorTiles}
                     onChange={(v) => updatePage(index, { crackedFloorTiles: v })}
                   />
                 </div>
               </div>
               <div className="space-y-1.5">
-                <span className="text-[12px] font-semibold text-slate-500">Repair or replace?</span>
+                <span className="text-[12px] font-semibold text-slate-500">{form.fields.tileAction}</span>
                 <Chips
-                  options={CHECKLIST_OPTIONS.tileAction}
+                  options={checklistOptions(form, "tileAction")}
                   value={page.tileAction}
                   onChange={(v) => updatePage(index, { tileAction: v })}
                 />
@@ -564,15 +561,15 @@ export default function ChecklistPage({ params }: { params: Promise<{ id: string
 
             {/* 11. Additional areas */}
             <div className="space-y-2">
-              <label className={label}>11. Additional areas requiring work</label>
+              <label className={label}>11. {form.fields.additionalAreas}</label>
               <CheckboxGroup
-                options={CHECKLIST_OPTIONS.additionalAreas.map((a) => [a, a] as const)}
+                options={form.additionalAreas.map((a) => [a, a] as const)}
                 value={page.additionalAreas}
                 onChange={(v) => updatePage(index, { additionalAreas: v })}
               />
               <input
                 className={inputCls}
-                placeholder="Please specify any other areas"
+                placeholder={form.placeholders.additionalNotes}
                 value={page.additionalNotes}
                 onChange={(e) => updatePage(index, { additionalNotes: e.target.value })}
               />
@@ -580,28 +577,28 @@ export default function ChecklistPage({ params }: { params: Promise<{ id: string
 
             {/* Balcony */}
             <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4 space-y-3">
-              <h3 className="text-sm font-black text-slate-800">Balcony</h3>
+              <h3 className="text-sm font-black text-slate-800">{form.fields.balcony}</h3>
               <div className="space-y-2">
-                <label className={label}>Balcony leakage?</label>
+                <label className={label}>{form.fields.balconyLeakage}</label>
                 <Chips
-                  options={CHECKLIST_OPTIONS.yesNo}
+                  options={checklistOptions(form, "yesNo")}
                   value={page.balconyLeakage}
                   onChange={(v) => updatePage(index, { balconyLeakage: v })}
                 />
               </div>
               <div className="space-y-2">
-                <label className={label}>Balcony area (sq m)</label>
+                <label className={label}>{form.fields.balconyArea}</label>
                 <input
                   className={inputCls}
-                  placeholder="e.g. 8"
+                  placeholder={form.placeholders.balconyArea}
                   value={page.balconyArea}
                   onChange={(e) => updatePage(index, { balconyArea: e.target.value })}
                 />
               </div>
               <div className="space-y-2">
-                <label className={label}>Balcony tile size</label>
+                <label className={label}>{form.fields.balconyTileSize}</label>
                 <Chips
-                  options={CHECKLIST_OPTIONS.tileSize}
+                  options={checklistOptions(form, "tileSize")}
                   value={page.balconyTileSize}
                   onChange={(v) => updatePage(index, { balconyTileSize: v })}
                 />
@@ -610,7 +607,7 @@ export default function ChecklistPage({ params }: { params: Promise<{ id: string
 
             {/* Photos */}
             <div className="space-y-2">
-              <label className={label}>Photos (optional, recommended)</label>
+              <label className={label}>{form.fields.photos}</label>
               <Photos
                 photos={page.photos}
                 onChange={(next) => updatePage(index, { photos: next })}

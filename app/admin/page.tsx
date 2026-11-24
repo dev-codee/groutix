@@ -22,7 +22,7 @@ import { InvoicePaymentModal, openInvoicePayment } from "@/components/admin/Invo
 import { PaymentReceiptModal, openPaymentReceipt } from "@/components/admin/PaymentReceiptModal";
 import { downloadAttachment } from "@/lib/downloadAttachment";
 import { preferredCustomerQuote, customerQuoteLead } from "@/lib/customerQuoteSelection";
-import { dashboardLeadsFirst } from "@/lib/leadOrder";
+import { dashboardLeadsFirst, roleVisitVisibleThroughDay } from "@/lib/leadOrder";
 import { EmailMessageText } from "@/components/admin/EmailMessageText";
 import { matchesQuoteStatusFilter } from "@/lib/quoteAcceptance";
 
@@ -3942,17 +3942,17 @@ export default function CrmDashboardPage() {
           // If a status filter is specifically applied (e.g. from pill/filter), allow it
           if (statusFilter) {
             const wanted = statusFilter.split("|");
-            return wanted.includes(l.status);
+            return wanted.includes(l.status) && (isFlowCompleted(role, l.status, l) || roleVisitVisibleThroughDay(l, role));
           }
           // Default: all assigned leads show in technician dashboard
-          return true;
+          return !isFlowCompleted(role, l.status, l) && roleVisitVisibleThroughDay(l, role);
         }
         if (role === "inspection" || role === "field") {
           if (statusFilter) {
-            return INSPECTION_STATUSES.includes(l.status) || isFlowCompleted(role, l.status, l);
+            return isFlowCompleted(role, l.status, l) || (INSPECTION_STATUSES.includes(l.status) && roleVisitVisibleThroughDay(l, role));
           }
           // Default: only active in-progress inspections show on the inspection dashboard
-          return isFlowInProgress(role, l.status, l);
+          return isFlowInProgress(role, l.status, l) && roleVisitVisibleThroughDay(l, role);
         }
         if (role === "finance") {
           if (statusFilter) return FINANCE_STATUSES.includes(l.status);

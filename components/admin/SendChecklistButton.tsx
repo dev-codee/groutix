@@ -32,7 +32,15 @@ export function SendChecklistButton({ lead }: { lead: Lead }) {
     }
   }
 
+  const stages = [
+    ["Sent", lead.checklistSentAt],
+    ["Email opened", lead.checklistOpenedAt],
+    ["Started filling", lead.checklistFilledAt],
+    ["Submitted", lead.checklistSubmittedAt],
+  ] as const;
+
   return (
+    <div className="flex flex-wrap items-center gap-2">
     <button
       type="button"
       onClick={sendChecklist}
@@ -43,5 +51,18 @@ export function SendChecklistButton({ lead }: { lead: Lead }) {
       {sending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
       {sending ? "Sending checklist…" : lead.checklistSentAt ? "Resend checklist" : "Send checklist"}
     </button>
+    <details className="group relative text-[11px] text-slate-600">
+      <summary className="cursor-pointer rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 font-semibold hover:bg-slate-50">Checklist status</summary>
+      <div className="absolute left-0 z-20 mt-1 min-w-64 space-y-2 rounded-xl border border-slate-200 bg-white p-3 shadow-lg">
+        {stages.map(([stage, time]) => <div key={stage} className="flex items-start gap-2">
+          <span className={`mt-1 h-2 w-2 shrink-0 rounded-full ${time ? "bg-emerald-500" : "bg-slate-300"}`} />
+          <span className="font-semibold text-slate-700">{stage}</span>
+          <span className="ml-auto text-right text-slate-500">{time ? new Date(time).toLocaleString("en-AU", { timeZone: "Australia/Sydney", dateStyle: "medium", timeStyle: "short" }) : "Pending"}</span>
+        </div>)}
+        {lead.checklistSubmittedAt && <p className="border-t border-slate-100 pt-2 font-semibold text-emerald-700">Customer completed the checklist.</p>}
+        {!lead.checklistSubmittedAt && lead.checklistFilledAt && <p className="border-t border-slate-100 pt-2 text-amber-700">Customer started but has not submitted it.</p>}
+      </div>
+    </details>
+    </div>
   );
 }

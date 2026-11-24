@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyQuoteToken } from "@/lib/quoteToken";
 import { rateLimit } from "@/lib/rateLimit";
+import { getChecklistForm } from "@/lib/checklistFormServer";
 import {
   appendSubmissionPhotos,
   getSubmission,
@@ -116,6 +117,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         areas: lead.areas || "",
       },
       answers: lead.checklist?.answers || null,
+      form: await getChecklistForm(),
       submitted: Boolean(lead.checklistSubmittedAt),
     },
     { headers: { "Cache-Control": "private, no-store" } }
