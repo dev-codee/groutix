@@ -6,6 +6,7 @@ import Footer from "@/components/Footer";
 import CityPageClient from "@/app/locations/CityPageClient";
 import type { SuburbGroup } from "@/app/locations/CityPageClient";
 import WhittingtonPage from "@/components/WhittingtonPage";
+import DrumcondraPage from "@/components/DrumcondraPage";
 import { getReviews, getBusinessRating } from "@/lib/reviews";
 
 // Helper to format suburb slug to readable name
@@ -23,6 +24,22 @@ type Props = {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { suburb } = await params;
   if (!(GEELONG_SUBURB_SLUGS as readonly string[]).includes(suburb)) notFound();
+  if (suburb === "drumcondra") {
+    const rating = await getBusinessRating();
+    const reviewsText = `${rating.value.toFixed(1)} stars from ${rating.count}+ reviews`;
+    return {
+      title: "Shower & Balcony Regrouting Drumcondra | Free Quote",
+      description: `Shower, bathroom and balcony regrouting in Drumcondra, Geelong West and North Geelong. No tile removal, 10 year waterproof warranty, ${reviewsText}. Free quote.`,
+      alternates: { canonical: "/locations/geelong/drumcondra" },
+      openGraph: {
+        title: "Regrouting in Drumcondra | Groutix",
+        description: `Shower, bathroom and balcony regrouting in Drumcondra, Geelong West and North Geelong. No tile removal, 10 year waterproof warranty, ${reviewsText}. Free quote.`,
+        url: "/locations/geelong/drumcondra",
+        type: "website",
+      },
+      robots: "index, follow",
+    };
+  }
   if (suburb === "whittington") {
     const rating = await getBusinessRating();
     const reviewsText = `${rating.value.toFixed(1)} stars from ${rating.count}+ reviews`;
@@ -120,6 +137,10 @@ export default async function GeelongSuburbPage({ params }: Props) {
   if (suburb === "whittington") {
     const [wReviews, wRating] = await Promise.all([getReviews(4), getBusinessRating()]);
     return <WhittingtonPage reviews={wReviews} rating={wRating} />;
+  }
+  if (suburb === "drumcondra") {
+    const [dReviews, dRating] = await Promise.all([getReviews(4), getBusinessRating()]);
+    return <DrumcondraPage reviews={dReviews} rating={dRating} />;
   }
   const [reviews, rating] = await Promise.all([getReviews(4), getBusinessRating()]);
   const apiKey = process.env.GOOGLE_PLACES_API_KEY || "";
