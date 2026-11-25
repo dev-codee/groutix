@@ -145,7 +145,7 @@ const FAQS = [
   },
   {
     q: "How long will a regrout last?",
-    a: "A proper regrout, where the old grout is fully removed and the joints rebuilt, is made to last for years, and eligible complete shower regrouting is backed by our 10 year waterproof warranty. Surface jobs that smear new grout over old grout are the ones that fail early, which is why we never do them.",
+    a: "A proper regrout, where the old grout is removed and the joints rebuilt, is made to last for years, and eligible complete shower regrouting is backed by our 10 year waterproof warranty. Surface jobs that smear new grout over old grout are the ones that fail early, which is why we never do them.",
   },
   {
     q: "Do you do small grout repairs in Geelong, or only full regrouting jobs?",
