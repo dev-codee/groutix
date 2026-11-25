@@ -97,7 +97,7 @@ const FAQS = [
   },
   {
     q: "How long will a regrout last?",
-    a: "A proper regrout, with the old grout fully removed and the joints rebuilt, is made to last for years, and eligible complete shower regrouting is backed by our 10 year waterproof warranty. Silicone is the wear item and may need refreshing sooner, which is normal maintenance rather than a failed job.",
+    a: "A proper regrout, with the old grout removed and the joints rebuilt, is made to last for years, and eligible complete shower regrouting is backed by our 10 year waterproof warranty. Silicone is the wear item and may need refreshing sooner, which is normal maintenance rather than a failed job.",
   },
   {
     q: "Is a regrout worth it compared with a full bathroom renovation?",
