@@ -64,7 +64,7 @@ const fixOptions = [
 
 const processSteps = [
   { title: "Assess the Shower", text: "We inspect the grout, silicone and surrounding tiles before recommending any work." },
-  { title: "Remove and Prepare", text: "Damaged grout and old silicone are fully removed, including the wall junctions and floor joints where showers usually fail first, and the area is prepared. The amount of work depends on what we find." },
+  { title: "Remove and Prepare", text: "Damaged grout and old silicone are removed, including the wall junctions and floor joints where showers usually fail first, and the area is prepared. The amount of work depends on what we find." },
   { title: "Regrout and Finish", text: "New grout and sealant are applied and finished so the surface is sealed properly again." },
   { title: "Cure and Warranty", text: "Your shower is ready to use once the grout and silicone have cured." },
 ];
@@ -72,7 +72,7 @@ const processSteps = [
 
 const included = [
   "On site inspection",
-  "Full removal of old grout",
+  "Removal of old grout",
   "Waterproof epoxy application",
   "Complete regrout of shower floors and walls",
   "Silicone resealing at corners and joints",
@@ -113,7 +113,7 @@ const faqs: Array<{ q: string; a: ReactNode; plain: string }> = [
     plain: "If the leak comes from failed grout or silicone, yes. If the membrane has failed, it needs more. See leaking shower repair.",
   },
   { q: "Can regrouting work on an old bathroom?", a: "Yes, if the tiles and waterproof membrane are sound.", plain: "Yes, if the tiles and waterproof membrane are sound." },
-  { q: "Is DIY regrouting worth it?", a: "It can work for small jobs. Most fail because old grout is not fully removed or the shower is used too early.", plain: "It can work for small jobs. Most fail because old grout is not fully removed or the shower is used too early." },
+  { q: "Is DIY regrouting worth it?", a: "It can work for small jobs. Most fail because the failed grout is not properly cut out or the shower is used too early.", plain: "It can work for small jobs. Most fail because the failed grout is not properly cut out or the shower is used too early." },
   { q: "How do I fix shower grout mould?", a: "Surface mould can often be cleaned. Mould that keeps returning usually means the grout has failed and needs replacing.", plain: "Surface mould can often be cleaned. Mould that keeps returning usually means the grout has failed and needs replacing." },
   { q: "Why does my shower smell musty?", a: "A musty smell usually means moisture and mould are trapped in or behind failed grout and silicone. Cleaning lifts the surface smell for a while, but it keeps coming back while water is getting in. Removing the failed grout and resealing the joints fixes the cause.", plain: "A musty smell usually means moisture and mould are trapped in or behind failed grout and silicone. Cleaning lifts the surface smell for a while, but it keeps coming back while water is getting in. Removing the failed grout and resealing the joints fixes the cause." },
   { q: "Can you match my existing grout colour?", a: "Epoxy grout comes in many colours, so a close match is usually possible.", plain: "Epoxy grout comes in many colours, so a close match is usually possible." },
@@ -481,8 +481,19 @@ export default function ShowerRegroutingPageV2({ reviews }: { reviews: Review[] 
               <p className="mt-6 border-l-[3px] border-[#FBBC04] pl-3 font-semibold text-slate-700">Eligible complete shower regrouting work is backed by a 10 year waterproof warranty.</p>
               <Link href="/contact" className={`${btnNavy} mt-6`}>Book Your Free Quote</Link>
             </div>
-            <div className="relative aspect-[4/5] w-full overflow-hidden rounded-lg border border-slate-200 bg-slate-200">
-              <Image src="/shower-regrouting-process.webp" alt="Shower floor being prepared for regrouting, old grout cut out around the drain before new epoxy grout is applied" fill sizes="(min-width:1024px) 40vw, 100vw" className="object-cover" />
+            <div className="grid grid-cols-1 gap-5">
+              <figure>
+                <div className="relative aspect-[16/10] w-full overflow-hidden rounded-lg border border-slate-200 bg-slate-200">
+                  <Image src="/shower-regrouting-process.webp" alt="Shower floor being prepared for regrouting, old grout cut out around the drain before new epoxy grout is applied" fill sizes="(min-width:1024px) 40vw, 100vw" className="object-cover" />
+                </div>
+                <figcaption className="mt-2 text-sm font-semibold text-slate-600">During: the old grout cut out and the floor prepared</figcaption>
+              </figure>
+              <figure>
+                <div className="relative aspect-[16/10] w-full overflow-hidden rounded-lg border border-slate-200 bg-slate-200">
+                  <Image src="/epoxy-grout-floor-after.webp" alt="A finished Groutix shower floor after regrouting, fresh even grout joints around the drain" fill sizes="(min-width:1024px) 40vw, 100vw" className="object-cover" />
+                </div>
+                <figcaption className="mt-2 text-sm font-semibold text-slate-600">After: a finished floor, regrouted and resealed</figcaption>
+              </figure>
             </div>
           </div>
         </section>
@@ -511,7 +522,7 @@ export default function ShowerRegroutingPageV2({ reviews }: { reviews: Review[] 
               { t: "Tile size and type", d: "Small mosaic tiles can mean hundreds of joints in a single shower floor. Large format tiles have fewer lines but need careful work around every edge." },
               { t: "Epoxy or cement grout", d: "Epoxy costs more in materials and takes more skill to install, and it is the grout that lasts in a wet area. Cement costs less and suits dry areas better." },
               { t: "Silicone and seals", d: "Perimeter silicone and shower screen seals are often replaced in the same visit, so the whole shower is sealed, not just the grout lines." },
-              { t: "Condition of the old grout", d: "Grout that is cracked through or hollow needs full removal before new grout goes in. The worse the failure, the longer the preparation takes." },
+              { t: "Condition of the old grout", d: "Grout that is cracked through or hollow needs removal before new grout goes in. The worse the failure, the longer the preparation takes." },
               { t: "Damage under the tiles", d: "If water has already damaged the wall or floor under the tiles, that repair is separate work. We flag it before anything starts, never after." },
             ].map((f) => (
               <div key={f.t} className={`${box} p-6`}>
@@ -553,7 +564,7 @@ export default function ShowerRegroutingPageV2({ reviews }: { reviews: Review[] 
             <div>
               <p className={`${eyebrow} text-[#FBBC04]`}>The Groutix Guarantee</p>
               <h2 className={`${h2} text-white`}>Backed by a 10 Year Waterproof Warranty</h2>
-              <p className="mt-3.5 max-w-[720px] text-[17px] leading-relaxed text-[#D6DCF5]">Every complete shower regrout is backed by our 10 year waterproof warranty, provided in writing with the job. It reflects how the work is done: failed grout fully removed and rebuilt with waterproof epoxy, never covered up with a surface fix.</p>
+              <p className="mt-3.5 max-w-[720px] text-[17px] leading-relaxed text-[#D6DCF5]">Every complete shower regrout is backed by our 10 year waterproof warranty, provided in writing with the job. It reflects how the work is done: failed grout removed and rebuilt with waterproof epoxy, never covered up with a surface fix.</p>
             </div>
             <a href="#quote-form" className={`${btnGold} shrink-0`}>Get Your Free Quote</a>
           </div>
