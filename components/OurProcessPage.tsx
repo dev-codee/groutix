@@ -84,10 +84,10 @@ export default function OurProcessPage({ reviews, rating }: { reviews: Review[];
     {
       n: "02",
       icon: Sparkles,
-      title: "Old grout & silicone fully removed",
+      title: "Old grout & silicone removed",
       time: "The thorough part",
       body: "This is where cheap jobs cut corners. We mechanically cut out all the old, porous grout — never grout over the top (new grout over old typically cracks within 6–12 months). Every failed silicone joint is stripped back, the area is vacuumed and deep-cleaned so the new work bonds properly.",
-      included: ["Full grout removal — never grout-over-grout", "All failed silicone stripped", "Deep clean & vacuum first"],
+      included: ["Old grout removed, never grout over grout", "All failed silicone stripped", "Deep clean & vacuum first"],
       photo: "technician mechanically cutting out old shower grout",
       alt: "Old shower grout being mechanically removed before regrouting in Melbourne",
     },
@@ -233,7 +233,7 @@ export default function OurProcessPage({ reviews, rating }: { reviews: Review[];
             </h1>
             <p className="text-[#4a4f6e] text-sm sm:text-base leading-relaxed max-w-2xl mx-auto mb-6">
               How does regrouting actually work? Five steps: a free inspection with a moisture test,
-              full removal of old grout and silicone, a waterproof epoxy regrout, sealing and clean-up —
+              removal of old grout and silicone, a waterproof epoxy regrout, sealing and clean-up —
               then curing guidance and a 10-year waterproof warranty. No tiles removed. Most showers
               finished in a single visit.
             </p>
