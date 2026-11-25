@@ -100,7 +100,7 @@ const FAQS = [
   },
   {
     q: "How long will a regrout last in an estate home?",
-    a: "A proper regrout, with the old grout fully removed rather than skimmed over, is made to last for years even on moving clay soils, because the movement joints are finished in flexible silicone the way they are meant to be. Eligible complete shower regrouting is backed by our 10 year waterproof warranty.",
+    a: "A proper regrout, with the old grout removed rather than skimmed over, is made to last for years even on moving clay soils, because the movement joints are finished in flexible silicone the way they are meant to be. Eligible complete shower regrouting is backed by our 10 year waterproof warranty.",
   },
 ];
 
