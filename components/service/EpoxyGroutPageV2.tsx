@@ -178,14 +178,12 @@ const EPOXY_FAQS: { q: string; a: string; link?: { text: string; href: string } 
   { q: "Will epoxy grout still get dirty?", a: "Dirt can sit on the surface, but it scrubs off. Mould has nothing to grow in inside the joint." },
   { q: "What colours does epoxy grout come in?", a: "Many. We can match your current colour or change it." },
   { q: "Does epoxy grout change colour over time?", a: "Epoxy is colourfast, so the colour you choose stays even instead of patching and darkening the way cement grout does as it absorbs water and dirt." },
-  {
-    q: "Can epoxy grout be used outdoors?",
-    a: "Sometimes. Direct sun can affect how epoxy sets, so we check first. For balconies, see balcony leak repairs.",
-    link: { text: "balcony leak repairs", href: "/balcony-leak-repairs" },
-  },
+  { q: "Can epoxy grout be used outdoors?", a: "Absolutely. Exterior-grade epoxy grout is an ideal choice for balconies, patios, terraces and other outdoor tiled areas due to its exceptional durability, low water absorption and resistance to stains and moisture. Unlike traditional cement-based grout, epoxy provides superior long-term performance, reduces water penetration through grout joints and requires less ongoing maintenance, making it an excellent investment for suitable outdoor tiled surfaces." },
   { q: "How long does epoxy grout last?", a: "Done properly, it holds up well in wet areas. Eligible completed work is backed by our 10 year waterproof warranty." },
   { q: "How long before I can use the area?", a: "It depends on the product. We tell you the exact wait before we start." },
   { q: "Why does epoxy grout cost more than cement grout?", a: "The material costs more, and it is applied in small batches by a skilled hand because it sets fast. The trade off is a joint that does not absorb water or stain." },
+  { q: "How long does epoxy grout last?", a: "Epoxy grout is designed to provide decades of performance when professionally installed and properly maintained. Unlike traditional cement-based grout, epoxy is highly resistant to water absorption, staining, cracking and everyday wear, making it an excellent long-term investment for showers, bathrooms and outdoor tiled areas. At Groutix, we use premium-grade epoxy grout, and our eligible full shower epoxy regrouting services are backed by a 10-year waterproof warranty, giving you long-term protection and peace of mind." },
+  { q: "How long before I can use the area?", a: "We recommend allowing a minimum of 4 days after completion before using the treated area. This allows the epoxy grout to cure properly and achieve optimal strength, durability and water resistance. Allowing sufficient curing time is essential to ensuring long-lasting performance and protecting your investment." },
   { q: "How much does epoxy grout cost in Melbourne?", a: "It depends on the area, tile size, colour and condition. We quote after we see it." },
 ];
 
@@ -442,16 +440,7 @@ export default function EpoxyGroutPageV2({ reviews = [], rating }: { reviews?: R
               </ol>
               <p className="mt-6 border-l-[3px] border-[#FBBC04] pl-3 font-semibold text-slate-700">Eligible work is backed by our 10 year waterproof warranty.</p>
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="relative aspect-[4/5] w-full overflow-hidden rounded-lg border border-slate-200 bg-slate-200">
-                <Image src="/shower-regrouting-in-progress-close-up.webp" alt="Epoxy grout being applied to shower floor tiles during regrouting" fill sizes="(min-width:1024px) 20vw, 50vw" className="object-cover" />
-                <span className="pointer-events-none absolute left-3 top-3 rounded bg-black/75 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider text-white">In Progress</span>
-              </div>
-              <div className="relative aspect-[4/5] w-full overflow-hidden rounded-lg border border-slate-200 bg-slate-200">
-                <Image src="/epoxy-grout-floor-after.webp" alt="Shower floor after epoxy grout regrouting in Melbourne, fresh even joints and a bright finish" fill sizes="(min-width:1024px) 20vw, 50vw" className="object-cover" />
-                <span className="pointer-events-none absolute right-3 top-3 rounded bg-[#001F97]/90 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider text-white">After</span>
-              </div>
-            </div>
+            <SignSlider before="/epoxy-grout-floor-before.webp" after="/epoxy-grout-floor-after.webp" beforeAlt="Shower floor tiles in Melbourne with stained, worn cement grout before epoxy grout regrouting" afterAlt="The same shower floor in Melbourne after epoxy grout regrouting, fresh even joints and a bright finish" title="Epoxy grout regrouting, before and after" />
           </div>
         </section>
 
