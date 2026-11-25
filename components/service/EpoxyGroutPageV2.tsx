@@ -85,11 +85,11 @@ const resultBlocks: ResultBlock[] = [
   },
   {
     heading: "A Floor Transformed With an Epoxy Colour Change",
-    text: "The tiles on this shower floor were sound, but the old grout had stained beyond cleaning. A full epoxy regrout in a fresh dark colour gave the floor a new look and a non porous finish that wipes clean.",
+    text: "The tiles on this shower floor were sound, but the old grout had stained beyond cleaning. A full epoxy regrout in a fresh light colour gave the floor a new look and a non porous finish that wipes clean.",
     before: "/epoxy-grout-floor-before.webp",
     after: "/epoxy-grout-floor-after.webp",
     beforeAlt: "Shower floor tiles in Melbourne with stained, worn cement grout before an epoxy grout colour change",
-    afterAlt: "The same shower floor in Melbourne after epoxy grout regrouting in a dark colour, fresh even joints",
+    afterAlt: "The same shower floor in Melbourne after epoxy grout regrouting in a fresh light colour, clean even joints",
   },
 ];
 
@@ -126,7 +126,7 @@ const MYTHS = [
 
 const PROCESS = [
   { title: "Inspect and Match", desc: "Check the joints, tiles and colour." },
-  { title: "Remove the Old Grout", desc: "All old grout is taken out, not covered." },
+  { title: "Remove the Old Grout", desc: "Old grout is taken out, not covered." },
   { title: "Apply the Epoxy", desc: "Small batches, applied and cleaned off the same day, before it sets." },
   { title: "Cure and Recheck", desc: "The epoxy needs 4 days to cure after completion before the area is used. We confirm the timing before we start." },
 ];
