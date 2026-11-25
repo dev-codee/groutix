@@ -121,9 +121,9 @@ export const GUIDES: Guide[] = [
           },
           {
             type: "image",
-            src: "/silicone-shower-base-after.webp",
-            alt: "Silicone recaulking in Melbourne, a shower base with fresh wet area silicone sealing the wall to floor junction",
-            caption: "Fresh silicone in the movement joints, the seal a regrout must never skip.",
+            src: "/shower-regrouting-silicone-removal-in-progress.webp",
+            alt: "Old failed silicone cut out of a shower base joint in Melbourne, the joint cleaned ready for fresh wet area silicone",
+            caption: "The old failed silicone cut out and the joint cleaned, ready for fresh silicone.",
           },
         ],
       },
@@ -363,32 +363,6 @@ export const GUIDES: Guide[] = [
             src: "/leaking-shower-failed-grout-before.webp",
             alt: "Leaking shower in Melbourne, failed and cracked grout in a shower base letting water through to the floor below",
             caption: "Failed grout in a shower base, one of the five ways water reaches the ceiling below.",
-          },
-        ],
-      },
-      {
-        id: "responsible",
-        heading: "Bathroom Leaking Through the Ceiling: Who Is Responsible",
-        blocks: [
-          { type: "h3", text: "Your own home" },
-          {
-            type: "p",
-            text: "The repair is yours to arrange and pay for, and the order matters. Fix the source first, let the ceiling cavity dry properly, then repair the plaster and paint last. Painting over a damp ceiling seals moisture in, and the mould follows.",
-          },
-          { type: "h3", text: "Renting in Victoria" },
-          {
-            type: "p",
-            text: "A fault that wastes a lot of water, causes damp or makes the property unsafe counts as an urgent repair in Victoria, and a shower leaking through the ceiling fits that description. Tell the rental provider or the agent straight away, and put it in writing the same day so the timeline is on record. The provider must arrange urgent repairs immediately. If they do not act promptly after you have told them, you may arrange the repair yourself for up to $2,500 and ask in writing to be repaid, and the provider must reimburse you within 7 days of receiving your written request. Above $2,500, or if anything is disputed, contact [Consumer Affairs Victoria](https://www.consumer.vic.gov.au/housing/renting) or Rental Dispute Resolution Victoria rather than guessing. No other Melbourne guide we have seen sets these figures out, and they are the ones that matter at midnight with water coming through the light fitting.",
-          },
-          { type: "h3", text: "An apartment or unit with an owners corporation" },
-          {
-            type: "p",
-            text: "Responsibility follows the source, and the plan of subdivision has the final say for your building. The surfaces inside your bathroom, tiles, grout, silicone and in most buildings the internal shower membrane, are the lot owner to maintain. Balcony membranes more often fall to the owners corporation because they protect the shared slab. Shared pipes and structure are common property. The ceiling of the lot below is often a boundary structure, so one leak can legitimately involve two owners and the corporation. Tell the owners corporation manager as soon as you know, in writing, and do not open floors or ceilings in common property areas without their go ahead. If the unit below is damaged, early notice protects you as much as them.",
-          },
-          {
-            type: "callout",
-            title: "General information only",
-            text: "This section is general information about how responsibilities usually work in Victoria, not legal advice about your property. Rental questions are covered in detail by Consumer Affairs Victoria, and owners corporation questions by your manager and the plan of subdivision for your building.",
           },
         ],
       },
