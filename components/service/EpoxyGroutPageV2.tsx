@@ -12,7 +12,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState, type ComponentType, type ReactNode } from "react";
-import { AlertTriangle, Building2, Check, ClipboardCheck, Droplets, Grid2x2, Home, Layers, Phone, Search, ShieldCheck, ShowerHead } from "lucide-react";
+import { Building2, Check, ClipboardCheck, Droplets, Grid2x2, Home, Layers, Phone, Search, ShieldCheck, ShowerHead } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { useContact } from "@/components/SiteContentProvider";
@@ -99,11 +99,21 @@ const WHAT_IS: { Icon: Icon; title: string; desc: string }[] = [
   { Icon: ShieldCheck, title: "Resists Stains and Mould", desc: "There is nothing inside the joint for mould to grow in." },
 ];
 
-const BENEFITS = ["Stain resistant.", "Non porous.", "Handles grease and cleaning products better.", "Colour stays even."];
-const TRADE_OFFS = [
-  "Costs more upfront than cement.",
-  "Sets quickly, so it needs skilled application.",
-  "Not right for every outdoor or stone surface. We check first.",
+const KEY_BENEFITS: { title: string; desc: string }[] = [
+  { title: "Permanently waterproof and non-porous", desc: "Helps prevent water absorption through the grout itself." },
+  { title: "Highly stain resistant", desc: "Resists discolouration from soaps, shampoo, grease and everyday use." },
+  { title: "Mould resistant and easier to maintain", desc: "Dense grout joints are easier to keep clean." },
+  { title: "Strong and durable", desc: "More resilient than standard cement-based grout in the right application." },
+  { title: "Cleaner, more premium finish", desc: "Delivers excellent colour consistency and a more refined result." },
+  { title: "Ideal for wet areas", desc: "Especially suited to showers and other high-moisture tiled areas." },
+];
+
+const UPGRADE_REASONS = [
+  "Longer-lasting performance",
+  "Lower maintenance over time",
+  "Better stain and moisture resistance",
+  "A stronger, more premium grout system",
+  "Installed by specialists for the right application",
 ];
 
 const WORKS_BEST: { Icon: Icon; title: string; link?: string }[] = [
@@ -323,32 +333,42 @@ export default function EpoxyGroutPageV2({ reviews = [], rating }: { reviews?: R
           <p className={`${lead} mx-auto mt-8 max-w-3xl text-center`}>Dirt can still sit on the surface, but it scrubs off. There is nothing inside the joint for mould to grow in.</p>
         </Section>
 
-        {/* 4. BENEFITS AND TRADE OFFS */}
+        {/* 4. WHY EPOXY IS WORTH IT (client copy, 2026-11-25) */}
         <Section id="benefits">
-          <SectionHead k="The Honest Picture" title="Benefits and Trade Offs">
-            <p className={lead}>Epoxy is not the answer to everything. Here is the honest picture.</p>
+          <SectionHead k="Why Homeowners Choose Epoxy" title="Why Epoxy Grout Is Worth It">
+            <p className={lead}>Premium protection, longer-lasting performance and a cleaner, more durable finish for suitable showers and tiled areas.</p>
           </SectionHead>
-          <div className="mx-auto grid max-w-[1000px] grid-cols-1 gap-8 md:grid-cols-2">
-            <div className="grid content-start gap-3">
-              <p className="text-[13px] font-bold uppercase tracking-[2px] text-[#001F97]">Benefits</p>
-              {BENEFITS.map((b) => (
-                <div key={b} className={`${box} flex items-center gap-4 p-5`}>
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#001F97] text-white"><Check className="h-5 w-5" aria-hidden="true" /></span>
-                  <p className="text-base font-bold text-slate-900">{b}</p>
-                </div>
-              ))}
+          <p className="text-[13px] font-bold uppercase tracking-[2px] text-[#001F97]">Key Benefits</p>
+          <div className="mt-4 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {KEY_BENEFITS.map((b) => (
+              <div key={b.title} className={`${box} p-6`}>
+                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#001F97] text-white"><Check className="h-5 w-5" aria-hidden="true" /></span>
+                <h3 className={`${cardTitle} mt-4`}>{b.title}</h3>
+                <p className={cardText}>{b.desc}</p>
+              </div>
+            ))}
+          </div>
+          <div className="mt-10 grid grid-cols-1 gap-8 lg:grid-cols-2">
+            <div className={`${box} p-6 md:p-7`}>
+              <p className="text-[13px] font-bold uppercase tracking-[2px] text-[#001F97]">Why Customers Upgrade to Epoxy</p>
+              <ul className="mt-4 grid gap-3">
+                {UPGRADE_REASONS.map((r) => (
+                  <li key={r} className="flex items-center gap-3">
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#FBBC04] text-[#0F172A]"><Check className="h-3.5 w-3.5" strokeWidth={3} aria-hidden="true" /></span>
+                    <span className="text-base font-semibold text-slate-800">{r}</span>
+                  </li>
+                ))}
+              </ul>
             </div>
-            <div className="grid content-start gap-3">
-              <p className="text-[13px] font-bold uppercase tracking-[2px] text-[#7A5600]">Trade Offs</p>
-              {TRADE_OFFS.map((t) => (
-                <div key={t} className={`${box} flex items-center gap-4 border-l-4 border-l-[#FBBC04] p-5`}>
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#FFF4D1] text-[#7A5600]"><AlertTriangle className="h-5 w-5" aria-hidden="true" /></span>
-                  <p className="text-base font-bold text-slate-900">{t}</p>
-                </div>
-              ))}
+            <div className="flex flex-col justify-center">
+              <p className={lead}>We assess every shower or tiled area before recommending epoxy grout to ensure it is the right fit for the surface and conditions.</p>
+              <p className="mt-5 text-lg font-bold text-slate-900">Want a longer-lasting grout solution?</p>
+              <div className="mt-4 flex flex-wrap gap-3">
+                <Link href="/contact" className={btnGold}>Get a Free Quote</Link>
+                <Link href="#quote-form" className={btnNavy}>Book an Inspection</Link>
+              </div>
             </div>
           </div>
-          <p className="mt-8 text-center text-base text-slate-600">For the full shower comparison, see <Link href="/shower-regrouting" className={inlineLink}>shower regrouting</Link>.</p>
         </Section>
 
         {/* 5. WHERE IT WORKS BEST */}
