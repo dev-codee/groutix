@@ -56,7 +56,7 @@ const principles = [
 
 const steps = [
   { title: "Assess First", text: "We inspect the grout, silicone and tiles — and check whether the membrane underneath is sound — before recommending anything." },
-  { title: "Remove & Prepare", text: "Failed grout and old silicone are fully removed. Skipping this step is why quick regrouts fail early, so we never skip it." },
+  { title: "Remove & Prepare", text: "Failed grout and old silicone are removed. Skipping this step is why quick regrouts fail early, so we never skip it." },
   { title: "Regrout & Seal", text: "New waterproof epoxy grout and fresh silicone are applied and finished so the surface is sealed properly again." },
   { title: "Cure & Warranty", text: "We tell you exactly when the shower can be used again, and complete regrouts are backed by the written 10-year warranty." },
 ];
@@ -170,7 +170,7 @@ export default function AboutPage({ reviews, rating }: { reviews: Review[]; rati
               <div className="space-y-4 text-[17px] leading-relaxed text-slate-600">
                 <p>
                   Groutix was built around that gap. We specialise in the repair most bathrooms actually need:
-                  complete removal of the failed grout, a rebuild in waterproof epoxy, and fresh silicone at every
+                  removal of the failed grout, a rebuild in waterproof epoxy, and fresh silicone at every
                   corner and joint. The bathroom looks new again, the leak stops, and the tiles you already have stay put.
                 </p>
                 <p>
