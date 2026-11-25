@@ -5,11 +5,11 @@ import OurProcessPage from "@/components/OurProcessPage";
 export async function generateMetadata(): Promise<Metadata> {
   return {
     title: "Shower Regrouting Process: How It Works | Groutix",
-    description: "How does shower regrouting work? Free inspection, full grout removal, epoxy regrout, seal & clean. No tile removal. 10-year warranty. Melbourne-wide.",
+    description: "How does shower regrouting work? Free inspection, grout removal, epoxy regrout, seal & clean. No tile removal. 10-year warranty. Melbourne-wide.",
     alternates: { canonical: "/our-process" },
     openGraph: {
       title: "Shower Regrouting Process: How It Works | Groutix",
-      description: "How does shower regrouting work? Free inspection, full grout removal, epoxy regrout, seal & clean. No tile removal. 10-year warranty. Melbourne-wide.",
+      description: "How does shower regrouting work? Free inspection, grout removal, epoxy regrout, seal & clean. No tile removal. 10-year warranty. Melbourne-wide.",
       url: "/our-process",
       type: "website",
     },
