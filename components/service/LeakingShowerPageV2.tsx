@@ -13,6 +13,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useState, type ReactNode } from "react";
 import { Building2, Check, ClipboardCheck, Droplets, House, Layers, Phone, Search, ShieldCheck, Wrench } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { useContact } from "@/components/SiteContentProvider";
@@ -93,13 +94,15 @@ const resultBlocks: ResultBlock[] = [
   },
 ];
 
-const signCards = [
-  { title: "Stains or bubbling paint on the wall behind the shower", text: "Paint blisters and plaster swells when water gets behind the tiles and into the wall.", href: "#leak-damage", link: "What a leak can damage" },
-  { title: "A damp or musty smell in the bathroom or next room", text: "A musty odour that cleaning never shifts usually means damp materials behind the tiles or under the floor.", href: "#leak-sources", link: "Where the water comes from" },
-  { title: "A wet patch, swollen skirting, damp carpet or a lifting floor near the bathroom", text: "Water escaping the shower often shows first beside the bathroom: damp carpet at the ensuite entry, swollen skirting boards and rusting door frames.", href: "#what-to-do", link: "What to do right now" },
-  { title: "A stain or drip on the ceiling below the shower", text: "In double storey homes and apartments, a shower leak often announces itself on the ceiling underneath.", href: "#property-services", link: "Leaks in rentals and apartments" },
-  { title: "Cracked, crumbling or chalky grout, or black or peeling silicone", text: "Cement grout that has weathered soft and powdery no longer seals the joints, so every shower pushes water through.", href: "/shower-regrouting", link: "Shower regrouting" },
-  { title: "Tiles that sound hollow or feel loose", text: "Hollow sounding tiles can mean water has been getting underneath and breaking the bond.", href: "/small-tiling-jobs", link: "Small tiling jobs" },
+type SignCard = { title: string; text: string; href: string; link: string; img?: string; imgAlt?: string; Icon?: LucideIcon };
+
+const signCards: SignCard[] = [
+  { title: "Stains or bubbling paint on the wall behind the shower", text: "Paint blisters and plaster swells when water gets behind the tiles and into the wall.", href: "#leak-damage", link: "What a leak can damage", img: "/damp-patch-leak-before.webp", imgAlt: "Water staining and damp spreading on the walls around a leaking shower in a Melbourne bathroom" },
+  { title: "A damp or musty smell in the bathroom or next room", text: "A musty odour that cleaning never shifts usually means damp materials behind the tiles or under the floor.", href: "#leak-sources", link: "Where the water comes from", img: "/leaking-shower-failed-grout-before.webp", imgAlt: "Black mould growing through the grout joints of a leaking shower in Melbourne" },
+  { title: "A wet patch, swollen skirting, damp carpet or a lifting floor near the bathroom", text: "Water escaping the shower often shows first beside the bathroom: damp carpet at the ensuite entry, swollen skirting boards and rusting door frames.", href: "#what-to-do", link: "What to do right now", img: "/leaking-shower-base-leak-before.webp", imgAlt: "Cracked shower base with failed silicone and water damage spreading to the floor beside it in Melbourne" },
+  { title: "A stain or drip on the ceiling below the shower", text: "In double storey homes and apartments, a shower leak often announces itself on the ceiling underneath.", href: "#property-services", link: "Leaks in rentals and apartments", Icon: Building2 },
+  { title: "Cracked, crumbling or chalky grout, or black or peeling silicone", text: "Cement grout that has weathered soft and powdery no longer seals the joints, so every shower pushes water through.", href: "/shower-regrouting", link: "Shower regrouting", img: "/silicone-corner-before.webp", imgAlt: "Aged, discoloured grout and silicone in the corner of a shower in Melbourne" },
+  { title: "Tiles that sound hollow or feel loose", text: "Hollow sounding tiles can mean water has been getting underneath and breaking the bond.", href: "/small-tiling-jobs", link: "Small tiling jobs", Icon: Wrench },
 ];
 
 const sources: Array<[string, string, string]> = [
@@ -109,11 +112,11 @@ const sources: Array<[string, string, string]> = [
   ["Pipes, mixer or fittings behind the wall", "Water that keeps flowing when the shower is off, wet wall around the tap", "Licensed plumber"],
 ];
 
-const damage = [
-  { Icon: House, title: "Walls and plasterboard", description: "Swelling, bubbling paint, crumbling lining" },
+const damage: Array<{ Icon: LucideIcon; title: string; description: string; img?: string; imgAlt?: string }> = [
+  { Icon: House, title: "Walls and plasterboard", description: "Swelling, bubbling paint, crumbling lining", img: "/damp-patch-leak-before.webp", imgAlt: "Damp and water staining spreading through the walls around a leaking shower in Melbourne" },
   { Icon: Layers, title: "Timber framing and floor", description: "Rot can start out of sight while water tracks behind the tiles" },
   { Icon: Building2, title: "Ceiling and rooms below", description: "Stains, drips and damage to the unit or room underneath" },
-  { Icon: Droplets, title: "Mould and odours", description: "Damp areas can keep growing mould" },
+  { Icon: Droplets, title: "Mould and odours", description: "Damp areas can keep growing mould", img: "/leaking-shower-failed-grout-before.webp", imgAlt: "Mould growing through the grout and silicone of a damp shower in Melbourne" },
 ];
 
 const immediateSteps = [
@@ -257,10 +260,21 @@ export default function LeakingShowerPageV2({ reviews }: { reviews: Review[] }) 
           </SectionHead>
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {signCards.map((c) => (
-              <div key={c.title} className={card}>
-                <h3 className={cardTitle}>{c.title}</h3>
-                <p className={cardText}>{c.text}</p>
-                <Link href={c.href} className="mt-3 inline-block text-sm font-bold text-[#2F63CC] hover:underline">{c.link} →</Link>
+              <div key={c.title} className={`${box} overflow-hidden transition hover:-translate-y-0.5 hover:border-[#2F63CC] hover:shadow-[0_8px_20px_rgba(15,23,42,0.08)]`}>
+                {c.img ? (
+                  <div className="relative aspect-[16/10] w-full bg-slate-200">
+                    <Image src={c.img} alt={c.imgAlt ?? ""} fill sizes="(min-width:1024px) 30vw, (min-width:640px) 45vw, 100vw" className="object-cover" />
+                  </div>
+                ) : c.Icon ? (
+                  <div className="flex aspect-[16/10] w-full items-center justify-center bg-[#001F97] text-white">
+                    <c.Icon className="h-14 w-14" aria-hidden="true" />
+                  </div>
+                ) : null}
+                <div className="p-6">
+                  <h3 className={cardTitle}>{c.title}</h3>
+                  <p className={cardText}>{c.text}</p>
+                  <Link href={c.href} className="mt-3 inline-block text-sm font-bold text-[#2F63CC] hover:underline">{c.link} →</Link>
+                </div>
               </div>
             ))}
           </div>
@@ -306,11 +320,21 @@ export default function LeakingShowerPageV2({ reviews }: { reviews: Review[] }) 
             <p className={lead}>Water behind tiles can travel a long way before you see it. A small leak can turn into a big repair.</p>
           </SectionHead>
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-            {damage.map(({ Icon, title, description }) => (
-              <div key={title} className={`${box} border-t-4 border-t-[#001F97] p-6`}>
-                <span className="flex h-12 w-12 items-center justify-center rounded-lg bg-[#EEF3FF] text-[#2F63CC]"><Icon className="h-6 w-6" aria-hidden="true" /></span>
-                <h3 className={`${cardTitle} mt-4`}>{title}</h3>
-                <p className={cardText}>{description}</p>
+            {damage.map(({ Icon, title, description, img, imgAlt }) => (
+              <div key={title} className={`${box} overflow-hidden`}>
+                {img ? (
+                  <div className="relative aspect-[16/10] w-full bg-slate-200">
+                    <Image src={img} alt={imgAlt ?? ""} fill sizes="(min-width:1024px) 22vw, (min-width:640px) 45vw, 100vw" className="object-cover" />
+                  </div>
+                ) : (
+                  <div className="flex aspect-[16/10] w-full items-center justify-center bg-[#001F97] text-white">
+                    <Icon className="h-14 w-14" aria-hidden="true" />
+                  </div>
+                )}
+                <div className="p-6">
+                  <h3 className={cardTitle}>{title}</h3>
+                  <p className={cardText}>{description}</p>
+                </div>
               </div>
             ))}
           </div>
