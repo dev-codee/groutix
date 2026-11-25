@@ -65,7 +65,7 @@ function EarningsDetail({ job, members, settings, onClose, onChanged, onExpenseC
   const preview = applyDailyEarningsCaps(rawPreview, job.dailyCapUsage);
   const exceedsBase = !!invoice && rawPreview.reduce((sum, share) => sum + share.earnedCents, 0) > Math.round(previewBase * maxTeamShareBps / 10000);
   const dirty = basis !== (ledger?.basis || "ex_gst") || notes !== (ledger?.notes || "") || JSON.stringify(rows) !== JSON.stringify(ledger?.shares.map(shareRow) || []);
-  const shares = approved ? ledger!.shares : preview;
+  const shares = approved && !dirty ? ledger!.shares : preview;
   const totalEarned = shares.reduce((sum, s) => sum + s.earnedCents, 0);
   const totalPaid = approved ? shares.reduce((sum, s) => sum + s.paidCents, 0) : 0;
   const jobReceived = registerTotals([job]).received;
@@ -141,7 +141,7 @@ function EarningsDetail({ job, members, settings, onClose, onChanged, onExpenseC
             </thead>
             <tbody>{rows.map((row, index) => {
               const member = members.find(m => m.id === row.memberId);
-              const earned = preview[index]?.earnedCents || 0;
+              const earned = shares[index]?.earnedCents || 0;
               return <tr key={index} className="border-t border-slate-100">
                 <td className="min-w-28 p-1.5"><select required aria-label={`Employee ${index + 1}`} className={input} value={row.memberId} onChange={e => setRows(old => old.map((r, i) => i === index ? { ...r, memberId: e.target.value } : r))}><option value="">Select</option>{members.filter(m => m.active || ledger?.shares.some(s => s.memberId === m.id)).map(m => <option key={m.id} value={m.id}>{m.name}</option>)}</select></td>
                 <td className="p-2 text-xs capitalize text-slate-600">{member?.role || "—"}</td>

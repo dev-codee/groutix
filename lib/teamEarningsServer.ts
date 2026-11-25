@@ -113,7 +113,8 @@ export async function listTeamEarnings(): Promise<EarningsData> {
     const relevantMembers = new Set([...job.assignedIds, ...(job.ledger?.shares.map(share => share.memberId) || [])]);
     job.dailyCapUsage = [...relevantMembers].flatMap(memberId => {
       const capCents = dailyCaps.get(memberId);
-      return capCents === undefined ? [] : [{ memberId, capCents, usedCents: used?.get(memberId) || 0 }];
+      const ownApprovedCents = job.ledger?.status === "approved" ? job.ledger.shares.find(share => share.memberId === memberId)?.earnedCents || 0 : 0;
+      return capCents === undefined ? [] : [{ memberId, capCents, usedCents: Math.max(0, (used?.get(memberId) || 0) - ownApprovedCents) }];
     });
   }
   for (const job of jobs) {

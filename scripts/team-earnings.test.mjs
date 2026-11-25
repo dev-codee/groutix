@@ -156,6 +156,9 @@ test("daily caps span approved jobs on the same completion day without changing 
   const second = await f.mutateFor(secondId, "approve", secondDraft.version, { invoice: rules.invoiceForEarnings({ ...baseLead, jobNo: "GX-2002", invoiceNumber: "INV-2002" }, "ex_gst") });
   assert.equal(second.shares[0].earnedCents, 10000);
   assert.equal(f.state.team_earnings.find(row => row._id === leadId).shares[0].earnedCents, 30000);
+  const jobs = (await f.api.listTeamEarnings()).jobs;
+  assert.equal(jobs.find(job => job.id === leadId).dailyCapUsage[0].usedCents, 10000, "the first job does not count its own approved share");
+  assert.equal(jobs.find(job => job.id === secondId).dailyCapUsage[0].usedCents, 30000, "the second job sees the other approved share");
 });
 
 test("automatic expenses are snapshotted once per eligible job and manual expense changes are audited", async () => {

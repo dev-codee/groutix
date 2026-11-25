@@ -743,6 +743,7 @@ function JobListPanel({
               {/* Drag handle */}
               <button
                 aria-label={`Drag ${entry.customer?.name || "booking"} to another day or reorder`}
+                title="Drag to another day or reorder"
                 className="mt-0.5 text-slate-300 hover:text-slate-500 cursor-grab active:cursor-grabbing shrink-0 transition-colors"
                 onMouseDown={(e) => e.stopPropagation()}
               >
@@ -753,17 +754,14 @@ function JobListPanel({
               <StopCircle n={i} type={entry.type} color={entry.type === "job" ? "#059669" : "#2563EB"} />
 
               {/* Content */}
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-x-2 gap-y-0.5 flex-wrap">
-                  <p className="text-xs font-semibold text-slate-900">{entry.customer?.name || "Customer"}</p>
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                  <p className="min-w-0 break-words text-xs font-semibold text-slate-900">{entry.customer?.name || "Customer"}</p>
                   {pending && <span className="rounded-full bg-blue-600 px-1.5 py-0.5 text-[9px] font-bold uppercase text-white">New</span>}
                   <span className="text-[10px] font-bold text-blue-600 tabular-nums whitespace-nowrap">
                     {formatSlotRange(entry.time, entry.durationMinutes)}
                   </span>
                 </div>
-                <span className="text-rose-500 text-[9px] font-bold hidden group-hover:inline-flex items-center gap-0.5">
-                  Drag to another day or reorder
-                </span>
                 {pending && <span className="text-blue-600 text-[9px] font-bold">Unsaved — save the route to create this booking</span>}
                 <div className="flex items-center gap-1.5 mt-0.5">
                   <ScheduleBookingBadge type={entry.type} status={entry.status} />
@@ -771,21 +769,12 @@ function JobListPanel({
                 <div className="text-[10px] mt-0.5"><CopyableAddress address={entry.customer?.address} /></div>
                 <p className="text-[10px] font-semibold text-slate-700 mt-1">Assigned: {listDetails.get(entry.id)?.assignee}</p>
                 <p className="text-[10px] text-slate-500" title="Estimated distance between suburbs in visit order">{scheduleDistanceLabel(listDetails.get(entry.id)!)}</p>
+                {!pending && <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                  <button type="button" aria-label={`Email ${entry.customer?.name || "customer"}`} onClick={event => { event.stopPropagation(); onEmailCustomer(entry.leadId); }} className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-[10px] font-semibold text-slate-700 hover:bg-slate-50"><Mail className="h-3.5 w-3.5" />Email</button>
+                  <button type="button" disabled={disabled} onClick={event => { event.stopPropagation(); onPlanOnMap(entry); }} className="rounded-lg border border-blue-200 bg-blue-50 px-2 py-1 text-[10px] font-semibold text-blue-700 hover:bg-blue-100 disabled:opacity-50">Plan on Map</button>
+                  <button type="button" aria-label={`Edit booking for ${entry.customer?.name || "Customer"}`} disabled={disabled} onClick={event => { event.stopPropagation(); onReschedule(entry); }} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-50"><MoreVertical className="h-3.5 w-3.5" /></button>
+                </div>}
               </div>
-
-              {!pending && (<>
-              <button type="button" aria-label={`Email ${entry.customer?.name || "customer"}`} onClick={event => { event.stopPropagation(); onEmailCustomer(entry.leadId); }} className="shrink-0 flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-[10px] font-semibold text-slate-700 hover:bg-slate-50"><Mail className="h-3.5 w-3.5" />Email</button>
-              <button type="button" disabled={disabled}
-                onClick={event => { event.stopPropagation(); onPlanOnMap(entry); }}
-                className="shrink-0 rounded-lg border border-blue-200 bg-blue-50 px-2 py-1 text-[10px] font-semibold text-blue-700 hover:bg-blue-100 disabled:opacity-50">
-                Plan on Map
-              </button>
-              <button type="button" aria-label={`Edit booking for ${entry.customer?.name || "Customer"}`}
-                disabled={disabled} onClick={event => { event.stopPropagation(); onReschedule(entry); }}
-                className="shrink-0 rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-50">
-                <MoreVertical className="h-3.5 w-3.5" />
-              </button>
-              </>)}
             </div>
             );
           })
