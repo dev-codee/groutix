@@ -167,7 +167,7 @@ const relatedServices = [
 // FAQ answers 5 and 6 carry the same in-text links as the live page.
 function faqAnswer(index: number, answer: string): ReactNode {
   const serviceLink = index === 4 ? { phrase: "shower regrouting", href: "/shower-regrouting" } : index === 5 ? { phrase: "leaking shower repair", href: "/leaking-shower-repair" } : null;
-  if (!serviceLink) return answer;
+  if (!serviceLink || !answer.includes(serviceLink.phrase)) return answer;
   const [before, after] = answer.split(serviceLink.phrase);
   return <>{before}<Link href={serviceLink.href} className={inlineLink}>{serviceLink.phrase}</Link>{after}</>;
 }
