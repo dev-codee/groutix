@@ -1,4 +1,4 @@
-import { EarningsError, earningsBody, earningsId, earningsInteger, earningsText, type EarningsMember } from "./teamEarnings";
+import { DEFAULT_TEAM_SHARE_BPS, EarningsError, earningsBody, earningsId, earningsInteger, earningsText, type EarningsMember } from "./teamEarnings";
 
 export interface EarningsEmployeeSetting {
   memberId: string;
@@ -19,6 +19,7 @@ export interface AutomaticExpenseRule {
 export interface TeamEarningsSettings {
   basis: "ex_gst" | "inclusive";
   gstRateBps: number;
+  maxTeamShareBps: number;
   employeeSettings: EarningsEmployeeSetting[];
   automaticExpenses: AutomaticExpenseRule[];
   updatedAt?: string;
@@ -28,6 +29,7 @@ export interface TeamEarningsSettings {
 export const defaultTeamEarningsSettings: TeamEarningsSettings = {
   basis: "ex_gst",
   gstRateBps: 1000,
+  maxTeamShareBps: DEFAULT_TEAM_SHARE_BPS,
   employeeSettings: [],
   automaticExpenses: [],
 };
@@ -36,6 +38,7 @@ export function validateTeamEarningsSettings(value: unknown, members: EarningsMe
   const body = earningsBody(value);
   if (body.basis !== "ex_gst" && body.basis !== "inclusive") throw new EarningsError("Choose a valid invoice basis.");
   const gstRateBps = earningsInteger(body.gstRateBps, "GST rate", 0, 10000);
+  const maxTeamShareBps = earningsInteger(body.maxTeamShareBps ?? DEFAULT_TEAM_SHARE_BPS, "maximum team share", 1, 10000);
   if (!Array.isArray(body.employeeSettings) || body.employeeSettings.length > 500) throw new EarningsError("Invalid employee settings.");
   const knownMembers = new Set(members.map(member => member.id));
   const seenMembers = new Set<string>();
@@ -48,7 +51,7 @@ export function validateTeamEarningsSettings(value: unknown, members: EarningsMe
     const dailyCapCents = setting.dailyCapCents === null || setting.dailyCapCents === undefined
       ? null : earningsInteger(setting.dailyCapCents, "daily maximum", 1);
     if (setting.mode === "percent") {
-      return { memberId, mode: "percent" as const, rateBps: earningsInteger(setting.rateBps, "default percentage", 0, 10000), dailyCapCents };
+      return { memberId, mode: "percent" as const, rateBps: earningsInteger(setting.rateBps, "default percentage", 0, maxTeamShareBps), dailyCapCents };
     }
     return {
       memberId, mode: "amount" as const, rateBps: 0,
@@ -74,5 +77,5 @@ export function validateTeamEarningsSettings(value: unknown, members: EarningsMe
     }
     return { id, name, amountCents, active: rule.active, activeFrom };
   });
-  return { basis: body.basis, gstRateBps, employeeSettings, automaticExpenses };
+  return { basis: body.basis, gstRateBps, maxTeamShareBps, employeeSettings, automaticExpenses };
 }

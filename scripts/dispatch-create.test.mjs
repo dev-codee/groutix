@@ -3,7 +3,7 @@ import test from "node:test";
 import { loadTs } from "./test-ts-loader.mjs";
 
 const { DEFAULT_BOOKING_RULES } = loadTs("lib/bookingRules.ts");
-function harness({ failFirstPatch = false, date = "2026-10-14", time = "10:15", closed = false, initialLeadId, initialType } = {}) {
+function harness({ failFirstPatch = false, date = "2026-10-14", time = "10:15", closed = false, initialLeadId, initialType, inspectorName = "Alex" } = {}) {
   const state = []; let cursor = 0;
   const requests = [], saved = [], completed = [];
   const rules = structuredClone(DEFAULT_BOOKING_RULES);
@@ -13,7 +13,7 @@ function harness({ failFirstPatch = false, date = "2026-10-14", time = "10:15", 
   const react = { useState: initial => { const i = cursor++; if (!(i in state)) state[i] = initial; return [state[i], value => { state[i] = value; }]; },
     useRef: initial => { const i = cursor++; if (!(i in state)) state[i] = { current: initial }; return state[i]; }, useEffect: () => {} };
   const { DispatchBookingModal } = loadTs("components/admin/modals/DispatchBookingModal.tsx", {
-    react, "@/components/admin/AdminPageContext": { useAdminPageCtx: () => ({ scopedLeads: customers, inspectionStaff: [{ id: "inspector", name: "Alex", active: true }], assignableTechnicians: [{ id: "tech", name: "Technician", active: true, workDays: [1,2,3,4,5] }], upsertLead: lead => saved.push(lead) }) },
+    react, "@/components/admin/AdminPageContext": { useAdminPageCtx: () => ({ scopedLeads: customers, inspectionStaff: [{ id: "inspector", name: inspectorName, active: true }], assignableTechnicians: [{ id: "tech", name: "Technician", active: true, workDays: [1,2,3,4,5] }], upsertLead: lead => saved.push(lead) }) },
     "@/lib/useBookingRules": { useBookingRules: () => rules }, "@/lib/scheduling": { ...loadTs("lib/scheduling.ts"), todayAU: () => "2026-10-12" },
   }, { fetch: async (url, options = {}) => { requests.push({ url, ...options });
     const failed = options.method === "PATCH" && failFirstPatch && requests.filter(r => r.method === "PATCH").length === 1;
@@ -48,8 +48,13 @@ test("booking from the lead queue preselects that existing customer and adds the
   assert.equal(body.inspectionAt, undefined);
   assert.deepEqual(h.customers[0], original, "existing customer identity and earlier visit are preserved");
 });
+test("inspection booking preselects the active solo inspector Johny", () => {
+  const h = harness({ initialLeadId: "old", initialType: "inspection", inspectorName: "Johny" });
+  const selects = h.render().filter(node => node.type === "select");
+  assert.equal(selects[1].props.value, "inspector");
+});
 
-test("reviewing a new booking writes nothing; final confirmation reuses the lead, assigns and requests notifications", async () => {
+test("reviewing a new booking writes nothing; final confirmation reuses the lead with notifications off by default", async () => {
   const h = harness();
   let nodes = h.render();
   const selects = nodes.filter(n => n.type === "select");
@@ -69,7 +74,7 @@ test("reviewing a new booking writes nothing; final confirmation reuses the lead
   const body = JSON.parse(patch.body);
   assert.equal(body.inspectionAt, "2026-10-14T10:15");
   assert.equal(body.assigned, "Alex");
-  assert.equal(body.bookingNotifications, true);
+  assert.deepEqual(body.bookingNotifications, { email: false, sms: false });
   assert.equal(body.appendBooking, true);
   assert.equal(h.completed.length, 1);
 });

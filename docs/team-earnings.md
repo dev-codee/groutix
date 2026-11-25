@@ -5,7 +5,7 @@ Managers and super admins can open **Team Earnings** in the CRM sidebar (`?view=
 ## Manager workflow
 
 1. Find a job in the working register and expand its row. Use Set team shares or Configure & approve shares to edit inline. Technicians and CRM staff are both available. Identity uses stable IDs, roster aliases, then unique usernames/names; ambiguous names require manual member selection.
-2. Choose the invoice basis (excluding GST by default, or including GST), add member percentages and save the draft. No rate is assumed. Each member appears once and combined shares cannot exceed 100%. For example, a $1,100 invoice at 10% GST has a $1,000 base excluding GST; a 30% share earns $300.
+2. Choose the invoice basis (excluding GST by default, or including GST), add member percentages and save the draft. No rate is assumed. Each member appears once and combined shares or fixed amounts cannot exceed the maximum team share set in Team Earnings Settings (35% by default). The remainder stays with the company. For example, a $1,100 invoice at 10% GST has a $1,000 base excluding GST; a 30% share earns $300.
 3. After all active job visits are done and a valid invoice is saved, review and approve earnings. Approval preserves the invoice number, total, GST rate, calculation base, recipients and amounts. Customer payment status is shown separately; approval does not require customer payment.
 4. Record full or partial payments already made to members, including date, method, reference and optional notes. The system prevents overpayment. This records bookkeeping entries; it does not transfer money or change the customer's invoice payment status.
 5. Correct an erroneous payment using **Reverse record** with a reason. The original entry and reversal remain visible. Reopen an approval only when all recorded payments have been reversed, explain why, then revise and reapprove. Reversing an entry does not recover transferred money.
@@ -29,13 +29,13 @@ Run `node scripts/team-earnings.test.mjs` for calculations, identity/completion 
 
 ## Fixed worker amounts and display
 
-Each worker row offers **Enter as → Share (%) / Amount (AUD)**. Fixed amounts are stored as exact cents and remain fixed when the invoice basis changes. Percentage and fixed rows can be combined, but their total cannot exceed the current invoice basis at saving or approval. Existing percentage records remain compatible.
+Each worker row offers **Enter as → Share (%) / Amount (AUD)**. Fixed amounts are stored as exact cents and remain fixed when the invoice basis changes. Percentage and fixed rows can be combined, but their total cannot exceed the configured team share limit of the current invoice basis at saving or approval. Existing approved records retain their amounts when the limit changes.
 
 Currency labels on the earnings page drop the decimal portion (AUD 300.90 displays as $300). Ledger calculations, payment inputs, audit records and CSV exports retain cents for reconciliation.
 
 ## Working register and dashboard links
 
-The register follows the supplied HTML structure: seven KPI cards, status buttons, expandable job rows with individual invoice cards, editable inline team shares and payment controls, employee payment summary, and manager summary. Add job opens the existing CRM lead form; Manage team opens the dashboard team page. Open job and Manage customer invoices fetch the current customer record and open the existing editor. Closing that editor reloads the register.
+The register follows the supplied HTML structure: seven KPI cards, status buttons, expandable job rows with individual invoice cards, editable inline team shares and payment controls, employee payment summary, and manager summary. Add job opens the existing CRM lead form; Manage team opens the dashboard team page. Edit Job opens the existing job editor. Manage customer invoices opens the invoice manager. Closing either editor reloads the register.
 
 Customer received amounts use the same invoice balance calculation as the CRM, including partial payments, legacy receipts and separately saved customer invoices. Legacy full-payment records without an invoice status are treated as paid. Receipt changes do not alter earnings approval snapshots. Manager balance is customer receipts less all approved team earnings, before expenses. Draft estimates are shown separately and are not payable.
 

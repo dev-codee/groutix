@@ -4820,6 +4820,19 @@ export default function CrmDashboardPage() {
                       leads={leads}
                       unassignedLeads={unassignedPlanningLeads}
                       onBookingsChanged={() => { void loadData({ silent: true }); }}
+                      onEmailCustomer={(id: string) => {
+                        const lead = leads.find(item => item.id === id);
+                        if (!lead) return;
+                        void (async () => {
+                          try {
+                            const customer = lead.email ? lead : await loadLeadDetails(lead);
+                            if (!customer.email) { alert("This customer does not have an email address saved."); return; }
+                            await openMessagesModal(customer, "email");
+                          } catch (error) {
+                            setError(error instanceof Error ? error.message : "Could not open the conversation.");
+                          }
+                        })();
+                      }}
                       onOpenLead={(id: string) => {
                         const lead = leads.find((l) => l.id === id);
                         if (lead) {
@@ -4979,7 +4992,16 @@ export default function CrmDashboardPage() {
               />
             )}
 
-            {currentView === "earnings" && canSee("earnings") && <TeamEarningsView query={globalSearch} onQueryChange={setGlobalSearch} refreshKey={leadModalOpen} onAddJob={startNewLead} onManageTeam={() => navigateTo("team")} onOpenJob={async (id: string) => {
+            {currentView === "earnings" && canSee("earnings") && <TeamEarningsView query={globalSearch} onQueryChange={setGlobalSearch} refreshKey={leadModalOpen || invoiceModalOpen} onAddJob={startNewLead} onManageTeam={() => navigateTo("team")} onManageInvoices={async (id: string) => {
+              try {
+                const response = await fetch(`/api/admin/submissions/${id}`, { cache: "no-store" });
+                const result = await response.json();
+                if (!response.ok || !result.item) throw new Error("Could not open this job's invoices. It may have been removed.");
+                await openInvoiceModal(result.item);
+              } catch (error) {
+                setEtaToast({ leadId: id, msg: error instanceof Error ? error.message : "Could not open invoices." });
+              }
+            }} onOpenJob={async (id: string) => {
               try {
                 const response = await fetch(`/api/admin/submissions/${id}`, { cache: "no-store" });
                 const result = await response.json();

@@ -17,6 +17,12 @@ test("dragging an unassigned lead proposes a booking on the destination day", ()
   assert.equal(proposal.leadId, "new");
 });
 
+test("dragging selected unassigned leads keeps the selected order on one destination day", () => {
+  const leads = [{ leadId: "first-lead", type: "inspection" }, { leadId: "second-lead", type: "inspection" }];
+  const proposal = planScheduleDrop({ kind: "unassigned-group", leads }, "2026-10-09", entries);
+  assert.deepEqual(JSON.parse(JSON.stringify(proposal)), { kind: "book-group", leads, date: "2026-10-09" });
+});
+
 test("dropping onto another day proposes a reschedule without moving or replacing another booking", () => {
   const snapshot = structuredClone(entries);
   const proposal = planScheduleDrop({ kind: "booking", id: "first" }, "2026-10-09", entries, "friday");

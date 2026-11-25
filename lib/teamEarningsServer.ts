@@ -45,6 +45,7 @@ export async function getTeamEarningsSettings(): Promise<TeamEarningsSettings> {
     ...defaultTeamEarningsSettings,
     basis: saved.basis === "inclusive" ? "inclusive" : "ex_gst",
     gstRateBps: Number.isSafeInteger(saved.gstRateBps) ? saved.gstRateBps : defaultTeamEarningsSettings.gstRateBps,
+    maxTeamShareBps: Number.isSafeInteger(saved.maxTeamShareBps) && saved.maxTeamShareBps >= 1 && saved.maxTeamShareBps <= 10000 ? saved.maxTeamShareBps : defaultTeamEarningsSettings.maxTeamShareBps,
     employeeSettings: Array.isArray(saved.employeeSettings) ? saved.employeeSettings : [],
     automaticExpenses: Array.isArray(saved.automaticExpenses) ? saved.automaticExpenses : [],
     ...(typeof saved.updatedAt === "string" ? { updatedAt: saved.updatedAt } : {}),
@@ -242,24 +243,26 @@ export async function mutateTeamEarnings(id: string, value: unknown, actor: stri
       if ((!lead || lead.type === "support_ticket") && !["reopen", "void_payment"].includes(action)) throw new EarningsError("The original lead is unavailable.", 409);
       const now = new Date().toISOString();
       let record: LedgerDoc = current ? { ...current, shares: current.shares.map(s => ({ ...s })) } : { _id: id, version: 0, status: "draft", basis: "ex_gst", shares: [], invoice: null, notes: "", updatedAt: now, jobLabel: lead?.jobNo || `Lead-${id.slice(-6)}`, customer: lead?.name || "Customer" };
+      const settingsDoc = ["save", "approve"].includes(action) ? await db.collection("settings").findOne({ _id: "team-earnings" } as never, { session }) : null;
+      const maxTeamShareBps = Number.isSafeInteger(settingsDoc?.maxTeamShareBps) && settingsDoc!.maxTeamShareBps >= 1 && settingsDoc!.maxTeamShareBps <= 10000 ? settingsDoc!.maxTeamShareBps : defaultTeamEarningsSettings.maxTeamShareBps;
       let detail = "";
       if (action === "save") {
         if (record.status === "approved") throw new EarningsError("Reopen the approval before changing shares.", 409);
         if (body.basis !== "ex_gst" && body.basis !== "inclusive") throw new EarningsError("Choose an invoice basis.");
         record.basis = body.basis;
-        record.shares = parseEarningsShares(body.shares, roster, current?.shares);
+        record.shares = parseEarningsShares(body.shares, roster, current?.shares, maxTeamShareBps);
         const draftInvoice = invoiceForEarnings(lead!, record.basis);
-        if (draftInvoice) validateEarningsTotal(record.shares, draftInvoice.baseCents);
+        if (draftInvoice) validateEarningsTotal(record.shares, draftInvoice.baseCents, maxTeamShareBps);
         record.notes = earningsText(body.notes, "Notes", 2000);
         record.invoice = null;
         detail = `Saved ${record.shares.length} shares, ${(record.shares.reduce((sum, s) => sum + s.rateBps, 0) / 100).toFixed(2)}% total plus AUD ${(record.shares.reduce((sum, s) => sum + (s.fixedAmountCents || 0), 0) / 100).toFixed(2)} fixed; basis ${record.basis}. ${record.notes}`;
       } else if (action === "approve") {
         if (record.status !== "draft" || !record.shares.length) throw new EarningsError("Save draft shares before approving.", 409);
-        const settingsDoc = await db.collection("settings").findOne({ _id: "team-earnings" } as never, { session });
         const settings: TeamEarningsSettings = {
           ...defaultTeamEarningsSettings,
           ...(settingsDoc || {}),
           basis: settingsDoc?.basis === "inclusive" ? "inclusive" : "ex_gst",
+          maxTeamShareBps,
           employeeSettings: Array.isArray(settingsDoc?.employeeSettings) ? settingsDoc.employeeSettings : [],
           automaticExpenses: Array.isArray(settingsDoc?.automaticExpenses) ? settingsDoc.automaticExpenses : [],
         };
@@ -269,7 +272,7 @@ export async function mutateTeamEarnings(id: string, value: unknown, actor: stri
         // Confirm the amount the manager reviewed; a stale UI cannot approve a
         // different invoice even if the earnings document itself did not change.
         if (!sameEarningsInvoice(body.invoice as typeof invoice, invoice)) throw new EarningsError("The invoice changed. Refresh before approving.", 409);
-        validateEarningsTotal(record.shares, invoice.baseCents);
+        validateEarningsTotal(record.shares, invoice.baseCents, maxTeamShareBps);
         const completionDate = job.completionDate;
         if (completionDate) await dailyCaps.updateOne({ _id: completionDate }, { $inc: { version: 1 } }, { upsert: true, session });
         const usedByMember = new Map<string, number>();

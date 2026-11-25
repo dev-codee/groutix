@@ -101,17 +101,25 @@ test("each invoice has an independent sent and payment state within one job", ()
   assert.equal(paid.paymentStatus, "partial");
   assert.equal(paid.invoicePaid, false);
 });
-test("shares require valid members, integer precision, unique recipients and total at most 100%", () => {
+test("shares require valid members, integer precision, unique recipients and total at most 35%", () => {
   const parse = shares => rules.parseEarningsShares(shares, [member, second]);
-  for (const shares of [[], [{ memberId, rateBps: 0 }], [{ memberId, rateBps: 1.5 }], [{ memberId, rateBps: 10001 }], [{ memberId: "unknown", rateBps: 100 }], [{ memberId, rateBps: 5000 }, { memberId, rateBps: 5000 }], [{ memberId, rateBps: 8000 }, { memberId: secondId, rateBps: 3000 }]]) assert.throws(() => parse(shares));
+  for (const shares of [[], [{ memberId, rateBps: 0 }], [{ memberId, rateBps: 1.5 }], [{ memberId, rateBps: 3501 }], [{ memberId: "unknown", rateBps: 100 }], [{ memberId, rateBps: 2000 }, { memberId, rateBps: 1000 }], [{ memberId, rateBps: 2000 }, { memberId: secondId, rateBps: 1501 }]]) assert.throws(() => parse(shares));
   assert.equal(parse([{ memberId, rateBps: 3000 }])[0].name, "Alex");
   assert.throws(() => rules.parseEarningsShares([{ memberId, rateBps: 100 }], [{ ...member, active: false }]));
 });
-test("shared-job rounding reconciles to cents and never exceeds the invoice basis", () => {
-  const shares = rules.parseEarningsShares([{ memberId, rateBps: 5000 }, { memberId: secondId, rateBps: 5000 }], [member, second]);
+test("saved team payout limit controls draft and approval validation", async () => {
+  const f = fixture();
+  f.state.settings[0].maxTeamShareBps = 4000;
+  const d = await f.mutate("save", 0, { basis: "ex_gst", shares: [{ memberId, rateBps: 4000 }] });
+  assert.equal(d.shares[0].rateBps, 4000);
+  f.state.settings[0].maxTeamShareBps = 3500;
+  await assert.rejects(f.mutate("approve", d.version, { invoice: rules.invoiceForEarnings(baseLead, "ex_gst") }), /35%/);
+});
+test("shared-job rounding reconciles to cents at the 35% team limit", () => {
+  const shares = rules.parseEarningsShares([{ memberId, rateBps: 1750 }, { memberId: secondId, rateBps: 1750 }], [member, second]);
   for (let cents = 1; cents < 1000; cents++) {
     const result = rules.calculateEarnings(shares, cents);
-    assert.equal(result.reduce((sum, s) => sum + s.earnedCents, 0), cents);
+    assert.equal(result.reduce((sum, s) => sum + s.earnedCents, 0), Math.round(cents * 3500 / 10000));
     assert.equal(result.every(s => Number.isSafeInteger(s.earnedCents)), true);
   }
 });
@@ -283,23 +291,23 @@ test("separately saved customer invoices appear, approve, and detect later invoi
 
 test("fixed amounts mix with percentage shares, survive approval and support payment", async () => {
   const f = fixture();
-  const d = await f.mutate("save", 0, { basis: "ex_gst", shares: [{ memberId, fixedAmountCents: 30000 }, { memberId: secondId, rateBps: 2500 }] });
-  assert.equal(d.shares[0].fixedAmountCents, 30000);
+  const d = await f.mutate("save", 0, { basis: "ex_gst", shares: [{ memberId, fixedAmountCents: 10000 }, { memberId: secondId, rateBps: 2500 }] });
+  assert.equal(d.shares[0].fixedAmountCents, 10000);
   const a = await f.mutate("approve", d.version, { invoice: rules.invoiceForEarnings(baseLead, "ex_gst") });
-  assert.deepEqual(a.shares.map(s => s.earnedCents), [30000, 25000]);
-  const paid = await f.mutate("pay", a.version, pay({ amountCents: 30000 }));
-  assert.equal(paid.shares[0].paidCents, 30000);
-  assert.equal(paid.shares[0].fixedAmountCents, 30000);
+  assert.deepEqual(a.shares.map(s => s.earnedCents), [10000, 25000]);
+  const paid = await f.mutate("pay", a.version, pay({ amountCents: 10000 }));
+  assert.equal(paid.shares[0].paidCents, 10000);
+  assert.equal(paid.shares[0].fixedAmountCents, 10000);
 });
 
-test("invalid fixed amounts and mixed totals above the invoice basis are rejected", async () => {
+test("invalid fixed amounts and mixed totals above the 35% team limit are rejected", async () => {
   for (const fixedAmountCents of [0, -1, 1.5, NaN, "30000"]) {
     assert.throws(() => rules.parseEarningsShares([{ memberId, fixedAmountCents }], [member]));
   }
   assert.throws(() => rules.parseEarningsShares([{ memberId, fixedAmountCents: 30000, rateBps: 1000 }], [member]));
   const f = fixture();
   await assert.rejects(f.mutate("save", 0, { basis: "ex_gst", shares: [{ memberId, fixedAmountCents: 80000 }, { memberId: secondId, rateBps: 2500 }] }), /cannot exceed/);
-  const d = await f.mutate("save", 0, { basis: "ex_gst", shares: [{ memberId, fixedAmountCents: 80000 }] });
+  const d = await f.mutate("save", 0, { basis: "ex_gst", shares: [{ memberId, fixedAmountCents: 30000 }] });
   f.state.submissions[0].invoiceAmount = 550;
   await assert.rejects(f.mutate("approve", d.version, { invoice: rules.invoiceForEarnings({ ...baseLead, invoiceAmount: 550 }, "ex_gst") }), /cannot exceed/);
 });

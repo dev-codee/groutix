@@ -51,13 +51,18 @@ export function DispatchBookingModal({ date: initialDate, time: initialTime, sta
   const initialLead = scopedLeads.find(lead => lead.id === initialLeadId);
   const [customer, setCustomer] = useState({ name: initialLead?.name || "", email: initialLead?.email || "", phone: initialLead?.phone || "", address: initialLead?.address || "" });
   const [service, setService] = useState(initialLead?.service || "");
-  const [assignee, setAssignee] = useState((initialType === "job" ? assignableTechnicians : inspectionStaff).find(person => person.active && person.name === staffName)?.id || "");
+  const defaultAssignee = (bookingType: "inspection" | "job") => {
+    const people = (bookingType === "job" ? assignableTechnicians : inspectionStaff).filter(person => person.active);
+    return people.find(person => person.name === staffName)?.id
+      || (bookingType === "inspection" ? people.find(person => /^johnny?$/i.test(person.name.trim()))?.id || (people.length === 1 ? people[0].id : "") : "");
+  };
+  const [assignee, setAssignee] = useState(defaultAssignee(initialType));
   const [review, setReview] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [warnings, setWarnings] = useState<string[]>([]);
-  const [notifyEmail, setNotifyEmail] = useState(true);
-  const [notifySms, setNotifySms] = useState(true);
+  const [notifyEmail, setNotifyEmail] = useState(false);
+  const [notifySms, setNotifySms] = useState(false);
   const savedLead = useRef<Lead | null>(null);
   const saving = useRef(false);
   const dialog = useRef<HTMLDivElement>(null);
@@ -169,7 +174,7 @@ export function DispatchBookingModal({ date: initialDate, time: initialTime, sta
               ? <p className="text-xs text-slate-500">Adding this booking stages it in the day. You choose whether to notify the customer when you review and save the route.</p>
               : <p className="text-xs text-slate-500">Confirming creates a new booking record and reserves this time{notifyEmail || notifySms ? " and sends confirmations through the configured email/SMS services" : " without sending any customer notifications"}. Existing bookings remain unchanged.</p>}
           </div> : <>
-            <div className="grid grid-cols-2 gap-3">{(["inspection", "job"] as const).map(value => <button key={value} type="button" aria-pressed={type === value} onClick={() => { setType(value); setAssignee(""); setFinish(""); }} className={`rounded-xl border p-3 font-semibold capitalize ${type === value ? "border-blue-600 bg-blue-50 text-blue-700" : "border-slate-200"}`}>{value}</button>)}</div>
+            <div className="grid grid-cols-2 gap-3">{(["inspection", "job"] as const).map(value => <button key={value} type="button" aria-pressed={type === value} onClick={() => { setType(value); setAssignee(defaultAssignee(value)); setFinish(""); }} className={`rounded-xl border p-3 font-semibold capitalize ${type === value ? "border-blue-600 bg-blue-50 text-blue-700" : "border-slate-200"}`}>{value}</button>)}</div>
             <BookingTimingEditor type={type} start={`${date}T${time}`} end={finish} rules={rules} minDate={todayAU()} disabled={busy}
               onChange={(start, end) => { setDate(start.slice(0, 10)); setTime(start.slice(11, 16)); setFinish(end); }} />
             <div className="flex gap-3">{(["existing", "new"] as const).map(value => <button type="button" key={value} aria-pressed={mode === value} onClick={() => { setMode(value); savedLead.current = null; setCustomerId(""); setCustomer({ name: "", email: "", phone: "", address: "" }); setService(""); }} className={`text-sm rounded-lg px-3 py-2 ${mode === value ? "bg-slate-900 text-white" : "bg-slate-100"}`}>{value === "existing" ? "Existing customer" : "New customer"}</button>)}</div>
@@ -179,7 +184,7 @@ export function DispatchBookingModal({ date: initialDate, time: initialTime, sta
             <label className="block text-sm">{type === "job" ? "Technician" : "Inspector"}<select required className={input} value={assignee} onChange={e => setAssignee(e.target.value)}><option value="">Select a specialist</option>{choices.map(c => <option key={c.key} value={c.key}>{c.name}</option>)}</select></label>
             <fieldset className="rounded-xl border border-slate-200 p-3">
               <legend className="px-1 text-sm font-semibold text-slate-700">Customer notifications</legend>
-              <p className="mb-2 text-xs text-slate-500">Uncheck both to schedule without notifying the customer.</p>
+              <p className="mb-2 text-xs text-slate-500">Both are off by default. Select a channel to notify the customer.</p>
               <div className="flex flex-wrap gap-4">
                 <label className="flex items-center gap-2 text-sm"><input type="checkbox" className="h-4 w-4 rounded border-slate-300" checked={notifyEmail} onChange={e => setNotifyEmail(e.target.checked)} /> Send email confirmation</label>
                 <label className="flex items-center gap-2 text-sm"><input type="checkbox" className="h-4 w-4 rounded border-slate-300" checked={notifySms} onChange={e => setNotifySms(e.target.checked)} /> Send SMS confirmation</label>

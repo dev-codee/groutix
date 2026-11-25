@@ -57,11 +57,13 @@ function EarningsDetail({ job, members, settings, onClose, onChanged, onExpenseC
   const ledger = job.ledger;
   const approved = ledger?.status === "approved";
   const totalRate = rows.reduce((sum, row) => sum + (row.mode === "percent" ? Number(row.value || 0) : 0), 0);
+  const maxTeamShareBps = settings?.maxTeamShareBps ?? defaultTeamEarningsSettings.maxTeamShareBps;
+  const maxTeamSharePercent = maxTeamShareBps / 100;
   const invoice = job.invoice;
   const previewBase = invoice ? basis === "inclusive" ? invoice.totalCents : (invoice.items || [invoice]).reduce((sum, item) => sum + Math.round(item.totalCents * 10000 / (10000 + item.gstBps)), 0) : 0;
   const rawPreview = calculateEarnings(rows.map(row => ({ ...sharePayload(row), name: "", earnedCents: 0, paidCents: 0 })), previewBase);
   const preview = applyDailyEarningsCaps(rawPreview, job.dailyCapUsage);
-  const exceedsBase = !!invoice && rawPreview.reduce((sum, share) => sum + share.earnedCents, 0) > previewBase;
+  const exceedsBase = !!invoice && rawPreview.reduce((sum, share) => sum + share.earnedCents, 0) > Math.round(previewBase * maxTeamShareBps / 10000);
   const dirty = basis !== (ledger?.basis || "ex_gst") || notes !== (ledger?.notes || "") || JSON.stringify(rows) !== JSON.stringify(ledger?.shares.map(shareRow) || []);
   const shares = approved ? ledger!.shares : preview;
   const totalEarned = shares.reduce((sum, s) => sum + s.earnedCents, 0);
@@ -90,7 +92,7 @@ function EarningsDetail({ job, members, settings, onClose, onChanged, onExpenseC
     await mutate({ action: "save", basis, notes, shares: rows.map(sharePayload) });
   }
   async function createDues() {
-    if (busy || !job.eligible || !invoice || exceedsBase || totalRate > 100) return;
+    if (busy || !job.eligible || !invoice || exceedsBase || totalRate > maxTeamSharePercent) return;
     setBusy(true); setError("");
     try {
       let draft = ledger;
@@ -144,7 +146,7 @@ function EarningsDetail({ job, members, settings, onClose, onChanged, onExpenseC
                 <td className="min-w-28 p-1.5"><select required aria-label={`Employee ${index + 1}`} className={input} value={row.memberId} onChange={e => setRows(old => old.map((r, i) => i === index ? { ...r, memberId: e.target.value } : r))}><option value="">Select</option>{members.filter(m => m.active || ledger?.shares.some(s => s.memberId === m.id)).map(m => <option key={m.id} value={m.id}>{m.name}</option>)}</select></td>
                 <td className="p-2 text-xs capitalize text-slate-600">{member?.role || "—"}</td>
                 <td className="min-w-24 p-1.5"><select aria-label={`Share type ${index + 1}`} className={input} value={row.mode} onChange={e => setRows(old => old.map((r, i) => i === index ? { ...r, mode: e.target.value as ShareRow["mode"], value: "" } : r))}><option value="percent">%</option><option value="amount">$</option></select></td>
-                <td className="min-w-20 p-1.5"><input required aria-label={`Share value ${index + 1}`} className={input} type="number" min="0.01" max={row.mode === "percent" ? 100 : undefined} step="0.01" value={row.value} onChange={e => setRows(old => old.map((r, i) => i === index ? { ...r, value: e.target.value } : r))} placeholder={row.mode === "percent" ? "30" : "100"} /></td>
+                <td className="min-w-20 p-1.5"><input required aria-label={`Share value ${index + 1}`} className={input} type="number" min="0.01" max={row.mode === "percent" ? maxTeamSharePercent : undefined} step="0.01" value={row.value} onChange={e => setRows(old => old.map((r, i) => i === index ? { ...r, value: e.target.value } : r))} placeholder={row.mode === "percent" ? "30" : "100"} /></td>
                 <td className="whitespace-nowrap p-2 font-semibold text-slate-800">{invoice ? money(earned) : "—"}</td>
                 <td className="whitespace-nowrap p-2 text-slate-500">$0.00</td>
                 <td className="whitespace-nowrap p-2 font-semibold text-rose-600">{invoice ? money(earned) : "—"}</td>
@@ -158,14 +160,14 @@ function EarningsDetail({ job, members, settings, onClose, onChanged, onExpenseC
         </div>
         <div className="flex flex-wrap items-center justify-between gap-2">
           <button className={button} type="button" disabled={rows.length >= 20} onClick={() => setRows(old => [...old, emptyRow()])}><Plus className="h-3.5 w-3.5" />Add Employee</button>
-          <p className={`text-xs font-semibold ${totalRate > 100 || exceedsBase ? "text-rose-600" : "text-slate-500"}`}>{totalRate > 0 ? `${totalRate.toFixed(2)}% total` : ""} {exceedsBase ? "· exceeds invoice base" : ""}</p>
+          <p className={`text-xs font-semibold ${totalRate > maxTeamSharePercent || exceedsBase ? "text-rose-600" : "text-slate-500"}`}>{totalRate > 0 ? `${totalRate.toFixed(2)}% total` : ""} · {maxTeamSharePercent}% maximum for the whole team · company keeps at least {100 - maxTeamSharePercent}% {exceedsBase ? "· exceeds team limit" : ""}</p>
         </div>
-        {exceedsBase && <ErrorBox error="Combined team shares cannot exceed the invoice basis." />}
+        {exceedsBase && <ErrorBox error={`Combined team shares cannot exceed ${maxTeamSharePercent}% of the invoice basis.`} />}
         <Field name="Manager notes"><textarea className={input} maxLength={2000} rows={2} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Agreed rate, shared work or other context" /></Field>
       </fieldset>
       <div className="flex flex-wrap items-center justify-end gap-2 border-t border-slate-100 pt-3">
-        {!approved && <button className={button} disabled={busy || totalRate > 100 || exceedsBase} type="submit">{busy && <Loader2 className="h-4 w-4 animate-spin" />}Save draft shares</button>}
-        <button type="button" className={primary} disabled={busy || !job.eligible || !invoice || (approved && !dirty) || !rows.length || rows.some(row => !row.memberId || !Number.isFinite(Number(row.value)) || Number(row.value) <= 0) || totalRate > 100 || exceedsBase} title={job.unavailableReason} onClick={() => void createDues()}><CheckCircle2 className="h-4 w-4" />{approved ? "Save share changes" : "Add to pending dues"}</button>
+        {!approved && <button className={button} disabled={busy || totalRate > maxTeamSharePercent || exceedsBase} type="submit">{busy && <Loader2 className="h-4 w-4 animate-spin" />}Save draft shares</button>}
+        <button type="button" className={primary} disabled={busy || !job.eligible || !invoice || (approved && !dirty) || !rows.length || rows.some(row => !row.memberId || !Number.isFinite(Number(row.value)) || Number(row.value) <= 0) || totalRate > maxTeamSharePercent || exceedsBase} title={job.unavailableReason} onClick={() => void createDues()}><CheckCircle2 className="h-4 w-4" />{approved ? "Save share changes" : "Add to pending dues"}</button>
       </div>
       {!job.eligible && <p className="text-xs text-amber-700">{job.unavailableReason}</p>}
       {job.eligible && <p className="text-xs text-slate-500">Calculated from the job invoice and the share settings above. Saving updates Team Summary and pending dues; use Pay after money is sent.</p>}
@@ -247,6 +249,7 @@ function EarningsSettingsDialog({ members, current, onClose, onSaved, onManageTe
   const savedSettings = current || defaultTeamEarningsSettings;
   const [basis, setBasis] = useState<EarningsBasis>(savedSettings.basis);
   const [gstRate, setGstRate] = useState(String(savedSettings.gstRateBps / 100));
+  const [maxTeamShare, setMaxTeamShare] = useState(String(savedSettings.maxTeamShareBps / 100));
   const [employeeRows, setEmployeeRows] = useState<EmployeeSettingForm[]>(() => members.map(member => {
     const saved = savedSettings.employeeSettings.find(setting => setting.memberId === member.id);
     return { memberId: member.id, mode: saved?.mode || "percent", value: saved ? String(saved.mode === "amount" ? (saved.fixedAmountCents || 0) / 100 : saved.rateBps / 100) : "", dailyMaximum: saved?.dailyCapCents == null ? "" : String(saved.dailyCapCents / 100) };
@@ -262,7 +265,7 @@ function EarningsSettingsDialog({ members, current, onClose, onSaved, onManageTe
       const saved = await api<TeamEarningsSettings>("/api/admin/team-earnings/settings", {
         method: "POST",
         body: JSON.stringify({
-          basis, gstRateBps: Math.round(Number(gstRate) * 100),
+          basis, gstRateBps: Math.round(Number(gstRate) * 100), maxTeamShareBps: Math.round(Number(maxTeamShare) * 100),
           employeeSettings: employeeRows.map(row => ({
             memberId: row.memberId, mode: row.mode,
             rateBps: row.mode === "percent" ? Math.round(Number(row.value || 0) * 100) : 0,
@@ -280,7 +283,7 @@ function EarningsSettingsDialog({ members, current, onClose, onSaved, onManageTe
   }
   return <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-950/50 p-3 sm:p-6" role="presentation">
     <section role="dialog" aria-modal="true" aria-labelledby="earnings-settings-title" className="my-auto max-h-[94vh] w-full max-w-5xl overflow-y-auto rounded-2xl bg-white shadow-2xl">
-      <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white px-5 py-4"><div><h2 id="earnings-settings-title" className="text-lg font-bold">Team Earnings Settings</h2><p className="text-xs text-slate-500">Settings apply to new drafts and automatic expenses only. Approved earnings remain unchanged.</p></div><button className={button} type="button" onClick={onClose}>Close</button></div>
+      <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white px-5 py-4"><div><h2 id="earnings-settings-title" className="text-lg font-bold">Team Earnings Settings</h2><p className="text-xs text-slate-500">The payout limit applies when drafts are saved or approved. Approved earnings remain unchanged.</p></div><button className={button} type="button" onClick={onClose}>Close</button></div>
       <form onSubmit={save} className="space-y-6 p-5">
         <ErrorBox error={error} />
         <section className="grid gap-4 rounded-xl border border-slate-200 p-4 sm:grid-cols-2">
@@ -288,6 +291,7 @@ function EarningsSettingsDialog({ members, current, onClose, onSaved, onManageTe
           <Field name="Invoice entry mode"><select className={input} value={basis} onChange={e => setBasis(e.target.value as EarningsBasis)}><option value="ex_gst">Excluding GST</option><option value="inclusive">Including GST</option></select></Field>
           <Field name="GST rate (%)"><input className={input} type="number" min="0" max="100" step="0.01" required value={gstRate} onChange={e => setGstRate(e.target.value)} /></Field>
         </section>
+        <section className="rounded-xl border border-slate-200 p-4"><h3 className="font-bold">Team payout limit</h3><p className="mt-1 text-xs text-slate-500">Maximum combined share for all people on one job. The remainder stays with the company. Existing approved earnings stay unchanged.</p><div className="mt-3 max-w-48"><Field name="Maximum team share (%)"><input className={input} type="number" min="0.01" max="100" step="0.01" required value={maxTeamShare} onChange={e => setMaxTeamShare(e.target.value)} /></Field></div></section>
         <section className="space-y-3 rounded-xl border border-slate-200 p-4">
           <div><h3 className="font-bold">Default Share, Daily Maximum & Role</h3><p className="mt-1 text-xs text-slate-500">Defaults prefill new job shares. Daily maximum caps one worker&apos;s combined approved earnings across all jobs on the same completion date. Roles are managed in the CRM team roster.</p></div>
           <div className="overflow-x-auto"><table className="w-full min-w-[720px] text-left text-sm"><thead className="bg-slate-50 text-xs text-slate-500"><tr>{["Employee", "Share type", "Default share / amount", "Daily max (AUD)", "Role"].map(title => <th key={title} className="p-2">{title}</th>)}</tr></thead><tbody>{employeeRows.map((row, index) => {
@@ -295,7 +299,7 @@ function EarningsSettingsDialog({ members, current, onClose, onSaved, onManageTe
             return <tr key={row.memberId} className="border-b border-slate-100">
               <td className="p-2 font-semibold">{member?.name || "Former member"}{member && !member.active && <span className="ml-1 text-xs text-slate-400">Inactive</span>}</td>
               <td className="min-w-36 p-2"><select className={input} value={row.mode} onChange={e => setEmployeeRows(old => old.map((item, i) => i === index ? { ...item, mode: e.target.value as EmployeeSettingForm["mode"] } : item))}><option value="percent">Percentage %</option><option value="amount">Fixed $</option></select></td>
-              <td className="min-w-40 p-2"><input className={input} type="number" min="0" step="0.01" aria-label={`${member?.name || "Employee"} default ${row.mode}`} placeholder="No default" value={row.value} onChange={e => setEmployeeRows(old => old.map((item, i) => i === index ? { ...item, value: e.target.value } : item))} /></td>
+              <td className="min-w-40 p-2"><input className={input} type="number" min="0" max={row.mode === "percent" ? Number(maxTeamShare) : undefined} step="0.01" aria-label={`${member?.name || "Employee"} default ${row.mode}`} placeholder="No default" value={row.value} onChange={e => setEmployeeRows(old => old.map((item, i) => i === index ? { ...item, value: e.target.value } : item))} /></td>
               <td className="min-w-36 p-2"><input className={input} type="number" min="0.01" step="0.01" aria-label={`${member?.name || "Employee"} daily maximum`} placeholder="No maximum" value={row.dailyMaximum} onChange={e => setEmployeeRows(old => old.map((item, i) => i === index ? { ...item, dailyMaximum: e.target.value } : item))} /></td>
               <td className="p-2 text-xs capitalize">{member?.role || "former member"}</td>
             </tr>;
@@ -349,8 +353,9 @@ function JobExpensesInline({ job, onChanged }: { job: EarningsJob; onChanged: ()
   </div>;
 }
 
-export function TeamEarningsView({ query, onQueryChange, onOpenJob, onAddJob, onManageTeam, refreshKey }: {
+export function TeamEarningsView({ query, onQueryChange, onOpenJob, onManageInvoices, onAddJob, onManageTeam, refreshKey }: {
   query: string; onQueryChange: (value: string) => void; onOpenJob: (id: string) => void;
+  onManageInvoices: (id: string) => void;
   onAddJob: () => void; onManageTeam: () => void; refreshKey?: boolean;
 }) {
   const [data, setData] = useState<EarningsData>({ members: [], jobs: [], settings: defaultTeamEarningsSettings, payments: [] });
@@ -459,7 +464,7 @@ export function TeamEarningsView({ query, onQueryChange, onOpenJob, onAddJob, on
       </section>
       {tab === "jobs" && activeJob ? <section className={`${panel} space-y-2.5 p-3`}>
         <div className="flex flex-wrap items-center justify-between gap-2"><div><h3 className="text-lg font-bold">Job # {activeJob.jobLabel}</h3><p className="text-xs text-slate-500">{activeJob.customer} · {activeJob.completionDate || activeJob.scheduledAt?.slice(0, 10) || "No date"} · {activeJob.service}</p></div><div className="flex gap-2"><Badge warning={activeJob.changed}>{label(activeJob)}</Badge>{activeJob.status !== "Source unavailable" && <button className={button} onClick={() => onOpenJob(activeJob.id)}>Edit Job</button>}</div></div>
-        <div className="grid gap-3 md:grid-cols-2"><section className="rounded-xl border border-slate-200 p-3 text-sm"><h4 className="mb-2 font-bold">Job Details</h4><p className="flex justify-between gap-2"><span className="text-slate-500">Customer</span><b>{activeJob.customer}</b></p><p className="mt-1 flex justify-between gap-2"><span className="text-slate-500">Job date</span><b>{activeJob.completionDate || activeJob.scheduledAt?.slice(0, 10) || "—"}</b></p><p className="mt-1 flex justify-between gap-2"><span className="text-slate-500">Job value</span><b>{money(activeJob.invoice?.totalCents || 0)}</b></p><p className="mt-1 flex justify-between gap-2"><span className="text-slate-500">Invoices</span><b>{activeJob.invoice?.items?.length || (activeJob.invoice ? 1 : 0)}</b></p></section><section className="rounded-xl border border-slate-200 p-3 text-sm"><h4 className="mb-2 font-bold">Customer Payment</h4><p className="flex justify-between gap-2"><span className="text-slate-500">Received</span><b className="text-emerald-700">{money(registerTotals([activeJob]).received)}</b></p><p className="mt-1 flex justify-between gap-2"><span className="text-slate-500">Overall status</span><Badge warning={["partial", "pending"].includes(activeJob.paymentStatus)}>{paymentStatusLabel(activeJob.paymentStatus)}</Badge></p><p className="mt-1 flex justify-between gap-2"><span className="text-slate-500">Customer outstanding</span><b>{money((activeJob.invoice?.totalCents || 0) - registerTotals([activeJob]).received)}</b></p><button className={`${button} mt-2`} onClick={() => onOpenJob(activeJob.id)}>Manage customer invoices</button></section></div>
+        <div className="grid gap-3 md:grid-cols-2"><section className="rounded-xl border border-slate-200 p-3 text-sm"><h4 className="mb-2 font-bold">Job Details</h4><p className="flex justify-between gap-2"><span className="text-slate-500">Customer</span><b>{activeJob.customer}</b></p><p className="mt-1 flex justify-between gap-2"><span className="text-slate-500">Job date</span><b>{activeJob.completionDate || activeJob.scheduledAt?.slice(0, 10) || "—"}</b></p><p className="mt-1 flex justify-between gap-2"><span className="text-slate-500">Job value</span><b>{money(activeJob.invoice?.totalCents || 0)}</b></p><p className="mt-1 flex justify-between gap-2"><span className="text-slate-500">Invoices</span><b>{activeJob.invoice?.items?.length || (activeJob.invoice ? 1 : 0)}</b></p></section><section className="rounded-xl border border-slate-200 p-3 text-sm"><h4 className="mb-2 font-bold">Customer Payment</h4><p className="flex justify-between gap-2"><span className="text-slate-500">Received</span><b className="text-emerald-700">{money(registerTotals([activeJob]).received)}</b></p><p className="mt-1 flex justify-between gap-2"><span className="text-slate-500">Overall status</span><Badge warning={["partial", "pending"].includes(activeJob.paymentStatus)}>{paymentStatusLabel(activeJob.paymentStatus)}</Badge></p><p className="mt-1 flex justify-between gap-2"><span className="text-slate-500">Customer outstanding</span><b>{money((activeJob.invoice?.totalCents || 0) - registerTotals([activeJob]).received)}</b></p><button className={`${button} mt-2`} onClick={() => onManageInvoices(activeJob.id)}>Manage customer invoices</button></section></div>
         {!!activeJob.receipts?.length && <details className="text-xs"><summary className="cursor-pointer font-semibold text-slate-600">Invoice payment details ({activeJob.receipts.length})</summary><div className="mt-2 grid gap-2 sm:grid-cols-2">{activeJob.receipts.map((receipt, index) => <article key={`${receipt.number}-${index}`} className="rounded-lg border border-slate-200 bg-white p-2 text-xs"><div className="flex items-start justify-between gap-2"><b>{receipt.number}</b><Badge warning={receipt.status === "pending" || receipt.status === "partial"}>{invoicePaymentStatusLabel(receipt.status)}</Badge></div><div className="mt-2 grid grid-cols-3 gap-1 text-slate-600"><span>Total<br /><b className="text-slate-900">{money(receipt.totalCents)}</b></span><span>Received<br /><b className="text-emerald-700">{money(receipt.paidCents)}</b></span><span>Remaining<br /><b className="text-rose-700">{money(receipt.remainingCents)}</b></span></div></article>)}</div></details>}
         {editorOpen ? <EarningsDetail key={`${activeJob.id}:${activeJob.ledger?.version || 0}:${selected?.id === activeJob.id ? selected.memberId || "details" : "details"}`} job={activeJob} initialMember={selected?.id === activeJob.id ? selected.memberId : undefined} members={data.members} settings={data.settings} onClose={() => { setEditorOpen(false); setSelected(null); }} onChanged={saved} onExpenseChanged={() => { setNotice("Expense saved to the job record."); void load(); }} />
           : <button className={primary} onClick={() => setEditorOpen(true)}>Manage team shares and payments</button>}

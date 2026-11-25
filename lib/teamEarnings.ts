@@ -79,7 +79,9 @@ export function invoiceForEarnings(lead: InvoiceSource & { earningsInvoices?: In
 export function sameEarningsInvoice(a: EarningsInvoice | null, b: EarningsInvoice | null) {
   return !!a && !!b && a.number === b.number && a.totalCents === b.totalCents && a.gstBps === b.gstBps && a.baseCents === b.baseCents && JSON.stringify(a.items || []) === JSON.stringify(b.items || []);
 }
-export function parseEarningsShares(value: unknown, members: EarningsMember[], existing: EarningsShare[] = []): EarningsShare[] {
+export const DEFAULT_TEAM_SHARE_BPS = 3500;
+
+export function parseEarningsShares(value: unknown, members: EarningsMember[], existing: EarningsShare[] = [], maxTeamShareBps = DEFAULT_TEAM_SHARE_BPS): EarningsShare[] {
   if (!Array.isArray(value) || !value.length || value.length > 20) throw new EarningsError("Choose between 1 and 20 team members.");
   const ids = new Set<string>();
   const shares = value.map(row => {
@@ -92,9 +94,9 @@ export function parseEarningsShares(value: unknown, members: EarningsMember[], e
       if (body.rateBps !== undefined && body.rateBps !== 0) throw new EarningsError("Choose either a percentage or a fixed amount.");
       return { memberId: member.id, name: member.name, rateBps: 0, fixedAmountCents: earningsInteger(body.fixedAmountCents, "fixed amount", 1), earnedCents: 0, paidCents: 0 };
     }
-    return { memberId: member.id, name: member.name, rateBps: earningsInteger(body.rateBps, "percentage (0.01–100%)", 1, 10000), earnedCents: 0, paidCents: 0 };
+    return { memberId: member.id, name: member.name, rateBps: earningsInteger(body.rateBps, "percentage", 1, maxTeamShareBps), earnedCents: 0, paidCents: 0 };
   });
-  if (shares.reduce((sum, row) => sum + row.rateBps, 0) > 10000) throw new EarningsError("Combined team shares cannot exceed 100% of the invoice basis.");
+  if (shares.reduce((sum, row) => sum + row.rateBps, 0) > maxTeamShareBps) throw new EarningsError(`Combined team shares cannot exceed ${maxTeamShareBps / 100}% of the invoice basis.`);
   return shares;
 }
 // Allocate whole cents using the largest-remainder method, with a stable ID
@@ -136,7 +138,7 @@ export function earningsCompletionDate(lead: EarningsSourceLead): string {
   const active = leadBookings(lead).filter(booking => booking.type === "job" && booking.status !== "Cancelled");
   return active.map(booking => booking.date).sort().at(-1) || lead.jobAt?.slice(0, 10) || lead.createdAt?.slice(0, 10) || "";
 }
-export function earningsJob(lead: EarningsSourceLead, members: EarningsMember[], ledger: EarningsLedger | null, settings: TeamEarningsSettings = { basis: "ex_gst", gstRateBps: 1000, employeeSettings: [], automaticExpenses: [] }): EarningsJob {
+export function earningsJob(lead: EarningsSourceLead, members: EarningsMember[], ledger: EarningsLedger | null, settings: TeamEarningsSettings = { basis: "ex_gst", gstRateBps: 1000, maxTeamShareBps: DEFAULT_TEAM_SHARE_BPS, employeeSettings: [], automaticExpenses: [] }): EarningsJob {
   const visits = leadBookings(lead).filter(b => b.type === "job" && b.status !== "Cancelled");
   const assignments = [resolveMember(members, [lead.technicianId], [lead.technicianUsername, lead.technician]), resolveMember(members, [lead.inspectorId], [lead.inspectorUsername, lead.assigned]),
     ...visits.map(b => resolveMember(members, [b.technicianId], [b.technicianUsername, b.technician])),
@@ -190,9 +192,9 @@ export function earningsJob(lead: EarningsSourceLead, members: EarningsMember[],
     changed: ledger?.status === "approved" && (!sameEarningsInvoice(ledger.invoice, invoice) || !!unavailableReason) || false };
 }
 
-export function validateEarningsTotal(shares: EarningsShare[], baseCents: number) {
-  if (calculateEarnings(shares, baseCents).reduce((sum, share) => sum + share.earnedCents, 0) > baseCents) {
-    throw new EarningsError("Combined team amounts and shares cannot exceed the invoice basis.");
+export function validateEarningsTotal(shares: EarningsShare[], baseCents: number, maxTeamShareBps = DEFAULT_TEAM_SHARE_BPS) {
+  if (calculateEarnings(shares, baseCents).reduce((sum, share) => sum + share.earnedCents, 0) > Math.round(baseCents * maxTeamShareBps / 10000)) {
+    throw new EarningsError(`Combined team amounts and shares cannot exceed ${maxTeamShareBps / 100}% of the invoice basis.`);
   }
 }
 

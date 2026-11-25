@@ -4,7 +4,8 @@ import { slotsForDate, type BookingRules, type BookingType } from "./bookingRule
 
 export type ScheduleDragItem =
   | { kind: "booking"; id: string }
-  | { kind: "unassigned"; leadId: string; type: BookingType };
+  | { kind: "unassigned"; leadId: string; type: BookingType }
+  | { kind: "unassigned-group"; leads: { leadId: string; type: BookingType }[] };
 
 interface DropAppointment extends TechnicianAssignment {
   id: string;
@@ -19,6 +20,7 @@ interface DropAppointment extends TechnicianAssignment {
 // Resolve drops without changing appointments. The UI must confirm the returned
 // proposal before it changes either a booking or the planned driving order.
 export function planScheduleDrop(item: ScheduleDragItem, date: string, entries: DropAppointment[], targetId?: string) {
+  if (item.kind === "unassigned-group") return { kind: "book-group" as const, leads: item.leads, date };
   if (item.kind === "unassigned") return { kind: "book" as const, leadId: item.leadId, type: item.type, date };
   const entry = entries.find((entry) => entry.id === item.id);
   if (!entry) return null;
