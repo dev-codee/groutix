@@ -96,7 +96,7 @@ const FAQS = [
   },
   {
     q: "How long will a regrout last?",
-    a: "A proper regrout, with the old grout fully removed and the joints rebuilt, is made to last for years, and eligible complete shower regrouting is backed by our 10 year waterproof warranty. Surface jobs that skim new grout over old are the ones that fail early, which is why we never do them.",
+    a: "A proper regrout, with the old grout removed and the joints rebuilt, is made to last for years, and eligible complete shower regrouting is backed by our 10 year waterproof warranty. Surface jobs that skim new grout over old are the ones that fail early, which is why we never do them.",
   },
 ];
 
