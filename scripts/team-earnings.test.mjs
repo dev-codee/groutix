@@ -357,6 +357,22 @@ test("member summary payment records every invoice balance atomically and retrie
   assert.equal(f.state.team_earnings_payments.length, 2);
 });
 
+test("member summary payment rolls back all jobs if one balance changed", async () => {
+  const f = fixture();
+  const first = await approved(f);
+  f.state.submissions.push({ ...baseLead, _id: new ObjectId(secondId), jobNo: "Job-200", invoiceNumber: "INV-200" });
+  const secondDraft = await f.mutateFor(secondId, "save", 0, { basis: "ex_gst", shares: [{ memberId, rateBps: 2000 }] });
+  const secondApproved = await f.mutateFor(secondId, "approve", secondDraft.version, { invoice: rules.invoiceForEarnings({ ...baseLead, invoiceNumber: "INV-200" }, "ex_gst") });
+  const body = { memberId, date: "2026-01-01", method: "Cash", reference: "BATCH-200", requestId: randomUUID(), entries: [
+    { jobId: leadId, version: first.version, amountCents: 30000 },
+    { jobId: secondId, version: secondApproved.version, amountCents: 19999 },
+  ] };
+  await assert.rejects(f.api.recordMemberEarningsPayment(body, "manager"), /balance changed/);
+  assert.equal(f.state.team_earnings_payments.length, 0);
+  assert.equal(f.state.team_earnings.find(row => row._id === leadId).shares[0].paidCents, 0);
+  assert.equal(f.state.team_earnings.find(row => row._id === secondId).shares[0].paidCents, 0);
+});
+
 test("fixed amounts mix with percentage shares, survive approval and support payment", async () => {
   const f = fixture();
   const d = await f.mutate("save", 0, { basis: "ex_gst", shares: [{ memberId, fixedAmountCents: 10000 }, { memberId: secondId, rateBps: 2500 }] });

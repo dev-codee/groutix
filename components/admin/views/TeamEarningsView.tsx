@@ -17,7 +17,7 @@ const shareRow = (share: EarningsShare): ShareRow => ({ memberId: share.memberId
 const emptyRow = (memberId = ""): ShareRow => ({ memberId, mode: "percent", value: "" });
 const sharePayload = (row: ShareRow) => row.mode === "amount" ? { memberId: row.memberId, rateBps: 0, fixedAmountCents: Math.round(Number(row.value) * 100) } : { memberId: row.memberId, rateBps: Math.round(Number(row.value) * 100) };
 const shareLabel = (share: EarningsShare): string => share.fixedAmountCents !== undefined ? "Fixed amount" : `${share.rateBps / 100}%`;
-const wholeMoney = (cents: number) => new Intl.NumberFormat("en-AU", { style: "currency", currency: "AUD", maximumFractionDigits: 0 }).format(Math.trunc(cents / 100));
+const wholeMoney = (cents: number) => cents !== 0 && Math.abs(cents) < 100 ? `${cents < 0 ? "−" : ""}<$1` : new Intl.NumberFormat("en-AU", { style: "currency", currency: "AUD", maximumFractionDigits: 0 }).format(Math.trunc(cents / 100));
 const today = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Australia/Sydney", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
 async function api<T>(url: string, options?: RequestInit): Promise<T> {
   const response = await fetch(url, { ...options, cache: "no-store", headers: { "Content-Type": "application/json", ...options?.headers } });
