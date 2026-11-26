@@ -5,7 +5,7 @@ import { BriefcaseBusiness, CheckCircle2, CircleDollarSign, Clock3, Download, Hi
 import { applyDailyEarningsCaps, calculateEarnings, distributeTeamPool, formatEarningsMoney as money, type EarningsShare, type EarningsBasis, type EarningsData, type EarningsEvent, type EarningsJob, type EarningsLedger, type EarningsMember, type EarningsPayment } from "@/lib/teamEarnings";
 import { defaultTeamEarningsSettings, type TeamEarningsSettings } from "@/lib/teamEarningsSettings";
 
-import { compareRegisterJobs, matchesRegisterFilter, registerFilters, registerTotals, type RegisterFilter } from "@/lib/teamEarningsRegister";
+import { compareRegisterJobs, matchesRegisterFilter, memberPaymentEntries, registerFilters, registerTotals, type RegisterFilter } from "@/lib/teamEarningsRegister";
 import { earningsJobsCsv, earningsMembersCsv, earningsStatus as label, estimatedEarningsShares as estimatedShares } from "@/lib/teamEarningsCsv";
 import { Settings, Trash2 } from "lucide-react";
 
@@ -17,6 +17,7 @@ const shareRow = (share: EarningsShare): ShareRow => ({ memberId: share.memberId
 const emptyRow = (memberId = ""): ShareRow => ({ memberId, mode: "percent", value: "" });
 const sharePayload = (row: ShareRow) => row.mode === "amount" ? { memberId: row.memberId, rateBps: 0, fixedAmountCents: Math.round(Number(row.value) * 100) } : { memberId: row.memberId, rateBps: Math.round(Number(row.value) * 100) };
 const shareLabel = (share: EarningsShare): string => share.fixedAmountCents !== undefined ? "Fixed amount" : `${share.rateBps / 100}%`;
+const wholeMoney = (cents: number) => new Intl.NumberFormat("en-AU", { style: "currency", currency: "AUD", maximumFractionDigits: 0 }).format(Math.trunc(cents / 100));
 const today = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Australia/Sydney", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
 async function api<T>(url: string, options?: RequestInit): Promise<T> {
   const response = await fetch(url, { ...options, cache: "no-store", headers: { "Content-Type": "application/json", ...options?.headers } });
@@ -28,6 +29,44 @@ function Field({ name, children }: { name: string; children: ReactNode }) {
   return <label className="block space-y-1 text-xs font-semibold text-slate-600"><span>{name}</span>{children}</label>;
 }
 function ErrorBox({ error }: { error: string }) { return error ? <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-2 text-sm text-rose-700">{error}</p> : null; }
+function MemberPaymentDialog({ member, entries, totalDueCents, onClose, onPaid }: {
+  member: EarningsMember;
+  entries: ReturnType<typeof memberPaymentEntries>;
+  totalDueCents: number;
+  onClose: () => void;
+  onPaid: (amountCents: number) => void;
+}) {
+  const [date, setDate] = useState(today());
+  const [method, setMethod] = useState("Bank transfer");
+  const [reference, setReference] = useState("");
+  const [note, setNote] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const request = useRef<{ signature: string; id: string } | null>(null);
+  const amountCents = entries.reduce((sum, entry) => sum + entry.amountCents, 0);
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (busy || !amountCents) return;
+    const body = { memberId: member.id, date, method, reference, note, entries: entries.map(({ jobId, invoiceKey, version, amountCents }) => ({ jobId, invoiceKey, version, amountCents })) };
+    const signature = JSON.stringify(body);
+    if (request.current?.signature !== signature) request.current = { signature, id: crypto.randomUUID() };
+    setBusy(true); setError("");
+    try {
+      const result = await api<{ amountCents: number }>("/api/admin/team-earnings/pay-member", { method: "POST", body: JSON.stringify({ ...body, requestId: request.current.id }) });
+      onPaid(result.amountCents);
+    } catch (failure) { setError((failure as Error).message); }
+    finally { setBusy(false); }
+  }
+  return <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-3" role="presentation">
+    <section role="dialog" aria-modal="true" aria-labelledby="member-payment-title" className="w-full max-w-lg rounded-xl bg-white p-4 shadow-2xl">
+      <div className="flex items-start justify-between gap-2"><div><h2 id="member-payment-title" className="text-base font-bold">Record payment · {member.name}</h2><p className="text-xs text-slate-500">This records money already paid. It does not send a transfer.</p></div><button className={button} type="button" disabled={busy} onClick={onClose}>Close</button></div>
+      <div className="mt-3 rounded-lg bg-blue-50 p-2"><p className="text-xs text-slate-600">Full approved balance to record</p><p className="text-lg font-bold text-slate-900">{money(amountCents)}</p></div>
+      {totalDueCents > amountCents && <p className="mt-2 text-xs text-amber-700">{money(totalDueCents - amountCents)} is on invoices that need review and cannot be recorded here yet.</p>}
+      <div className="mt-2 max-h-40 overflow-y-auto rounded-lg border border-slate-200">{entries.map(entry => <div key={`${entry.jobId}:${entry.invoiceKey || "job"}`} className="flex justify-between gap-2 border-b border-slate-100 px-2 py-1.5 text-xs last:border-b-0"><span className="min-w-0 break-words">{entry.jobLabel}{entry.invoiceNumber && ` · ${entry.invoiceNumber}`}</span><b className="shrink-0">{money(entry.amountCents)}</b></div>)}</div>
+      <form onSubmit={submit} className="mt-3 grid gap-2 sm:grid-cols-2"><Field name="Payment date"><input className={input} type="date" required max={today()} value={date} onChange={event => setDate(event.target.value)} /></Field><Field name="Method"><select className={input} value={method} onChange={event => setMethod(event.target.value)}><option>Bank transfer</option><option>Cash</option><option>Other</option></select></Field><div className="sm:col-span-2"><Field name="Payment reference"><input className={input} required maxLength={160} value={reference} onChange={event => setReference(event.target.value)} placeholder="Bank transaction or cash receipt reference" /></Field></div><div className="sm:col-span-2"><Field name="Note (optional)"><input className={input} maxLength={500} value={note} onChange={event => setNote(event.target.value)} /></Field></div><div className="sm:col-span-2"><ErrorBox error={error} /></div><div className="flex justify-end gap-2 sm:col-span-2"><button className={button} type="button" disabled={busy} onClick={onClose}>Cancel</button><button className={primary} type="submit" disabled={busy || !amountCents}>{busy && <Loader2 className="h-3.5 w-3.5 animate-spin" />}Record full payment</button></div></form>
+    </section>
+  </div>;
+}
 function WorkBreakdown({ job }: { job: EarningsJob }) {
   return <div className="space-y-1.5">{(["inspection", "job"] as const).map(type => <div key={type}>
     <p className="text-xs font-semibold text-slate-700">{type === "inspection" ? "Inspection by" : "Job worked by"}</p>
@@ -425,6 +464,7 @@ export function TeamEarningsView({ query, onQueryChange, onOpenJob, onManageInvo
   const [activeJobId, setActiveJobId] = useState("");
   const [activeInvoiceKey, setActiveInvoiceKey] = useState("");
   const [editorOpen, setEditorOpen] = useState(true);
+  const [payMemberId, setPayMemberId] = useState<string | null>(null);
   const sequence = useRef(0);
   const load = useCallback(async () => {
     const current = ++sequence.current; setLoading(true); setError("");
@@ -465,6 +505,10 @@ export function TeamEarningsView({ query, onQueryChange, onOpenJob, onManageInvo
     }
     return { ...member, assigned: jobs.filter(job => job.assignedIds.includes(member.id)).length, visits: jobs.reduce((sum, job) => sum + (job.memberWork.find(w => w.memberId === member.id)?.completedVisits || 0), 0), days: jobs.reduce((sum, job) => sum + (job.memberWork.find(w => w.memberId === member.id)?.daysDone || 0), 0), earned, paid, estimated };
   });
+  const activeSummaryRows = memberRows.filter(row => row.earned || row.paid || row.estimated);
+  const zeroSummaryRows = memberRows.filter(row => !row.earned && !row.paid && !row.estimated);
+  const payingMember = data.members.find(member => member.id === payMemberId);
+  const payingEntries = payMemberId ? memberPaymentEntries(filtered, payMemberId) : [];
   function exportCsv(members = false) {
     const contents = members ? earningsMembersCsv(memberRows) : earningsJobsCsv(filtered);
     const url = URL.createObjectURL(new Blob(["\uFEFF", contents], { type: "text/csv;charset=utf-8;" }));

@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { ObjectId, type ClientSession } from "mongodb";
 import { getDb, getMongoClient } from "@/lib/mongodb";
 import { listTechnicians } from "@/lib/technicians";
@@ -227,6 +227,68 @@ export async function earningsHistory(id: string, page: number) {
   const entries = await events.find({ leadId: id }).sort({ "snapshot.version": -1 }).skip((page - 1) * 25).limit(26).toArray();
   return { hasMore: entries.length > 25, events: entries.slice(0, 25).map(({ _id, action, actor, createdAt, detail }) => ({ id: _id, action, actor, createdAt, detail })),
     payments: (await payments.find({ leadId: id }).sort({ createdAt: -1, _id: -1 }).toArray()).map(({ _id, leadId: _leadId, ...rest }) => ({ ...rest, id: _id })) };
+}
+export async function recordMemberEarningsPayment(value: unknown, actor: string) {
+  const body = earningsBody(value);
+  const requestId = earningsId(body.requestId);
+  const memberId = earningsText(body.memberId, "Member", 100, true);
+  const date = validMoneyDate(body.date, "Payment date");
+  const method = earningsText(body.method, "Payment method", 30, true);
+  if (!["Bank transfer", "Cash", "Other"].includes(method)) throw new EarningsError("Choose a payment method.");
+  const reference = earningsText(body.reference, "Payment reference", 160, true);
+  const note = earningsText(body.note, "Payment note", 500);
+  if (!Array.isArray(body.entries) || !body.entries.length || body.entries.length > 100) throw new EarningsError("Choose between 1 and 100 approved invoice balances.");
+  const seen = new Set<string>();
+  const entries = body.entries.map(value => {
+    const entry = earningsBody(value);
+    const jobId = validateLeadId(earningsText(entry.jobId, "Job", 24, true));
+    const invoiceKey = entry.invoiceKey === undefined ? undefined : earningsText(entry.invoiceKey, "Invoice", 160, true);
+    const key = `${jobId}:${invoiceKey || "legacy"}`;
+    if (seen.has(key)) throw new EarningsError("Choose each invoice once.");
+    seen.add(key);
+    return { jobId, invoiceKey, version: earningsInteger(entry.version, "version"), amountCents: earningsInteger(entry.amountCents, "payment amount", 1) };
+  });
+  const totalCents = entries.reduce((sum, entry) => sum + entry.amountCents, 0);
+  if (!Number.isSafeInteger(totalCents)) throw new EarningsError("Payment total is too large.");
+  const requestHash = createHash("sha256").update(JSON.stringify({ memberId, date, method, reference, note, entries })).digest("hex");
+  const { ledgers, payments, events } = await collections();
+  const session = (await getMongoClient()).startSession();
+  try {
+    return await session.withTransaction(async () => {
+      const jobIds = [...new Set(entries.map(entry => entry.jobId))];
+      const prior = await events.findOne({ _id: `${jobIds[0]}:${requestId}` }, { session });
+      if (prior) {
+        if (prior.requestHash !== requestHash) throw new EarningsError("This payment request was already used with different details.", 409);
+        return { amountCents: totalCents, paymentsCount: entries.length };
+      }
+      const now = new Date().toISOString();
+      for (const jobId of jobIds) {
+        const current = await ledgers.findOne({ _id: jobId }, { session });
+        const jobEntries = entries.filter(entry => entry.jobId === jobId);
+        if (!current || current.status !== "approved" || jobEntries.some(entry => entry.version !== current.version)) throw new EarningsError("An earnings balance changed. Refresh and review before recording payment.", 409);
+        const lead = await sourceLead(jobId, session);
+        if (!lead || earningsJob(lead, [], serialize(current)).changed) throw new EarningsError("An invoice or job changed after approval. Review it before recording payment.", 409);
+        const record: LedgerDoc = { ...current, shares: current.shares.map(share => ({ ...share })), invoiceShares: current.invoiceShares?.map(allocation => ({ ...allocation, shares: allocation.shares.map(share => ({ ...share })) })) };
+        for (const entry of jobEntries) {
+          const allocation = record.invoiceShares?.find(item => item.invoiceKey === entry.invoiceKey);
+          if (!!record.invoiceShares?.length !== !!entry.invoiceKey || (entry.invoiceKey && !allocation)) throw new EarningsError("Select a valid approved invoice balance.", 409);
+          const share = (allocation?.shares || record.shares).find(item => item.memberId === memberId);
+          if (!share || share.earnedCents - share.paidCents !== entry.amountCents) throw new EarningsError("A member balance changed. Refresh and review before recording payment.", 409);
+          const invoiceNumber = entry.invoiceKey ? (record.invoice?.items || (record.invoice ? [{ ...record.invoice, key: "primary" }] : [])).find(item => item.key === entry.invoiceKey)?.number : undefined;
+          await payments.insertOne({ _id: randomUUID(), leadId: jobId, ...(entry.invoiceKey ? { invoiceKey: entry.invoiceKey, invoiceNumber } : {}), memberId, memberName: share.name, amountCents: entry.amountCents, date, method, reference, note, actor, createdAt: now }, { session });
+          share.paidCents += entry.amountCents;
+          if (allocation) record.shares.find(item => item.memberId === memberId)!.paidCents += entry.amountCents;
+        }
+        record.version = current.version + 1;
+        record.updatedAt = now;
+        const result = await ledgers.replaceOne({ _id: jobId, version: current.version }, record, { session });
+        if (!result.matchedCount) throw new EarningsError("An earnings balance changed. Refresh and review before recording payment.", 409);
+        const paid = jobEntries.reduce((sum, entry) => sum + entry.amountCents, 0);
+        await events.insertOne({ _id: `${jobId}:${requestId}`, leadId: jobId, action: "pay", actor, createdAt: now, detail: `Recorded AUD ${(paid / 100).toFixed(2)} to ${record.shares.find(share => share.memberId === memberId)?.name || memberId} across ${jobEntries.length} invoice balance${jobEntries.length === 1 ? "" : "s"}; reference ${reference}. ${note}`, requestHash, snapshot: record }, { session });
+      }
+      return { amountCents: totalCents, paymentsCount: entries.length };
+    });
+  } finally { await session.endSession(); }
 }
 export async function mutateTeamEarnings(id: string, value: unknown, actor: string) {
   id = validateLeadId(id);

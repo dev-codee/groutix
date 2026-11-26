@@ -31,6 +31,21 @@ export function registerTotals(jobs: EarningsJob[]) {
   }, { invoices: 0, value: 0, received: 0, earned: 0, paid: 0, estimated: 0 });
 }
 
+export function memberPaymentEntries(jobs: EarningsJob[], memberId: string) {
+  return jobs.flatMap(job => {
+    const ledger = job.ledger;
+    if (!ledger || ledger.status !== "approved" || job.changed) return [];
+    const allocations = ledger.invoiceShares?.length
+      ? ledger.invoiceShares.map(allocation => ({ invoiceKey: allocation.invoiceKey, shares: allocation.shares, invoiceNumber: (ledger.invoice?.items || []).find(item => item.key === allocation.invoiceKey)?.number || ledger.invoice?.number }))
+      : [{ invoiceKey: undefined, shares: ledger.shares, invoiceNumber: ledger.invoice?.number }];
+    return allocations.flatMap(allocation => {
+      const share = allocation.shares.find(item => item.memberId === memberId);
+      const amountCents = share ? share.earnedCents - share.paidCents : 0;
+      return amountCents > 0 ? [{ jobId: job.id, jobLabel: job.jobLabel, invoiceKey: allocation.invoiceKey, invoiceNumber: allocation.invoiceNumber, version: ledger.version, amountCents }] : [];
+    });
+  });
+}
+
 // Financial records must be visible before unscheduled leads on the first page.
 export function compareRegisterJobs(a: EarningsJob, b: EarningsJob): number {
   return Number(!!b.invoice) - Number(!!a.invoice) || Number(b.changed) - Number(a.changed)
