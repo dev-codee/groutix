@@ -18,12 +18,12 @@ function render({ open = false, pay = false, failed = false, draft = false } = {
 }
 test('monthly register renders receipts, employee balances and manager reserve from the same jobs', () => {
   const html = render();
-  for (const text of ['Job &amp; Team Payment Management', 'Received', 'Test Worker', 'Employee Summary', 'Manager Summary', '$500.00', '$250.00', '$150.00', 'Edit Job', 'Add Job', 'Settings']) assert.ok(html.includes(text), text);
+  for (const text of ['Job &amp; Team Payment Management', 'Received', 'Test Worker', 'Employee Summary', 'Manager Summary', '$500', '$250', '$150', 'Edit Job', 'Add Job', 'Settings']) assert.ok(html.includes(text), text);
   assert.ok(html.includes('aria-expanded="false"'));
 });
 test('selected job exposes team shares and direct worker payment form inline', () => {
   const html = render({ open: true, pay: true });
-  for (const text of ['INV-TEST', 'Remaining', '$600.00', 'Team shares &amp; payments', 'Save payment record', 'Payment reference', 'Payments &amp; audit log']) assert.ok(html.includes(text), text);
+  for (const text of ['INV-TEST', 'Remaining', '$600', 'Invoices', 'Team Shares', 'Record Payment', 'Payments &amp; audit log']) assert.ok(html.includes(text), text);
   assert.ok(html.includes('aria-expanded="true"'));
   assert.ok(!html.includes('<dialog'));
 });
@@ -37,7 +37,7 @@ test('failed refresh hides stale balances and exposes retry', () => {
 
 test('unconfigured jobs immediately render editable CRM members and share amounts', () => {
   const html = render({ open: true, draft: true });
-  for (const text of ['Team member 1', 'Share type 1', 'Percentage %', 'Fixed AUD', 'Save draft shares', 'Test Worker', 'Add worker payment share']) assert.ok(html.includes(text), text);
+  for (const text of ['Employee 1', 'Share type 1', 'Save draft shares', 'Test Worker', 'Add Employee']) assert.ok(html.includes(text), text);
   assert.ok(html.includes('type="number"'));
   assert.ok(!html.includes('No team shares configured.'));
 });

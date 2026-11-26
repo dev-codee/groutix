@@ -1,9 +1,19 @@
-import { applyDailyEarningsCaps, calculateEarnings, type EarningsJob } from "./teamEarnings";
+import { applyDailyEarningsCaps, calculateEarnings, sumInvoiceShares, type EarningsJob } from "./teamEarnings";
 
 export const earningsStatus = (job: EarningsJob) => job.changed ? "Needs review" : job.ledger?.status === "approved" ? job.ledger.shares.every(share => share.paidCents === share.earnedCents) ? "Settled" : "Approved" : job.ledger ? "Draft" : "Not configured";
 export function estimatedEarningsShares(job: EarningsJob) {
-  return job.ledger?.status === "approved" ? job.ledger.shares
-    : applyDailyEarningsCaps(calculateEarnings(job.ledger?.shares || job.defaultShares || [], job.invoice?.baseCents || 0), job.dailyCapUsage);
+  if (job.ledger?.status === "approved") return job.ledger.shares;
+  if (job.ledger?.invoiceShares?.length) {
+    const items = job.invoice?.items || (job.invoice ? [{ ...job.invoice, key: "primary" }] : []);
+    const used = new Map(job.dailyCapUsage?.map(cap => [cap.memberId, cap.usedCents]) || []);
+    return sumInvoiceShares(job.ledger.invoiceShares.map(allocation => {
+      const item = items.find(invoice => invoice.key === allocation.invoiceKey);
+      const calculated = applyDailyEarningsCaps(calculateEarnings(allocation.shares, item?.baseCents || 0), job.dailyCapUsage?.map(cap => ({ ...cap, usedCents: used.get(cap.memberId) || 0 })));
+      for (const share of calculated) used.set(share.memberId, (used.get(share.memberId) || 0) + share.earnedCents);
+      return { ...allocation, shares: calculated };
+    }));
+  }
+  return applyDailyEarningsCaps(calculateEarnings(job.ledger?.shares || job.defaultShares || [], job.invoice?.baseCents || 0), job.dailyCapUsage);
 }
 
 function cell(value: string | number): string {
@@ -26,7 +36,7 @@ export function earningsJobsCsv(jobs: EarningsJob[]): string {
       return [job.jobLabel, job.customer, job.status, job.service, job.assignedNames.join("; "), job.completedVisits, job.totalVisits,
         job.daysDone, job.daysPlanned, job.invoice?.number || "", job.invoice ? amount(job.invoice.totalCents) : "", job.invoicePaid ? "Yes" : "No",
         earningsStatus(job), amount(approved ? 0 : total), amount(approved ? total : 0), amount(paid), amount(approved ? total - paid : 0),
-        shares.map(share => `${share.name}: ${share.fixedAmountCents !== undefined ? `AUD ${amount(share.fixedAmountCents)} fixed` : `${share.rateBps / 100}%`}`).join("; "), amount((job.receipts || []).reduce((sum, receipt) => sum + receipt.paidCents, 0)), amount((job.receipts || []).reduce((sum, receipt) => sum + receipt.remainingCents, 0)), job.scheduledAt || ""];
+        job.ledger?.invoiceShares?.length ? job.ledger.invoiceShares.map(allocation => `${(job.invoice?.items || [job.invoice]).find(item => item?.key === allocation.invoiceKey)?.number || allocation.invoiceKey}: ${allocation.shares.map(share => `${share.name} ${share.fixedAmountCents !== undefined ? `AUD ${amount(share.fixedAmountCents)} fixed` : `${share.rateBps / 100}%`}`).join(", ")}`).join("; ") : shares.map(share => `${share.name}: ${share.fixedAmountCents !== undefined ? `AUD ${amount(share.fixedAmountCents)} fixed` : `${share.rateBps / 100}%`}`).join("; "), amount((job.receipts || []).reduce((sum, receipt) => sum + receipt.paidCents, 0)), amount((job.receipts || []).reduce((sum, receipt) => sum + receipt.remainingCents, 0)), job.scheduledAt || ""];
     }),
   ]);
 }

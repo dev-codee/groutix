@@ -36,9 +36,11 @@ function WorkBreakdown({ job }: { job: EarningsJob }) {
   </div>)}</div>;
 }
 interface HistoryData { events: EarningsEvent[]; payments: EarningsPayment[]; hasMore: boolean }
-function EarningsDetail({ job, members, settings, onClose, onChanged, onExpenseChanged, initialMember }: { job: EarningsJob; members: EarningsMember[]; settings?: TeamEarningsSettings; onClose: () => void; onChanged: (ledger: EarningsLedger) => void; onExpenseChanged: () => void; initialMember?: string }) {
+function EarningsDetail({ job, members, settings, onClose, onChanged, onExpenseChanged, initialMember, invoiceKey }: { job: EarningsJob; members: EarningsMember[]; settings?: TeamEarningsSettings; onClose: () => void; onChanged: (ledger: EarningsLedger) => void; onExpenseChanged: () => void; initialMember?: string; invoiceKey?: string }) {
+  const allocation = job.ledger?.invoiceShares?.find(item => item.invoiceKey === invoiceKey);
+  const selectedShares = invoiceKey ? allocation?.shares : job.ledger?.shares;
   const [basis, setBasis] = useState<EarningsBasis>(job.ledger?.basis || settings?.basis || "ex_gst");
-  const [rows, setRows] = useState<ShareRow[]>(() => job.ledger?.shares.map(shareRow) || (job.defaultShares?.some(s => s.rateBps > 0 || (s.fixedAmountCents || 0) > 0) ? job.defaultShares.filter(s => s.rateBps > 0 || (s.fixedAmountCents || 0) > 0).slice(0, 20).map(shareRow) : job.assignedIds.length ? job.assignedIds.slice(0, 20).map(emptyRow) : [emptyRow()]));
+  const [rows, setRows] = useState<ShareRow[]>(() => selectedShares?.map(shareRow) || (job.defaultShares?.some(s => s.rateBps > 0 || (s.fixedAmountCents || 0) > 0) ? job.defaultShares.filter(s => s.rateBps > 0 || (s.fixedAmountCents || 0) > 0).slice(0, 20).map(shareRow) : job.assignedIds.length ? job.assignedIds.slice(0, 20).map(emptyRow) : [emptyRow()]));
   const [notes, setNotes] = useState(job.ledger?.notes || "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -48,27 +50,28 @@ function EarningsDetail({ job, members, settings, onClose, onChanged, onExpenseC
   const [historyRetry, setHistoryRetry] = useState(0);
   const [mode, setMode] = useState<"approve" | "reopen" | null>(null);
   const [voidId, setVoidId] = useState<string | null>(null);
-  const [paymentMember, setPaymentMember] = useState(initialMember || job.ledger?.shares.find(s => s.earnedCents > s.paidCents)?.memberId || "");
+  const [paymentMember, setPaymentMember] = useState(initialMember || selectedShares?.find(s => s.earnedCents > s.paidCents)?.memberId || "");
   const [paymentAmount, setPaymentAmount] = useState("");
   const [paymentDate, setPaymentDate] = useState(today());
   const [paymentMethod, setPaymentMethod] = useState("Bank transfer");
   const [paymentNote, setPaymentNote] = useState("");
   const request = useRef<{ signature: string; id: string } | null>(null);
   const ledger = job.ledger;
-  const approved = ledger?.status === "approved";
+  const approved = ledger?.status === "approved" && (!invoiceKey || !!allocation);
   const totalRate = rows.reduce((sum, row) => sum + (row.mode === "percent" ? Number(row.value || 0) : 0), 0);
   const maxTeamShareBps = settings?.maxTeamShareBps ?? defaultTeamEarningsSettings.maxTeamShareBps;
   const maxTeamSharePercent = maxTeamShareBps / 100;
-  const invoice = job.invoice;
+  const invoice = invoiceKey ? (job.invoice?.items || (job.invoice ? [{ ...job.invoice, key: "primary" }] : [])).find(item => item.key === invoiceKey) : job.invoice;
   const previewBase = invoice ? basis === "inclusive" ? invoice.totalCents : (invoice.items || [invoice]).reduce((sum, item) => sum + Math.round(item.totalCents * 10000 / (10000 + item.gstBps)), 0) : 0;
   const rawPreview = calculateEarnings(rows.map(row => ({ ...sharePayload(row), name: "", earnedCents: 0, paidCents: 0 })), previewBase);
   const preview = applyDailyEarningsCaps(rawPreview, job.dailyCapUsage);
   const exceedsBase = !!invoice && rawPreview.reduce((sum, share) => sum + share.earnedCents, 0) > Math.round(previewBase * maxTeamShareBps / 10000);
-  const dirty = basis !== (ledger?.basis || "ex_gst") || notes !== (ledger?.notes || "") || JSON.stringify(rows) !== JSON.stringify(ledger?.shares.map(shareRow) || []);
-  const shares = approved && !dirty ? ledger!.shares : preview;
+  const dirty = basis !== (ledger?.basis || settings?.basis || "ex_gst") || notes !== (ledger?.notes || "") || JSON.stringify(rows) !== JSON.stringify(selectedShares?.map(shareRow) || []);
+  const shares = approved && !dirty ? selectedShares! : preview;
   const totalEarned = shares.reduce((sum, s) => sum + s.earnedCents, 0);
   const totalPaid = approved ? shares.reduce((sum, s) => sum + s.paidCents, 0) : 0;
-  const jobReceived = registerTotals([job]).received;
+  const receiptIndex = (job.invoice?.items || (job.invoice ? [{ ...job.invoice, key: "primary" }] : [])).findIndex(item => item.key === invoiceKey);
+  const jobReceived = invoiceKey ? job.receipts?.[receiptIndex]?.paidCents || 0 : registerTotals([job]).received;
   const managerBalance = jobReceived - totalEarned;
   useEffect(() => {
     const controller = new AbortController();
@@ -89,12 +92,20 @@ function EarningsDetail({ job, members, settings, onClose, onChanged, onExpenseC
   }
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    await mutate({ action: "save", basis, notes, shares: rows.map(sharePayload) });
+    await mutate({ action: "save", basis, notes, invoiceKey, shares: rows.map(sharePayload) });
   }
   async function createDues() {
     if (busy || !job.eligible || !invoice || exceedsBase || totalRate > maxTeamSharePercent) return;
     setBusy(true); setError("");
     try {
+      if (ledger?.status === "approved" && invoiceKey && ledger.invoiceShares?.length) {
+        const updated = await api<{ ledger: EarningsLedger }>(`/api/admin/team-earnings/${job.id}`, {
+          method: "POST",
+          body: JSON.stringify({ action: "upsert_invoice", basis, notes, invoiceKey, shares: rows.map(sharePayload), invoice: job.invoice, version: ledger.version, requestId: crypto.randomUUID() }),
+        });
+        onChanged(updated.ledger);
+        return;
+      }
       let draft = ledger;
       if (draft?.status === "approved") {
         const reopened = await api<{ ledger: EarningsLedger }>(`/api/admin/team-earnings/${job.id}`, {
@@ -106,7 +117,7 @@ function EarningsDetail({ job, members, settings, onClose, onChanged, onExpenseC
       if (!draft || dirty || ledger?.status === "approved") {
         const saved = await api<{ ledger: EarningsLedger }>(`/api/admin/team-earnings/${job.id}`, {
           method: "POST",
-          body: JSON.stringify({ action: "save", basis, notes, shares: rows.map(sharePayload), version: draft?.version || 0, requestId: crypto.randomUUID() }),
+          body: JSON.stringify({ action: "save", basis, notes, invoiceKey, shares: rows.map(sharePayload), version: draft?.version || 0, requestId: crypto.randomUUID() }),
         });
         draft = saved.ledger;
       }
@@ -120,10 +131,10 @@ function EarningsDetail({ job, members, settings, onClose, onChanged, onExpenseC
   async function recordPayment(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!paymentMember || !paymentAmount) return;
-    await mutate({ action: "pay", memberId: paymentMember, amountCents: Math.round(Number(paymentAmount) * 100), date: paymentDate, method: paymentMethod, reference: `Payment ${today()}`, note: paymentNote });
+    await mutate({ action: "pay", invoiceKey, memberId: paymentMember, amountCents: Math.round(Number(paymentAmount) * 100), date: paymentDate, method: paymentMethod, reference: `Payment ${today()}`, note: paymentNote });
     setPaymentAmount(""); setPaymentNote("");
   }
-  const paymentShare = ledger?.shares.find(s => s.memberId === paymentMember);
+  const paymentShare = selectedShares?.find(s => s.memberId === paymentMember);
   return <section aria-label={`${job.jobLabel} · Manage team earnings`} className="space-y-4">
     <ErrorBox error={error} />
     {job.changed && <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800">The invoice, completion status or source lead changed after approval. Approved amounts are preserved. Review the history, reverse any recorded payments if correcting the approval, then reopen and approve the updated earnings.</p>}
@@ -131,7 +142,7 @@ function EarningsDetail({ job, members, settings, onClose, onChanged, onExpenseC
     {!approved || totalPaid === 0 ? <form onSubmit={save} className="space-y-3">
       <fieldset disabled={busy} className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h3 className="text-sm font-bold text-slate-900">Team Shares <span className="text-xs font-normal text-slate-500">(This Job)</span></h3>
+          <h3 className="text-sm font-bold text-slate-900">Team Shares <span className="text-xs font-normal text-slate-500">({invoiceKey ? `Invoice ${invoice?.number || ""}` : "This Job"})</span></h3>
           <Field name="Basis"><select className={`${input} w-auto`} value={basis} onChange={e => setBasis(e.target.value as EarningsBasis)}><option value="ex_gst">Excluding GST</option><option value="inclusive">Including GST</option></select></Field>
         </div>
         <div className="overflow-x-auto rounded-lg border border-slate-200">
@@ -159,7 +170,7 @@ function EarningsDetail({ job, members, settings, onClose, onChanged, onExpenseC
             </tfoot>
           </table>
         </div>
-        {invoice && <p className="text-xs text-slate-500">Based on {money(previewBase)} {basis === "ex_gst" ? "excluding GST" : "including GST"} across {invoice.items?.length || 1} saved invoice{(invoice.items?.length || 1) === 1 ? "" : "s"}. Customer payment status does not change the team share.</p>}
+        {invoice && <p className="text-xs text-slate-500">Based on {money(previewBase)} {basis === "ex_gst" ? "excluding GST" : "including GST"} for {invoiceKey ? `invoice ${invoice.number}` : "the job"}. Customer payment status does not change the team share.</p>}
         <div className="flex flex-wrap items-center justify-between gap-2">
           <button className={button} type="button" disabled={rows.length >= 20} onClick={() => setRows(old => [...old, emptyRow()])}><Plus className="h-3.5 w-3.5" />Add Employee</button>
           <p className={`text-xs font-semibold ${totalRate > maxTeamSharePercent || exceedsBase ? "text-rose-600" : "text-slate-500"}`}>{totalRate > 0 ? `${totalRate.toLocaleString("en-AU", { maximumFractionDigits: 2 })}% total` : ""} · {maxTeamSharePercent}% maximum for the whole team · company keeps at least {100 - maxTeamSharePercent}% {exceedsBase ? "· exceeds team limit" : ""}</p>
@@ -168,21 +179,21 @@ function EarningsDetail({ job, members, settings, onClose, onChanged, onExpenseC
         <Field name="Manager notes"><textarea className={input} maxLength={2000} rows={2} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Agreed rate, shared work or other context" /></Field>
       </fieldset>
       <div className="flex flex-wrap items-center justify-end gap-2 border-t border-slate-100 pt-3">
-        {!approved && <button className={button} disabled={busy || totalRate > maxTeamSharePercent || exceedsBase} type="submit">{busy && <Loader2 className="h-4 w-4 animate-spin" />}Save draft shares</button>}
+        {!approved && ledger?.status !== "approved" && <button className={button} disabled={busy || totalRate > maxTeamSharePercent || exceedsBase} type="submit">{busy && <Loader2 className="h-4 w-4 animate-spin" />}Save draft shares</button>}
         <button type="button" className={primary} disabled={busy || !job.eligible || !invoice || (approved && !dirty) || !rows.length || rows.some(row => !row.memberId || !Number.isFinite(Number(row.value)) || Number(row.value) <= 0) || totalRate > maxTeamSharePercent || exceedsBase} title={job.unavailableReason} onClick={() => void createDues()}><CheckCircle2 className="h-4 w-4" />{approved ? "Save share changes" : "Add to pending dues"}</button>
       </div>
       {!job.eligible && <p className="text-xs text-amber-700">{job.unavailableReason}</p>}
       {job.eligible && <p className="text-xs text-slate-500">Calculated from the job invoice and the share settings above. Saving updates Team Summary and pending dues; use Pay after money is sent.</p>}
     </form> : <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="text-sm font-bold text-slate-900">Team Shares <span className="text-xs font-normal text-slate-500">(This Job) · {ledger.basis === "ex_gst" ? "ex GST" : "incl GST"}</span></h3>
+        <h3 className="text-sm font-bold text-slate-900">Team Shares <span className="text-xs font-normal text-slate-500">({invoiceKey ? `Invoice ${invoice?.number || ""}` : "This Job"}) · {ledger!.basis === "ex_gst" ? "ex GST" : "incl GST"}</span></h3>
       </div>
       <div className="overflow-x-auto rounded-lg border border-slate-200">
         <table className="w-full min-w-[640px] text-left text-sm">
           <thead className="bg-slate-50 text-xs text-slate-500">
             <tr>{["Employee", "Role", "Share Type", "Share", "Amount", "Paid", "Remaining", ""].map(t => <th key={t} className="p-2 font-semibold">{t}</th>)}</tr>
           </thead>
-          <tbody>{ledger.shares.map(s => {
+          <tbody>{selectedShares!.map(s => {
             const member = members.find(m => m.id === s.memberId);
             const remaining = s.earnedCents - s.paidCents;
             return <tr key={s.memberId} className="border-t border-slate-100">
@@ -222,7 +233,7 @@ function EarningsDetail({ job, members, settings, onClose, onChanged, onExpenseC
       <h4 className="flex items-center gap-1.5 text-sm font-bold text-slate-800"><Wallet className="h-4 w-4 text-blue-600" />Record Payment</h4>
       <p className="mb-2 text-xs text-slate-500">Log money already paid to a team member. Select a row&apos;s <b>Pay</b> button to prefill the amount, or enter it manually.</p>
       <fieldset disabled={busy} className="grid gap-2 sm:grid-cols-4">
-        <label className="text-xs font-semibold text-slate-600">Employee<select className={input} required value={paymentMember} onChange={e => { setPaymentMember(e.target.value); const s = ledger.shares.find(x => x.memberId === e.target.value); if (s) setPaymentAmount(String((s.earnedCents - s.paidCents) / 100)); }}><option value="">Select</option>{ledger.shares.filter(s => s.earnedCents > s.paidCents).map(s => <option key={s.memberId} value={s.memberId}>{s.name} · {money(s.earnedCents - s.paidCents)} due</option>)}</select></label>
+        <label className="text-xs font-semibold text-slate-600">Employee<select className={input} required value={paymentMember} onChange={e => { setPaymentMember(e.target.value); const s = selectedShares?.find(x => x.memberId === e.target.value); if (s) setPaymentAmount(String((s.earnedCents - s.paidCents) / 100)); }}><option value="">Select</option>{selectedShares?.filter(s => s.earnedCents > s.paidCents).map(s => <option key={s.memberId} value={s.memberId}>{s.name} · {money(s.earnedCents - s.paidCents)} due</option>)}</select></label>
         <label className="text-xs font-semibold text-slate-600">Amount ($)<input className={input} type="number" required min="0.01" max={paymentShare ? (paymentShare.earnedCents - paymentShare.paidCents) / 100 : undefined} step="0.01" value={paymentAmount} onChange={e => setPaymentAmount(e.target.value)} /></label>
         <label className="text-xs font-semibold text-slate-600">Date<input className={input} type="date" required max={today()} value={paymentDate} onChange={e => setPaymentDate(e.target.value)} /></label>
         <label className="text-xs font-semibold text-slate-600">Method<select className={input} value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)}><option>Bank transfer</option><option>Cash</option><option>Other</option></select></label>
@@ -377,6 +388,7 @@ export function TeamEarningsView({ query, onQueryChange, onOpenJob, onManageInvo
   const [fromDate, setFromDate] = useState(initialMonth.from);
   const [toDate, setToDate] = useState(initialMonth.to);
   const [activeJobId, setActiveJobId] = useState("");
+  const [activeInvoiceKey, setActiveInvoiceKey] = useState("");
   const [editorOpen, setEditorOpen] = useState(true);
   const sequence = useRef(0);
   const load = useCallback(async () => {
@@ -404,6 +416,9 @@ export function TeamEarningsView({ query, onQueryChange, onOpenJob, onManageInvo
   const filtered = searched.filter(job => matchesRegisterFilter(job, filter)).sort(compareRegisterJobs);
   const totals = registerTotals(filtered);
   const activeJob = filtered.find(job => job.id === activeJobId) || filtered[0];
+  const activeItems = activeJob?.invoice?.items || (activeJob?.invoice ? [{ ...activeJob.invoice, key: "primary" }] : []);
+  const legacyApproval = activeJob?.ledger?.status === "approved" && !activeJob.ledger.invoiceShares?.length;
+  const selectedInvoiceKey = legacyApproval && !activeInvoiceKey ? undefined : activeItems.some(item => item.key === activeInvoiceKey) ? activeInvoiceKey : activeItems[0]?.key;
   const expenseTotal = filtered.reduce((sum, job) => sum + (job.expenses || []).filter(expense => !expense.voidedAt).reduce((value, expense) => value + expense.amountCents, 0), 0);
   const managerGross = totals.value - totals.earned;
   const managerFinal = managerGross - expenseTotal;
@@ -423,10 +438,10 @@ export function TeamEarningsView({ query, onQueryChange, onOpenJob, onManageInvo
   }
   function toggleJob(id: string) {
     setExpanded(old => { const next = new Set(old); if (next.has(id)) next.delete(id); else next.add(id); return next; });
-    setActiveJobId(id); setEditorOpen(true); setSelected(null);
+    setActiveJobId(id); setActiveInvoiceKey(""); setEditorOpen(true); setSelected(null);
   }
   function edit(job: EarningsJob, member?: string) {
-    setExpanded(old => new Set(old).add(job.id)); setActiveJobId(job.id); setEditorOpen(true); setSelected({ id: job.id, memberId: member });
+    setExpanded(old => new Set(old).add(job.id)); setActiveJobId(job.id); setActiveInvoiceKey(""); setEditorOpen(true); setSelected({ id: job.id, memberId: member });
   }
   const dateFilteredPayments = (data.payments || []).filter(payment => period === "all" || (period === "month" ? payment.date >= initialMonth.from && payment.date <= initialMonth.to : period === "last" ? payment.date >= monthRange(-1).from && payment.date <= monthRange(-1).to : payment.date >= fromDate && payment.date <= toDate));
   const cards = [
@@ -467,8 +482,12 @@ export function TeamEarningsView({ query, onQueryChange, onOpenJob, onManageInvo
       {tab === "jobs" && activeJob ? <section className={`${panel} space-y-2.5 p-3`}>
         <div className="flex flex-wrap items-center justify-between gap-2"><div><h3 className="text-lg font-bold">Job # {activeJob.jobLabel}</h3><p className="text-xs text-slate-500">{activeJob.customer} · {activeJob.completionDate || activeJob.scheduledAt?.slice(0, 10) || "No date"} · {activeJob.service}</p></div><div className="flex gap-2"><Badge warning={activeJob.changed}>{label(activeJob)}</Badge>{activeJob.status !== "Source unavailable" && <button className={button} onClick={() => onOpenJob(activeJob.id)}>Edit Job</button>}</div></div>
         <div className="grid gap-3 md:grid-cols-2"><section className="rounded-xl border border-slate-200 p-3 text-sm"><h4 className="mb-2 font-bold">Job Details</h4><p className="flex justify-between gap-2"><span className="text-slate-500">Customer</span><b>{activeJob.customer}</b></p><p className="mt-1 flex justify-between gap-2"><span className="text-slate-500">Job date</span><b>{activeJob.completionDate || activeJob.scheduledAt?.slice(0, 10) || "—"}</b></p><p className="mt-1 flex justify-between gap-2"><span className="text-slate-500">Job value</span><b>{money(activeJob.invoice?.totalCents || 0)}</b></p><p className="mt-1 flex justify-between gap-2"><span className="text-slate-500">Invoices</span><b>{activeJob.invoice?.items?.length || (activeJob.invoice ? 1 : 0)}</b></p></section><section className="rounded-xl border border-slate-200 p-3 text-sm"><h4 className="mb-2 font-bold">Customer Payment</h4><p className="flex justify-between gap-2"><span className="text-slate-500">Received</span><b className="text-emerald-700">{money(registerTotals([activeJob]).received)}</b></p><p className="mt-1 flex justify-between gap-2"><span className="text-slate-500">Overall status</span><Badge warning={["partial", "pending"].includes(activeJob.paymentStatus)}>{paymentStatusLabel(activeJob.paymentStatus)}</Badge></p><p className="mt-1 flex justify-between gap-2"><span className="text-slate-500">Customer outstanding</span><b>{money((activeJob.invoice?.totalCents || 0) - registerTotals([activeJob]).received)}</b></p><button className={`${button} mt-2`} onClick={() => onManageInvoices(activeJob.id)}>Manage customer invoices</button></section></div>
-        {!!activeJob.receipts?.length && <details className="text-xs"><summary className="cursor-pointer font-semibold text-slate-600">Invoice payment details ({activeJob.receipts.length})</summary><div className="mt-2 grid gap-2 sm:grid-cols-2">{activeJob.receipts.map((receipt, index) => <article key={`${receipt.number}-${index}`} className="rounded-lg border border-slate-200 bg-white p-2 text-xs"><div className="flex items-start justify-between gap-2"><b>{receipt.number}</b><Badge warning={receipt.status === "pending" || receipt.status === "partial"}>{invoicePaymentStatusLabel(receipt.status)}</Badge></div><div className="mt-2 grid grid-cols-3 gap-1 text-slate-600"><span>Total<br /><b className="text-slate-900">{money(receipt.totalCents)}</b></span><span>Received<br /><b className="text-emerald-700">{money(receipt.paidCents)}</b></span><span>Remaining<br /><b className="text-rose-700">{money(receipt.remainingCents)}</b></span></div></article>)}</div></details>}
-        {editorOpen ? <EarningsDetail key={`${activeJob.id}:${activeJob.ledger?.version || 0}:${selected?.id === activeJob.id ? selected.memberId || "details" : "details"}`} job={activeJob} initialMember={selected?.id === activeJob.id ? selected.memberId : undefined} members={data.members} settings={data.settings} onClose={() => { setEditorOpen(false); setSelected(null); }} onChanged={saved} onExpenseChanged={() => { setNotice("Expense saved to the job record."); void load(); }} />
+        {!!activeItems.length && <section aria-label="Select invoice team shares" className="space-y-2"><h4 className="text-sm font-bold">Invoices · select one to set team shares</h4><div className="grid gap-2 sm:grid-cols-2">{activeItems.map((item, index) => {
+          const receipt = activeJob.receipts?.[index];
+          const allocation = activeJob.ledger?.invoiceShares?.find(entry => entry.invoiceKey === item.key);
+          return <button key={item.key || index} type="button" aria-pressed={selectedInvoiceKey === item.key} onClick={() => { setActiveInvoiceKey(item.key || "primary"); setEditorOpen(true); }} className={`rounded-lg border p-3 text-left text-xs ${selectedInvoiceKey === item.key ? "border-blue-500 bg-blue-50" : "border-slate-200 bg-white hover:bg-slate-50"}`}><span className="flex justify-between gap-2"><b>{item.number}</b><span>{receipt ? invoicePaymentStatusLabel(receipt.status) : "Saved"}</span></span><span className="mt-1 block">Invoice total: {money(item.totalCents)} · Team share: {allocation ? money(allocation.shares.reduce((sum, share) => sum + share.earnedCents, 0)) : "Not set"}</span></button>;
+        })}</div>{legacyApproval && <p className="text-xs text-amber-700">The existing approval covers the whole job. Selecting an invoice and saving shares replaces that approval. Reverse any recorded team payments first.</p>}</section>}
+        {editorOpen ? <EarningsDetail key={`${activeJob.id}:${selectedInvoiceKey || "legacy"}:${activeJob.ledger?.version || 0}:${selected?.id === activeJob.id ? selected.memberId || "details" : "details"}`} job={activeJob} invoiceKey={selectedInvoiceKey} initialMember={selected?.id === activeJob.id ? selected.memberId : undefined} members={data.members} settings={data.settings} onClose={() => { setEditorOpen(false); setSelected(null); }} onChanged={saved} onExpenseChanged={() => { setNotice("Expense saved to the job record."); void load(); }} />
           : <button className={primary} onClick={() => setEditorOpen(true)}>Manage team shares and payments</button>}
         <details className="rounded-xl border border-slate-200 bg-white p-3"><summary className="cursor-pointer text-sm font-semibold">Assigned work & visit progress</summary><div className="mt-3"><WorkBreakdown job={activeJob} /></div></details>
       </section> : tab === "jobs" ? <section className={`${panel} p-8 text-center text-sm text-slate-500`}>Select a job to see earnings and payment details.</section> : null}

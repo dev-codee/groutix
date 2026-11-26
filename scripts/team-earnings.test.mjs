@@ -69,6 +69,12 @@ test("invoice basis uses saved total, GST and no quote fallback", () => {
   assert.equal(rules.invoiceForEarnings({ ...baseLead, invoiceDraft: { gst: 0 } }, "ex_gst").baseCents, 110000);
   for (const invoiceAmount of [undefined, NaN, Infinity, 0, -1, "100"]) assert.equal(rules.invoiceForEarnings({ ...baseLead, invoiceAmount, quoteAmount: 100 }, "ex_gst"), null);
 });
+
+test("invoice IDs do not mark existing approved invoice snapshots as changed", () => {
+  const oldSnapshot = rules.invoiceForEarnings({ ...baseLead, earningsInvoices: [{ invoiceNumber: "INV-B", invoiceAmount: 220, invoiceDraft: { gst: 10 } }] }, "ex_gst");
+  const current = rules.invoiceForEarnings({ ...baseLead, earningsInvoices: [{ invoiceNumber: "INV-B", invoiceAmount: 220, invoiceDraft: { gst: 10 }, earningsKey: "saved-invoice-id" }] }, "ex_gst");
+  assert.equal(rules.sameEarningsInvoice(oldSnapshot, current), true);
+});
 test("worker defaults prefill a stable share and manager settings validate against CRM members", async () => {
   const defaults = {
     basis: "ex_gst", gstRateBps: 1000,
@@ -290,6 +296,28 @@ test("separately saved customer invoices appear, approve, and detect later invoi
   job = (await f.api.listTeamEarnings()).jobs[0];
   assert.equal(job.changed, true);
   await assert.rejects(f.mutate("pay", a.version, pay()), /changed after approval/);
+});
+
+test("each invoice can have independent shares, payments, and later allocations", async () => {
+  const f = fixture();
+  f.state.customer_invoices.push({ _id: "invoice-two", leadId, values: { invoiceNumber: "INV-B", invoiceAmount: 500, invoiceDraft: { gst: 0 } } });
+  let invoice = (await f.api.listTeamEarnings()).jobs[0].invoice;
+  const first = await f.mutate("save", 0, { basis: "ex_gst", invoiceKey: "primary", shares: [{ memberId, rateBps: 3000 }] });
+  const secondDraft = await f.mutate("save", first.version, { basis: "ex_gst", invoiceKey: "invoice-two", shares: [{ memberId: secondId, rateBps: 1000 }] });
+  let approved = await f.mutate("approve", secondDraft.version, { invoice });
+  assert.equal(approved.invoiceShares.find(a => a.invoiceKey === "primary").shares[0].earnedCents, 30000);
+  assert.equal(approved.invoiceShares.find(a => a.invoiceKey === "invoice-two").shares[0].earnedCents, 5000);
+  assert.equal(approved.shares.reduce((sum, share) => sum + share.earnedCents, 0), 35000);
+  approved = await f.mutate("pay", approved.version, { ...pay({ memberId: secondId, amountCents: 2000 }), invoiceKey: "invoice-two" });
+  assert.equal(approved.invoiceShares.find(a => a.invoiceKey === "invoice-two").shares[0].paidCents, 2000);
+  assert.equal(approved.shares.find(s => s.memberId === secondId).paidCents, 2000);
+  f.state.customer_invoices.push({ _id: "invoice-three", leadId, values: { invoiceNumber: "INV-C", invoiceAmount: 220, invoiceDraft: { gst: 10 } } });
+  invoice = (await f.api.listTeamEarnings()).jobs[0].invoice;
+  approved = await f.mutate("upsert_invoice", approved.version, { basis: "ex_gst", invoiceKey: "invoice-three", shares: [{ memberId, rateBps: 1000 }], invoice });
+  assert.equal(approved.invoiceShares.find(a => a.invoiceKey === "invoice-three").shares[0].earnedCents, 2000);
+  assert.equal(approved.shares.find(s => s.memberId === memberId).earnedCents, 32000);
+  assert.equal((await f.api.listTeamEarnings()).jobs[0].changed, false);
+  await assert.rejects(f.mutate("upsert_invoice", approved.version, { basis: "ex_gst", invoiceKey: "invoice-two", shares: [{ memberId: secondId, rateBps: 2000 }], invoice }), /Reverse this invoice/);
 });
 
 test("fixed amounts mix with percentage shares, survive approval and support payment", async () => {

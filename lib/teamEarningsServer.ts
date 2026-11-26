@@ -3,7 +3,7 @@ import { ObjectId, type ClientSession } from "mongodb";
 import { getDb, getMongoClient } from "@/lib/mongodb";
 import { listTechnicians } from "@/lib/technicians";
 import type { Lead } from "@/components/admin/types";
-import { EarningsError, validateEarningsTotal, calculateEarnings, applyDailyEarningsCaps, earningsBody, earningsCompletionDate, earningsId, earningsInteger, earningsJob, earningsText, invoiceForEarnings, parseEarningsShares, sameEarningsInvoice, type EarningsData, type EarningsExpense, type EarningsLedger, type EarningsMember, type EarningsPayment, type EarningsEvent, type EarningsSourceLead } from "./teamEarnings";
+import { EarningsError, validateEarningsTotal, calculateEarnings, applyDailyEarningsCaps, earningsBody, earningsCompletionDate, earningsId, earningsInteger, earningsJob, earningsText, invoiceForEarnings, parseEarningsShares, sameEarningsInvoice, sumInvoiceShares, type EarningsData, type EarningsExpense, type EarningsLedger, type EarningsMember, type EarningsPayment, type EarningsEvent, type EarningsSourceLead } from "./teamEarnings";
 import { defaultTeamEarningsSettings, validateTeamEarningsSettings, type TeamEarningsSettings } from "./teamEarningsSettings";
 
 type LedgerDoc = Omit<EarningsLedger, "id"> & { _id: string };
@@ -69,7 +69,7 @@ async function sourceLead(id: string, session?: ClientSession): Promise<Earnings
   if (!doc) return null;
   const visits = await db.collection("bookings").find({ leadId: id }, { session }).toArray();
   const invoices = await db.collection("customer_invoices").find({ leadId: id }, { session }).sort({ _id: 1 }).toArray();
-  return { ...doc, earningsInvoices: invoices.map(invoice => invoice.values), id, createdAt: String(doc.createdAt || ""), bookings: visits.map(b => ({ ...b, bookingId: b.bookingId || b._id.toString() })) } as unknown as EarningsSourceLead;
+  return { ...doc, earningsInvoices: invoices.map(invoice => ({ ...invoice.values, earningsKey: String(invoice._id) })), id, createdAt: String(doc.createdAt || ""), bookings: visits.map(b => ({ ...b, bookingId: b.bookingId || b._id.toString() })) } as unknown as EarningsSourceLead;
 }
 function missingLead(ledger: EarningsLedger): Lead {
   return { id: ledger.id, status: "Source unavailable", createdAt: "", name: ledger.customer, jobNo: ledger.jobLabel };
@@ -85,7 +85,7 @@ export async function listTeamEarnings(): Promise<EarningsData> {
   const expensesByLead = new Map(expenseDocs.map(doc => [doc._id, doc.items || []]));
   const jobs = sources.filter(doc => doc.type !== "support_ticket").map(doc => {
     const id = doc._id.toString();
-    const lead = { ...doc, earningsInvoices: (invoicesByLead.get(id) || []).map(invoice => invoice.values), id, createdAt: String(doc.createdAt || ""), bookings: (byLead.get(id) || []).map(b => ({ ...b, bookingId: b.bookingId || b._id.toString() })) } as unknown as EarningsSourceLead;
+    const lead = { ...doc, earningsInvoices: (invoicesByLead.get(id) || []).map(invoice => ({ ...invoice.values, earningsKey: String(invoice._id) })), id, createdAt: String(doc.createdAt || ""), bookings: (byLead.get(id) || []).map(b => ({ ...b, bookingId: b.bookingId || b._id.toString() })) } as unknown as EarningsSourceLead;
     const job = earningsJob(lead, roster, records.get(id) || null, settings);
     job.expenses = expensesByLead.get(id) || [];
     job.expenseVersion = expenseDocs.find(expense => expense._id === id)?.version || 0;
@@ -225,10 +225,10 @@ export async function mutateTeamEarnings(id: string, value: unknown, actor: stri
   const body = earningsBody(value), requestId = earningsId(body.requestId);
   const version = earningsInteger(body.version, "version");
   const action = earningsText(body.action, "Action", 30, true);
-  if (!["save", "approve", "reopen", "pay", "void_payment"].includes(action)) throw new EarningsError("Invalid earnings action.");
+  if (!["save", "approve", "upsert_invoice", "reopen", "pay", "void_payment"].includes(action)) throw new EarningsError("Invalid earnings action.");
   const requestHash = createHash("sha256").update(JSON.stringify({ id, body })).digest("hex");
   const { db, ledgers, payments, events, dailyCaps } = await collections();
-  const roster = action === "save" ? await listEarningsMembers() : [];
+  const roster = ["save", "upsert_invoice"].includes(action) ? await listEarningsMembers() : [];
   const session = (await getMongoClient()).startSession();
   try {
     return await session.withTransaction(async () => {
@@ -243,20 +243,65 @@ export async function mutateTeamEarnings(id: string, value: unknown, actor: stri
       const lead = await sourceLead(id, session);
       if ((!lead || lead.type === "support_ticket") && !["reopen", "void_payment"].includes(action)) throw new EarningsError("The original lead is unavailable.", 409);
       const now = new Date().toISOString();
-      let record: LedgerDoc = current ? { ...current, shares: current.shares.map(s => ({ ...s })) } : { _id: id, version: 0, status: "draft", basis: "ex_gst", shares: [], invoice: null, notes: "", updatedAt: now, jobLabel: lead?.jobNo || `Lead-${id.slice(-6)}`, customer: lead?.name || "Customer" };
-      const settingsDoc = ["save", "approve"].includes(action) ? await db.collection("settings").findOne({ _id: "team-earnings" } as never, { session }) : null;
+      let record: LedgerDoc = current ? { ...current, shares: current.shares.map(s => ({ ...s })), invoiceShares: current.invoiceShares?.map(allocation => ({ invoiceKey: allocation.invoiceKey, shares: allocation.shares.map(share => ({ ...share })) })) } : { _id: id, version: 0, status: "draft", basis: "ex_gst", shares: [], invoice: null, notes: "", updatedAt: now, jobLabel: lead?.jobNo || `Lead-${id.slice(-6)}`, customer: lead?.name || "Customer" };
+      const settingsDoc = ["save", "approve", "upsert_invoice"].includes(action) ? await db.collection("settings").findOne({ _id: "team-earnings" } as never, { session }) : null;
       const maxTeamShareBps = Number.isSafeInteger(settingsDoc?.maxTeamShareBps) && settingsDoc!.maxTeamShareBps >= 1 && settingsDoc!.maxTeamShareBps <= 10000 ? settingsDoc!.maxTeamShareBps : defaultTeamEarningsSettings.maxTeamShareBps;
       let detail = "";
       if (action === "save") {
         if (record.status === "approved") throw new EarningsError("Reopen the approval before changing shares.", 409);
         if (body.basis !== "ex_gst" && body.basis !== "inclusive") throw new EarningsError("Choose an invoice basis.");
         record.basis = body.basis;
-        record.shares = parseEarningsShares(body.shares, roster, current?.shares, maxTeamShareBps);
-        const draftInvoice = invoiceForEarnings(lead!, record.basis);
-        if (draftInvoice) validateEarningsTotal(record.shares, draftInvoice.baseCents, maxTeamShareBps);
+        const draftInvoice = invoiceForEarnings(lead!, record.basis, Number.isSafeInteger(settingsDoc?.gstRateBps) ? settingsDoc!.gstRateBps : defaultTeamEarningsSettings.gstRateBps);
+        const invoiceKey = typeof body.invoiceKey === "string" ? body.invoiceKey : "";
+        if (invoiceKey) {
+          const item = (draftInvoice?.items || (draftInvoice ? [{ ...draftInvoice, key: "primary" }] : [])).find(invoice => invoice.key === invoiceKey);
+          if (!item) throw new EarningsError("Choose a saved invoice before setting its shares.", 409);
+          const shares = parseEarningsShares(body.shares, roster, record.invoiceShares?.find(allocation => allocation.invoiceKey === invoiceKey)?.shares, maxTeamShareBps);
+          validateEarningsTotal(shares, item.baseCents, maxTeamShareBps);
+          record.invoiceShares = [...(record.invoiceShares || []).filter(allocation => allocation.invoiceKey !== invoiceKey), { invoiceKey, shares }];
+          record.shares = sumInvoiceShares(record.invoiceShares);
+        } else {
+          if (record.invoiceShares?.length) throw new EarningsError("Choose an invoice to change its shares.", 409);
+          record.shares = parseEarningsShares(body.shares, roster, current?.shares, maxTeamShareBps);
+          if (draftInvoice) validateEarningsTotal(record.shares, draftInvoice.baseCents, maxTeamShareBps);
+        }
         record.notes = earningsText(body.notes, "Notes", 2000);
         record.invoice = null;
         detail = `Saved ${record.shares.length} shares, ${(record.shares.reduce((sum, s) => sum + s.rateBps, 0) / 100).toFixed(2)}% total plus AUD ${(record.shares.reduce((sum, s) => sum + (s.fixedAmountCents || 0), 0) / 100).toFixed(2)} fixed; basis ${record.basis}. ${record.notes}`;
+      } else if (action === "upsert_invoice") {
+        if (record.status !== "approved" || !record.invoiceShares?.length) throw new EarningsError("Save and approve invoice shares first.", 409);
+        if (body.basis !== record.basis) throw new EarningsError("The invoice basis is fixed after approval. Reopen the job to change it.", 409);
+        const invoiceKey = earningsText(body.invoiceKey, "Invoice", 160, true);
+        const invoice = invoiceForEarnings(lead!, record.basis, Number.isSafeInteger(settingsDoc?.gstRateBps) ? settingsDoc!.gstRateBps : defaultTeamEarningsSettings.gstRateBps);
+        const item = (invoice?.items || (invoice ? [{ ...invoice, key: "primary" }] : [])).find(candidate => candidate.key === invoiceKey);
+        if (!invoice || !item || !sameEarningsInvoice(body.invoice as typeof invoice, invoice)) throw new EarningsError("The invoice changed. Refresh before approving.", 409);
+        const previousItems = record.invoice?.items || (record.invoice ? [{ ...record.invoice, key: "primary" }] : []);
+        for (const allocation of record.invoiceShares) {
+          if (allocation.invoiceKey === invoiceKey) continue;
+          const before = previousItems.find(candidate => candidate.key === allocation.invoiceKey);
+          const after = (invoice.items || [{ ...invoice, key: "primary" }]).find(candidate => candidate.key === allocation.invoiceKey);
+          if (!sameEarningsInvoice(before || null, after || null)) throw new EarningsError("Another allocated invoice changed. Review the existing approval first.", 409);
+        }
+        const existing = record.invoiceShares.find(allocation => allocation.invoiceKey === invoiceKey);
+        if (existing?.shares.some(share => share.paidCents)) throw new EarningsError("Reverse this invoice's recorded payments before changing its shares.", 409);
+        const job = earningsJob(lead!, [], serialize(record));
+        if (!job.eligible) throw new EarningsError(job.unavailableReason, 409);
+        const shares = parseEarningsShares(body.shares, roster, existing?.shares, maxTeamShareBps);
+        validateEarningsTotal(shares, item.baseCents, maxTeamShareBps);
+        const completionDate = job.completionDate;
+        if (completionDate) await dailyCaps.updateOne({ _id: completionDate }, { $inc: { version: 1 } }, { upsert: true, session });
+        const usedByMember = new Map<string, number>();
+        const earlierApproved = completionDate ? await ledgers.find({ status: "approved" }, { session }).toArray() : [];
+        for (const prior of earlierApproved) if (prior._id !== id && prior.completionDate === completionDate) for (const share of prior.shares) usedByMember.set(share.memberId, (usedByMember.get(share.memberId) || 0) + share.earnedCents);
+        for (const allocation of record.invoiceShares) if (allocation.invoiceKey !== invoiceKey) for (const share of allocation.shares) usedByMember.set(share.memberId, (usedByMember.get(share.memberId) || 0) + share.earnedCents);
+        const caps = Array.isArray(settingsDoc?.employeeSettings) ? settingsDoc.employeeSettings as TeamEarningsSettings["employeeSettings"] : [];
+        const capUsage = caps.flatMap(setting => setting.dailyCapCents === null ? [] : [{ memberId: setting.memberId, capCents: setting.dailyCapCents, usedCents: usedByMember.get(setting.memberId) || 0 }]);
+        const calculated = applyDailyEarningsCaps(calculateEarnings(shares, item.baseCents), capUsage);
+        record.invoiceShares = [...record.invoiceShares.filter(allocation => allocation.invoiceKey !== invoiceKey), { invoiceKey, shares: calculated }];
+        record.shares = sumInvoiceShares(record.invoiceShares);
+        record.invoice = invoice;
+        record.notes = earningsText(body.notes, "Notes", 2000);
+        detail = `Approved shares for ${item.number}: ${calculated.map(share => `${share.name} AUD ${(share.earnedCents / 100).toFixed(2)}`).join(", ")}.`;
       } else if (action === "approve") {
         if (record.status !== "draft" || !record.shares.length) throw new EarningsError("Save draft shares before approving.", 409);
         const settings: TeamEarningsSettings = {
@@ -273,7 +318,14 @@ export async function mutateTeamEarnings(id: string, value: unknown, actor: stri
         // Confirm the amount the manager reviewed; a stale UI cannot approve a
         // different invoice even if the earnings document itself did not change.
         if (!sameEarningsInvoice(body.invoice as typeof invoice, invoice)) throw new EarningsError("The invoice changed. Refresh before approving.", 409);
-        validateEarningsTotal(record.shares, invoice.baseCents, maxTeamShareBps);
+        if (record.invoiceShares?.length) {
+          const items = invoice.items || [{ ...invoice, key: "primary" }];
+          for (const allocation of record.invoiceShares) {
+            const item = items.find(candidate => candidate.key === allocation.invoiceKey);
+            if (!item) throw new EarningsError("An invoice with team shares changed or was removed. Refresh and review the shares.", 409);
+            validateEarningsTotal(allocation.shares, item.baseCents, maxTeamShareBps);
+          }
+        } else validateEarningsTotal(record.shares, invoice.baseCents, maxTeamShareBps);
         const completionDate = job.completionDate;
         if (completionDate) await dailyCaps.updateOne({ _id: completionDate }, { $inc: { version: 1 } }, { upsert: true, session });
         const usedByMember = new Map<string, number>();
@@ -291,7 +343,18 @@ export async function mutateTeamEarnings(id: string, value: unknown, actor: stri
         const capUsage = settings.employeeSettings.flatMap(setting => setting.dailyCapCents === null
           ? [] : [{ memberId: setting.memberId, capCents: setting.dailyCapCents, usedCents: usedByMember.get(setting.memberId) || 0 }]);
         record.invoice = invoice; record.completionDate = completionDate;
-        record.shares = applyDailyEarningsCaps(calculateEarnings(record.shares, invoice.baseCents), capUsage);
+        if (record.invoiceShares?.length) {
+          const used = new Map(capUsage.map(cap => [cap.memberId, cap.usedCents]));
+          const items = invoice.items || [{ ...invoice, key: "primary" }];
+          record.invoiceShares = record.invoiceShares.map(allocation => {
+            const item = items.find(candidate => candidate.key === allocation.invoiceKey)!;
+            const calculated = calculateEarnings(allocation.shares, item.baseCents);
+            const capped = applyDailyEarningsCaps(calculated, capUsage.map(cap => ({ ...cap, usedCents: used.get(cap.memberId) || 0 })));
+            for (const share of capped) used.set(share.memberId, (used.get(share.memberId) || 0) + share.earnedCents);
+            return { ...allocation, shares: capped };
+          });
+          record.shares = sumInvoiceShares(record.invoiceShares);
+        } else record.shares = applyDailyEarningsCaps(calculateEarnings(record.shares, invoice.baseCents), capUsage);
         record.status = "approved"; record.approvedAt = now; record.approvedBy = actor;
         detail = `Approved ${invoice.number}: base AUD ${(invoice.baseCents / 100).toFixed(2)}; ${record.shares.map(s => `${s.name} ${s.fixedAmountCents !== undefined ? "fixed amount" : `${s.rateBps / 100}%`} = AUD ${(s.earnedCents / 100).toFixed(2)}`).join(", ")}. Daily caps are applied across approved jobs for ${completionDate || "the completion date"}.`;
       } else if (action === "reopen") {
@@ -300,11 +363,15 @@ export async function mutateTeamEarnings(id: string, value: unknown, actor: stri
         detail = earningsText(body.reason, "Reason for reopening", 500, true);
         record.status = "draft"; record.invoice = null; delete record.completionDate;
         record.shares = record.shares.map(s => ({ ...s, earnedCents: 0, paidCents: 0 }));
+        record.invoiceShares = record.invoiceShares?.map(allocation => ({ ...allocation, shares: allocation.shares.map(share => ({ ...share, earnedCents: 0, paidCents: 0 })) }));
         delete record.approvedAt; delete record.approvedBy;
       } else if (action === "pay") {
         if (record.status !== "approved") throw new EarningsError("Approve earnings before recording payment.", 409);
         if (earningsJob(lead!, [], serialize(record)).changed) throw new EarningsError("The invoice or work status changed after approval. Review and reopen the earnings first.", 409);
-        const share = record.shares.find(s => s.memberId === body.memberId);
+        const invoiceKey = record.invoiceShares?.length ? earningsText(body.invoiceKey, "Invoice", 160, true) : undefined;
+        const allocation = record.invoiceShares?.find(item => item.invoiceKey === invoiceKey);
+        if (record.invoiceShares?.length && !allocation) throw new EarningsError("Choose an invoice with approved shares.", 409);
+        const share = (allocation?.shares || record.shares).find(s => s.memberId === body.memberId);
         if (!share) throw new EarningsError("Choose a member from this job's approved shares.");
         const amountCents = earningsInteger(body.amountCents, "payment amount", 1);
         if (amountCents > share.earnedCents - share.paidCents) throw new EarningsError("Payment exceeds this member's outstanding earnings.", 409);
@@ -315,18 +382,21 @@ export async function mutateTeamEarnings(id: string, value: unknown, actor: stri
         if (!["Bank transfer", "Cash", "Other"].includes(method)) throw new EarningsError("Choose a payment method.");
         const reference = earningsText(body.reference, "Payment reference", 160, true);
         const note = earningsText(body.note, "Payment note", 500);
-        await payments.insertOne({ _id: requestId, leadId: id, memberId: share.memberId, memberName: share.name, amountCents, date, method, reference, note, actor, createdAt: now }, { session });
+        await payments.insertOne({ _id: requestId, leadId: id, ...(invoiceKey ? { invoiceKey } : {}), memberId: share.memberId, memberName: share.name, amountCents, date, method, reference, note, actor, createdAt: now }, { session });
         share.paidCents += amountCents;
+        if (allocation) record.shares.find(s => s.memberId === share.memberId)!.paidCents += amountCents;
         detail = `${share.name}: recorded AUD ${(amountCents / 100).toFixed(2)} via ${method} on ${date}; reference ${reference}. ${note}`;
       } else {
         const paymentId = earningsId(body.paymentId);
         const payment = await payments.findOne({ _id: paymentId, leadId: id }, { session });
         if (!payment || payment.voidedAt) throw new EarningsError("Payment is missing or already reversed.", 409);
         const reason = earningsText(body.reason, "Reversal reason", 500, true);
-        const share = record.shares.find(s => s.memberId === payment.memberId);
+        const allocation = record.invoiceShares?.find(item => item.invoiceKey === payment.invoiceKey);
+        const share = (allocation?.shares || record.shares).find(s => s.memberId === payment.memberId);
         if (!share || share.paidCents < payment.amountCents) throw new EarningsError("Payment balance needs review.", 409);
         await payments.updateOne({ _id: paymentId, leadId: id }, { $set: { voidedAt: now, voidedBy: actor, voidReason: reason } }, { session });
         share.paidCents -= payment.amountCents;
+        if (allocation) record.shares.find(s => s.memberId === share.memberId)!.paidCents -= payment.amountCents;
         detail = `Reversed payment ${payment.reference}, AUD ${(payment.amountCents / 100).toFixed(2)} to ${payment.memberName}: ${reason}`;
       }
       record = { ...record, version: version + 1, updatedAt: now };

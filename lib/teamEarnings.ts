@@ -11,12 +11,13 @@ export interface EarningsMember {
   id: string; name: string; role: string; active: boolean; aliases: string[]; username?: string;
 }
 export interface EarningsShare { memberId: string; name: string; rateBps: number; fixedAmountCents?: number; earnedCents: number; paidCents: number }
-export interface EarningsInvoice { number: string; totalCents: number; gstBps: number; baseCents: number; items?: EarningsInvoice[] }
+export interface EarningsInvoice { key?: string; number: string; totalCents: number; gstBps: number; baseCents: number; items?: EarningsInvoice[] }
 type InvoiceSource = Pick<Lead, "invoiceNumber" | "invoiceAmount" | "invoiceDraft" | "invoiceStatus" | "invoiceSentAt" | "paymentType" | "amountPaid" | "paymentReceipt">;
-export type EarningsSourceLead = Lead & { earningsInvoices?: InvoiceSource[] };
+export type EarningsSourceLead = Lead & { earningsInvoices?: (InvoiceSource & { earningsKey?: string })[] };
+export interface EarningsInvoiceAllocation { invoiceKey: string; shares: EarningsShare[] }
 export interface EarningsLedger {
   id: string; version: number; status: "draft" | "approved"; basis: EarningsBasis;
-  shares: EarningsShare[]; invoice: EarningsInvoice | null; notes: string;
+  shares: EarningsShare[]; invoiceShares?: EarningsInvoiceAllocation[]; invoice: EarningsInvoice | null; notes: string;
   approvedAt?: string; approvedBy?: string; updatedAt: string;
   jobLabel: string; customer: string; completionDate?: string;
 }
@@ -36,6 +37,7 @@ export interface EarningsJob {
 }
 export interface EarningsPayment {
   id: string; memberId: string; memberName: string; amountCents: number; date: string;
+  invoiceKey?: string;
   method: string; reference: string; note: string; actor: string; createdAt: string;
   voidedAt?: string; voidedBy?: string; voidReason?: string;
 }
@@ -62,9 +64,9 @@ export function earningsId(value: unknown) {
   if (typeof value !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)) throw new EarningsError("Invalid request ID.");
   return value.toLowerCase();
 }
-export function invoiceForEarnings(lead: InvoiceSource & { earningsInvoices?: InvoiceSource[] }, basis: EarningsBasis, defaultGstBps = 1000): EarningsInvoice | null {
+export function invoiceForEarnings(lead: InvoiceSource & { earningsKey?: string; earningsInvoices?: (InvoiceSource & { earningsKey?: string })[] }, basis: EarningsBasis, defaultGstBps = 1000): EarningsInvoice | null {
   if (lead.earningsInvoices?.length) {
-    const items = [ ...(lead.invoiceNumber ? [lead] : []), ...lead.earningsInvoices ].map(source => invoiceForEarnings({ invoiceNumber: source.invoiceNumber, invoiceAmount: source.invoiceAmount, invoiceDraft: source.invoiceDraft }, basis, defaultGstBps));
+    const items = [ ...(lead.invoiceNumber ? [{ ...lead, earningsKey: "primary" }] : []), ...lead.earningsInvoices ].map((source, index) => invoiceForEarnings({ invoiceNumber: source.invoiceNumber, invoiceAmount: source.invoiceAmount, invoiceDraft: source.invoiceDraft, earningsKey: source.earningsKey || `saved-${index}` }, basis, defaultGstBps));
     if (items.some(item => !item)) return null;
     const valid = items as EarningsInvoice[];
     return { number: valid.map(item => item.number).join(", "), totalCents: valid.reduce((sum, item) => sum + item.totalCents, 0), baseCents: valid.reduce((sum, item) => sum + item.baseCents, 0), gstBps: valid.every(item => item.gstBps === valid[0].gstBps) ? valid[0].gstBps : -1, items: valid };
@@ -74,10 +76,12 @@ export function invoiceForEarnings(lead: InvoiceSource & { earningsInvoices?: In
   const gst = lead.invoiceDraft?.gst ?? defaultGstBps / 100;
   if (!Number.isFinite(gst) || gst < 0 || gst > 100) return null;
   const totalCents = Math.round(total * 100), gstBps = Math.round(gst * 100);
-  return { number: lead.invoiceNumber, totalCents, gstBps, baseCents: basis === "inclusive" ? totalCents : Math.round(totalCents * 10000 / (10000 + gstBps)) };
+  return { ...(lead.earningsKey ? { key: lead.earningsKey } : {}), number: lead.invoiceNumber, totalCents, gstBps, baseCents: basis === "inclusive" ? totalCents : Math.round(totalCents * 10000 / (10000 + gstBps)) };
 }
 export function sameEarningsInvoice(a: EarningsInvoice | null, b: EarningsInvoice | null) {
-  return !!a && !!b && a.number === b.number && a.totalCents === b.totalCents && a.gstBps === b.gstBps && a.baseCents === b.baseCents && JSON.stringify(a.items || []) === JSON.stringify(b.items || []);
+  if (!a || !b || a.number !== b.number || a.totalCents !== b.totalCents || a.gstBps !== b.gstBps || a.baseCents !== b.baseCents) return false;
+  const left = a.items || [], right = b.items || [];
+  return left.length === right.length && left.every((item, index) => sameEarningsInvoice(item, right[index]));
 }
 export const DEFAULT_TEAM_SHARE_BPS = 3500;
 
@@ -108,6 +112,16 @@ export function calculateEarnings(shares: EarningsShare[], baseCents: number): E
   const order = values.map((s, index) => ({ index, fraction: baseCents * s.rateBps % 10000, id: s.memberId })).filter(row => values[row.index].fixedAmountCents === undefined).sort((a, b) => b.fraction - a.fraction || a.id.localeCompare(b.id));
   for (const row of order) if (remainder-- > 0) values[row.index].earnedCents++;
   return values;
+}
+export function sumInvoiceShares(allocations: EarningsInvoiceAllocation[]): EarningsShare[] {
+  const byMember = new Map<string, EarningsShare>();
+  for (const allocation of allocations) for (const share of allocation.shares) {
+    const total = byMember.get(share.memberId) || { memberId: share.memberId, name: share.name, rateBps: 0, earnedCents: 0, paidCents: 0 };
+    total.earnedCents += share.earnedCents;
+    total.paidCents += share.paidCents;
+    byMember.set(share.memberId, total);
+  }
+  return [...byMember.values()];
 }
 export function applyDailyEarningsCaps(
   shares: EarningsShare[],
