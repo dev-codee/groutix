@@ -31,6 +31,8 @@ Run `node scripts/team-earnings.test.mjs` for calculations, identity/completion 
 
 Each worker row offers **Enter as → Share (%) / Amount (AUD)**. Fixed amounts are stored as exact cents and remain fixed when the invoice basis changes. Percentage and fixed rows can be combined, but their total cannot exceed the configured team share limit of the current invoice basis at saving or approval. Existing approved records retain their amounts when the limit changes.
 
+The optional **Total team pool (%)** field on an invoice distributes that percentage among the selected members in proportion to their positive default percentages in Team Earnings Settings. For example, defaults of 20% and 10% split a 25% pool into 16.67% and 8.33%. Leaving the field blank uses the individual defaults as entered. Fixed dollar shares cannot be scaled through the pool control; select percentage shares to use it. Manual changes to a member row clear the pool field. Saved allocations retain the pool percentage for later review.
+
 Currency labels on the earnings page drop the decimal portion (AUD 300.90 displays as $300). Ledger calculations, payment inputs, audit records and CSV exports retain cents for reconciliation.
 
 ## Working register and dashboard links

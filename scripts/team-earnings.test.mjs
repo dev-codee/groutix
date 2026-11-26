@@ -72,8 +72,19 @@ test("invoice basis uses saved total, GST and no quote fallback", () => {
 
 test("invoice IDs do not mark existing approved invoice snapshots as changed", () => {
   const oldSnapshot = rules.invoiceForEarnings({ ...baseLead, earningsInvoices: [{ invoiceNumber: "INV-B", invoiceAmount: 220, invoiceDraft: { gst: 10 } }] }, "ex_gst");
+  for (const item of oldSnapshot.items) delete item.key;
   const current = rules.invoiceForEarnings({ ...baseLead, earningsInvoices: [{ invoiceNumber: "INV-B", invoiceAmount: 220, invoiceDraft: { gst: 10 }, earningsKey: "saved-invoice-id" }] }, "ex_gst");
   assert.equal(rules.sameEarningsInvoice(oldSnapshot, current), true);
+});
+
+test("team pool follows configured percentage ratios and reconciles to hundredths", () => {
+  assert.deepEqual(Array.from(rules.distributeTeamPool(2500, [{ memberId, rateBps: 2000 }, { memberId: secondId, rateBps: 1000 }]), row => ({ memberId: row.memberId, rateBps: row.rateBps })), [
+    { memberId, rateBps: 1667 }, { memberId: secondId, rateBps: 833 },
+  ]);
+  assert.deepEqual(Array.from(rules.distributeTeamPool(3000, [{ memberId, rateBps: 2000 }, { memberId: secondId, rateBps: 1000 }]), row => ({ memberId: row.memberId, rateBps: row.rateBps })), [
+    { memberId, rateBps: 2000 }, { memberId: secondId, rateBps: 1000 },
+  ]);
+  assert.throws(() => rules.distributeTeamPool(2500, [{ memberId, rateBps: 0 }]), /positive default/);
 });
 test("worker defaults prefill a stable share and manager settings validate against CRM members", async () => {
   const defaults = {
@@ -302,7 +313,9 @@ test("each invoice can have independent shares, payments, and later allocations"
   const f = fixture();
   f.state.customer_invoices.push({ _id: "invoice-two", leadId, values: { invoiceNumber: "INV-B", invoiceAmount: 500, invoiceDraft: { gst: 0 } } });
   let invoice = (await f.api.listTeamEarnings()).jobs[0].invoice;
-  const first = await f.mutate("save", 0, { basis: "ex_gst", invoiceKey: "primary", shares: [{ memberId, rateBps: 3000 }] });
+  const first = await f.mutate("save", 0, { basis: "ex_gst", invoiceKey: "primary", poolBps: 3000, shares: [{ memberId, rateBps: 3000 }] });
+  assert.equal(first.invoiceShares[0].poolBps, 3000);
+  await assert.rejects(f.mutate("save", first.version, { basis: "ex_gst", invoiceKey: "primary", poolBps: 2500, shares: [{ memberId, rateBps: 3000 }] }), /team pool must equal/);
   const secondDraft = await f.mutate("save", first.version, { basis: "ex_gst", invoiceKey: "invoice-two", shares: [{ memberId: secondId, rateBps: 1000 }] });
   let approved = await f.mutate("approve", secondDraft.version, { invoice });
   assert.equal(approved.invoiceShares.find(a => a.invoiceKey === "primary").shares[0].earnedCents, 30000);

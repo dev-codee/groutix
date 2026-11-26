@@ -14,10 +14,10 @@ export interface EarningsShare { memberId: string; name: string; rateBps: number
 export interface EarningsInvoice { key?: string; number: string; totalCents: number; gstBps: number; baseCents: number; items?: EarningsInvoice[] }
 type InvoiceSource = Pick<Lead, "invoiceNumber" | "invoiceAmount" | "invoiceDraft" | "invoiceStatus" | "invoiceSentAt" | "paymentType" | "amountPaid" | "paymentReceipt">;
 export type EarningsSourceLead = Lead & { earningsInvoices?: (InvoiceSource & { earningsKey?: string })[] };
-export interface EarningsInvoiceAllocation { invoiceKey: string; shares: EarningsShare[] }
+export interface EarningsInvoiceAllocation { invoiceKey: string; shares: EarningsShare[]; poolBps?: number }
 export interface EarningsLedger {
   id: string; version: number; status: "draft" | "approved"; basis: EarningsBasis;
-  shares: EarningsShare[]; invoiceShares?: EarningsInvoiceAllocation[]; invoice: EarningsInvoice | null; notes: string;
+  shares: EarningsShare[]; invoiceShares?: EarningsInvoiceAllocation[]; poolBps?: number; invoice: EarningsInvoice | null; notes: string;
   approvedAt?: string; approvedBy?: string; updatedAt: string;
   jobLabel: string; customer: string; completionDate?: string;
 }
@@ -38,6 +38,7 @@ export interface EarningsJob {
 export interface EarningsPayment {
   id: string; memberId: string; memberName: string; amountCents: number; date: string;
   invoiceKey?: string;
+  invoiceNumber?: string;
   method: string; reference: string; note: string; actor: string; createdAt: string;
   voidedAt?: string; voidedBy?: string; voidReason?: string;
 }
@@ -78,8 +79,8 @@ export function invoiceForEarnings(lead: InvoiceSource & { earningsKey?: string;
   const totalCents = Math.round(total * 100), gstBps = Math.round(gst * 100);
   return { ...(lead.earningsKey ? { key: lead.earningsKey } : {}), number: lead.invoiceNumber, totalCents, gstBps, baseCents: basis === "inclusive" ? totalCents : Math.round(totalCents * 10000 / (10000 + gstBps)) };
 }
-export function sameEarningsInvoice(a: EarningsInvoice | null, b: EarningsInvoice | null) {
-  if (!a || !b || a.number !== b.number || a.totalCents !== b.totalCents || a.gstBps !== b.gstBps || a.baseCents !== b.baseCents) return false;
+export function sameEarningsInvoice(a: EarningsInvoice | null, b: EarningsInvoice | null): boolean {
+  if (!a || !b || (a.key && b.key && a.key !== b.key) || a.number !== b.number || a.totalCents !== b.totalCents || a.gstBps !== b.gstBps || a.baseCents !== b.baseCents) return false;
   const left = a.items || [], right = b.items || [];
   return left.length === right.length && left.every((item, index) => sameEarningsInvoice(item, right[index]));
 }
@@ -112,6 +113,16 @@ export function calculateEarnings(shares: EarningsShare[], baseCents: number): E
   const order = values.map((s, index) => ({ index, fraction: baseCents * s.rateBps % 10000, id: s.memberId })).filter(row => values[row.index].fixedAmountCents === undefined).sort((a, b) => b.fraction - a.fraction || a.id.localeCompare(b.id));
   for (const row of order) if (remainder-- > 0) values[row.index].earnedCents++;
   return values;
+}
+export function distributeTeamPool(poolBps: number, weights: { memberId: string; rateBps: number }[]): { memberId: string; rateBps: number }[] {
+  if (!Number.isSafeInteger(poolBps) || poolBps < 1 || poolBps > 10000 || !weights.length || weights.some(weight => !Number.isSafeInteger(weight.rateBps) || weight.rateBps <= 0)) {
+    throw new EarningsError("Choose team members with positive default percentages in Settings.");
+  }
+  const totalWeight = weights.reduce((sum, weight) => sum + weight.rateBps, 0);
+  const result = weights.map(weight => ({ memberId: weight.memberId, rateBps: Math.floor(poolBps * weight.rateBps / totalWeight), remainder: poolBps * weight.rateBps % totalWeight }));
+  let remaining = poolBps - result.reduce((sum, weight) => sum + weight.rateBps, 0);
+  for (const weight of [...result].sort((a, b) => b.remainder - a.remainder || a.memberId.localeCompare(b.memberId))) if (remaining-- > 0) weight.rateBps++;
+  return result.map(({ memberId, rateBps }) => ({ memberId, rateBps }));
 }
 export function sumInvoiceShares(allocations: EarningsInvoiceAllocation[]): EarningsShare[] {
   const byMember = new Map<string, EarningsShare>();

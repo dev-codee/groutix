@@ -6,11 +6,13 @@ import { loadTs } from './test-ts-loader.mjs';
 const member = { id: 'worker-1', name: 'Test Worker', role: 'technician', active: true, aliases: [] };
 const invoice = { number: 'INV-TEST', totalCents: 110000, baseCents: 100000, gstBps: 1000 };
 const job = { id: 'job-1', jobLabel: 'JOB-TEST', customer: 'Test Customer', service: 'Regrouting', status: 'Completed', scheduledAt: '2026-01-01T08:00:00+11:00', receipts: [{ number: 'INV-TEST', totalCents: 110000, paidCents: 50000, remainingCents: 60000 }], assignedIds: [member.id], assignedNames: [member.name], completedVisits: 1, totalVisits: 1, workVisits: [], memberWork: [], daysDone: 1, daysPlanned: 1, invoice, invoicePaid: false, eligible: true, changed: false, ledger: { id: 'job-1', version: 1, status: 'approved', basis: 'ex_gst', invoice, shares: [{ memberId: member.id, name: member.name, rateBps: 2500, earnedCents: 25000, paidCents: 10000 }], notes: '', updatedAt: '2026-11-19' } };
-function render({ open = false, pay = false, failed = false, draft = false } = {}) {
+function render({ open = false, pay = false, failed = false, draft = false, multi = false } = {}) {
   let index = 0;
   const mocked = { ...React, useState: initial => {
     const position = index++;
-    const overrides = { 0: { members: [member], jobs: [draft ? { ...job, ledger: null } : job] }, 1: false, 2: failed ? 'Connection failed' : '', 8: new Set(open ? [job.id] : []), 9: pay ? { id: job.id, memberId: member.id } : null, 12: 'all', 15: open ? job.id : '' };
+    const displayedJob = draft ? { ...job, ledger: null } : job;
+    const extra = { number: 'INV-SECOND', key: 'invoice-second', totalCents: 50000, baseCents: 50000, gstBps: 0 };
+    const overrides = { 0: { members: [member], jobs: [multi ? { ...displayedJob, invoice: { ...invoice, items: [{ ...invoice, key: 'primary' }, extra], totalCents: 160000, baseCents: 150000 }, receipts: [...job.receipts, { number: extra.number, totalCents: extra.totalCents, paidCents: 0, remainingCents: extra.totalCents }] } : displayedJob] }, 1: false, 2: failed ? 'Connection failed' : '', 8: new Set(open ? [job.id] : []), 9: pay ? { id: job.id, memberId: member.id } : null, 12: 'all', 15: open ? job.id : '' };
     return [Object.hasOwn(overrides, position) ? overrides[position] : typeof initial === 'function' ? initial() : initial, () => {}];
   }, useEffect: () => {}, useCallback: fn => fn, useRef: value => ({ current: value }) };
   const { TeamEarningsView } = loadTs('components/admin/views/TeamEarningsView.tsx', { react: mocked });
@@ -37,9 +39,25 @@ test('failed refresh hides stale balances and exposes retry', () => {
 
 test('unconfigured jobs immediately render editable CRM members and share amounts', () => {
   const html = render({ open: true, draft: true });
-  for (const text of ['Employee 1', 'Share type 1', 'Save draft shares', 'Test Worker', 'Add Employee']) assert.ok(html.includes(text), text);
+  for (const text of ['Employee 1', 'Share type 1', 'Save draft shares', 'Test Worker', 'Add Employee', 'Total team pool (%)', 'Leave blank to use the member percentages']) assert.ok(html.includes(text), text);
   assert.ok(html.includes('type="number"'));
   assert.ok(!html.includes('No team shares configured.'));
+});
+
+test('register uses compact cards and a scrollable single-row status filter', () => {
+  const html = render();
+  assert.ok(html.includes('xl:grid-cols-7'));
+  assert.ok(html.includes('overflow-x-auto whitespace-nowrap'));
+  assert.ok(html.includes('lg:grid-cols-['));
+});
+
+test('multiple saved invoices expose separate share selection cards', () => {
+  const html = render({ open: true, draft: true, multi: true });
+  assert.ok(html.includes('aria-label="Select invoice team shares"'));
+  assert.ok(html.includes('INV-TEST'));
+  assert.ok(html.includes('INV-SECOND'));
+  assert.ok(html.includes('Invoice INV-TEST'));
+  assert.ok(html.includes('Not set'));
 });
 
 test('saved invoices sort onto the first register page before uninvoiced leads', () => {
