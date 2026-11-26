@@ -198,4 +198,4 @@ export function validateEarningsTotal(shares: EarningsShare[], baseCents: number
   }
 }
 
-export const formatEarningsMoney = (cents: number) => (cents / 100).toLocaleString("en-AU", { style: "currency", currency: "AUD", minimumFractionDigits: 2, maximumFractionDigits: 2 });
+export const formatEarningsMoney = (cents: number) => (cents === 0 ? 0 : cents / 100).toLocaleString("en-AU", { style: "currency", currency: "AUD", minimumFractionDigits: cents % 100 === 0 ? 0 : 2, maximumFractionDigits: 2 });

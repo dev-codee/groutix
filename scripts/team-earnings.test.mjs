@@ -279,7 +279,7 @@ test("separately saved customer invoices appear, approve, and detect later invoi
   f.state.customer_invoices.push({ _id: leadId + "~invoice~one", leadId, values: { invoiceNumber: "INV-A", invoiceAmount: 1100, invoiceDraft: { gst: 10 }, invoiceStatus: "Paid" } },
     { _id: leadId + "~invoice~two", leadId, values: { invoiceNumber: "INV-B", invoiceAmount: 500, invoiceDraft: { gst: 0 }, invoiceStatus: "Unpaid" } });
   let job = (await f.api.listTeamEarnings()).jobs[0];
-  assert.equal(job.invoice.totalCents, 160000);
+  assert.equal(job.invoice.totalCents, 160000, "paid and pending invoices both contribute to the job basis");
   assert.equal(job.invoice.baseCents, 150000);
   assert.equal(job.invoicePaid, false);
   assert.equal(job.eligible, true);
@@ -319,8 +319,9 @@ test("mixed allocation preserves exact fixed cents and currency displays cents",
   const shares = rules.parseEarningsShares([{ memberId, fixedAmountCents: 101 }, { memberId: secondId, rateBps: 3333 }], [member, second]);
   const result = rules.calculateEarnings(shares, 1001);
   assert.deepEqual(result.map(s => s.earnedCents), [101, 334]);
-  for (const [cents, expected] of [[30000, "$300.00"], [30040, "$300.40"], [30090, "$300.90"], [30099, "$300.99"]]) assert.equal(rules.formatEarningsMoney(cents), expected);
+  for (const [cents, expected] of [[30000, "$300"], [30040, "$300.40"], [30090, "$300.90"], [30099, "$300.99"]]) assert.equal(rules.formatEarningsMoney(cents), expected);
   assert.equal(rules.formatEarningsMoney(99), "$0.99");
+  assert.equal(rules.formatEarningsMoney(-0), "$0");
 });
 
 test("register receipts reconcile legacy, partial and multiple invoice payments without changing approval snapshots", async () => {
@@ -329,6 +330,7 @@ test("register receipts reconcile legacy, partial and multiple invoice payments 
   f.state.submissions[0].invoiceStatus = "Partially Paid";
   f.state.customer_invoices.push({ _id: "extra", leadId, values: { invoiceNumber: "INV-EXTRA", invoiceAmount: 220, invoiceStatus: "Paid", invoiceDraft: { gst: 10 } } });
   let job = (await f.api.listTeamEarnings()).jobs[0];
+  assert.equal(job.invoice.totalCents, 132000);
   assert.equal(job.scheduledAt, baseLead.jobAt);
   assert.equal(job.receipts.reduce((sum, row) => sum + row.paidCents, 0), 32025);
   assert.equal(job.receipts[0].remainingCents, 99975);
@@ -368,4 +370,10 @@ test("register filters reflect visit progress and receipts while totals exclude 
   done.ledger.shares[0].earnedCents = 30000;
   done.ledger.shares[0].paidCents = 10000;
   assert.equal(registerTotals([done]).earned - registerTotals([done]).paid, 20000);
+  const paymentPending = rules.earningsJob({ ...baseLead, status: "Payment Pending", invoiceNumber: "INV-200", invoiceAmount: 220 }, [member], null);
+  paymentPending.ledger = { status: "approved", shares: [{ memberId, name: "Alex", rateBps: 3000, earnedCents: 6000, paidCents: 0 }] };
+  assert.equal(matches(paymentPending, "Completed"), true);
+  assert.equal(matches(paymentPending, "Pending"), true);
+  assert.equal(registerTotals([done, paymentPending]).earned, 36000);
+  assert.equal(registerTotals([done, paymentPending]).value, 132000);
 });

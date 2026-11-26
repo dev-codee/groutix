@@ -142,13 +142,14 @@ function EarningsDetail({ job, members, settings, onClose, onChanged, onExpenseC
             <tbody>{rows.map((row, index) => {
               const member = members.find(m => m.id === row.memberId);
               const earned = shares[index]?.earnedCents || 0;
+              const cap = job.dailyCapUsage?.find(usage => usage.memberId === row.memberId);
               return <tr key={index} className="border-t border-slate-100">
                 <td className="min-w-28 p-1.5"><select required aria-label={`Employee ${index + 1}`} className={input} value={row.memberId} onChange={e => setRows(old => old.map((r, i) => i === index ? { ...r, memberId: e.target.value } : r))}><option value="">Select</option>{members.filter(m => m.active || ledger?.shares.some(s => s.memberId === m.id)).map(m => <option key={m.id} value={m.id}>{m.name}</option>)}</select></td>
                 <td className="p-2 text-xs capitalize text-slate-600">{member?.role || "—"}</td>
                 <td className="min-w-24 p-1.5"><select aria-label={`Share type ${index + 1}`} className={input} value={row.mode} onChange={e => setRows(old => old.map((r, i) => i === index ? { ...r, mode: e.target.value as ShareRow["mode"], value: "" } : r))}><option value="percent">%</option><option value="amount">$</option></select></td>
                 <td className="min-w-20 p-1.5"><input required aria-label={`Share value ${index + 1}`} className={input} type="number" min="0.01" max={row.mode === "percent" ? maxTeamSharePercent : undefined} step="0.01" value={row.value} onChange={e => setRows(old => old.map((r, i) => i === index ? { ...r, value: e.target.value } : r))} placeholder={row.mode === "percent" ? "30" : "100"} /></td>
-                <td className="whitespace-nowrap p-2 font-semibold text-slate-800">{invoice ? money(earned) : "—"}</td>
-                <td className="whitespace-nowrap p-2 text-slate-500">$0.00</td>
+                <td className="whitespace-nowrap p-2 font-semibold text-slate-800">{invoice ? money(earned) : "—"}{invoice && preview[index]?.earnedCents < rawPreview[index]?.earnedCents && earned === preview[index].earnedCents && <span className="block text-[10px] font-normal text-amber-700" title="The worker's daily maximum limits this amount">Daily max: {money(Math.max(0, (cap?.capCents || 0) - (cap?.usedCents || 0)))}<br />Before cap: {money(rawPreview[index].earnedCents)}</span>}</td>
+                <td className="whitespace-nowrap p-2 text-slate-500">{money(0)}</td>
                 <td className="whitespace-nowrap p-2 font-semibold text-rose-600">{invoice ? money(earned) : "—"}</td>
                 <td className="p-1.5"><button type="button" aria-label={`Remove share ${index + 1}`} disabled={rows.length === 1} onClick={() => setRows(old => old.filter((_, i) => i !== index))} className="rounded-md p-1 text-rose-500 hover:bg-rose-50 disabled:opacity-30"><X className="h-4 w-4" /></button></td>
               </tr>;
@@ -158,9 +159,10 @@ function EarningsDetail({ job, members, settings, onClose, onChanged, onExpenseC
             </tfoot>
           </table>
         </div>
+        {invoice && <p className="text-xs text-slate-500">Based on {money(previewBase)} {basis === "ex_gst" ? "excluding GST" : "including GST"} across {invoice.items?.length || 1} saved invoice{(invoice.items?.length || 1) === 1 ? "" : "s"}. Customer payment status does not change the team share.</p>}
         <div className="flex flex-wrap items-center justify-between gap-2">
           <button className={button} type="button" disabled={rows.length >= 20} onClick={() => setRows(old => [...old, emptyRow()])}><Plus className="h-3.5 w-3.5" />Add Employee</button>
-          <p className={`text-xs font-semibold ${totalRate > maxTeamSharePercent || exceedsBase ? "text-rose-600" : "text-slate-500"}`}>{totalRate > 0 ? `${totalRate.toFixed(2)}% total` : ""} · {maxTeamSharePercent}% maximum for the whole team · company keeps at least {100 - maxTeamSharePercent}% {exceedsBase ? "· exceeds team limit" : ""}</p>
+          <p className={`text-xs font-semibold ${totalRate > maxTeamSharePercent || exceedsBase ? "text-rose-600" : "text-slate-500"}`}>{totalRate > 0 ? `${totalRate.toLocaleString("en-AU", { maximumFractionDigits: 2 })}% total` : ""} · {maxTeamSharePercent}% maximum for the whole team · company keeps at least {100 - maxTeamSharePercent}% {exceedsBase ? "· exceeds team limit" : ""}</p>
         </div>
         {exceedsBase && <ErrorBox error={`Combined team shares cannot exceed ${maxTeamSharePercent}% of the invoice basis.`} />}
         <Field name="Manager notes"><textarea className={input} maxLength={2000} rows={2} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Agreed rate, shared work or other context" /></Field>
