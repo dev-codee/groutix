@@ -333,6 +333,30 @@ test("each invoice can have independent shares, payments, and later allocations"
   await assert.rejects(f.mutate("upsert_invoice", approved.version, { basis: "ex_gst", invoiceKey: "invoice-two", shares: [{ memberId: secondId, rateBps: 2000 }], invoice }), /Reverse this invoice/);
 });
 
+test("member summary payment records every invoice balance atomically and retries safely", async () => {
+  const f = fixture();
+  f.state.customer_invoices.push({ _id: "invoice-two", leadId, values: { invoiceNumber: "INV-B", invoiceAmount: 500, invoiceDraft: { gst: 0 } } });
+  const invoice = (await f.api.listTeamEarnings()).jobs[0].invoice;
+  const first = await f.mutate("save", 0, { basis: "ex_gst", invoiceKey: "primary", shares: [{ memberId, rateBps: 3000 }] });
+  const secondDraft = await f.mutate("save", first.version, { basis: "ex_gst", invoiceKey: "invoice-two", shares: [{ memberId, rateBps: 1000 }] });
+  const approved = await f.mutate("approve", secondDraft.version, { invoice });
+  const body = { memberId, date: "2026-01-01", method: "Bank transfer", reference: "BATCH-100", note: "Paid together", requestId: randomUUID(), entries: [
+    { jobId: leadId, invoiceKey: "primary", version: approved.version, amountCents: 30000 },
+    { jobId: leadId, invoiceKey: "invoice-two", version: approved.version, amountCents: 5000 },
+  ] };
+  await assert.rejects(f.api.recordMemberEarningsPayment({ ...body, entries: [body.entries[0], { ...body.entries[1], amountCents: 4999 }] }, "manager"), /balance changed/);
+  assert.equal(f.state.team_earnings_payments.length, 0);
+  const result = await f.api.recordMemberEarningsPayment(body, "manager");
+  assert.equal(result.amountCents, 35000);
+  assert.equal(result.paymentsCount, 2);
+  assert.equal(f.state.team_earnings_payments.length, 2);
+  assert.equal(f.state.team_earnings[0].shares[0].paidCents, 35000);
+  assert.equal(f.state.team_earnings[0].invoiceShares[0].shares[0].paidCents, 30000);
+  assert.equal(f.state.team_earnings[0].invoiceShares[1].shares[0].paidCents, 5000);
+  await f.api.recordMemberEarningsPayment(body, "manager");
+  assert.equal(f.state.team_earnings_payments.length, 2);
+});
+
 test("fixed amounts mix with percentage shares, survive approval and support payment", async () => {
   const f = fixture();
   const d = await f.mutate("save", 0, { basis: "ex_gst", shares: [{ memberId, fixedAmountCents: 10000 }, { memberId: secondId, rateBps: 2500 }] });

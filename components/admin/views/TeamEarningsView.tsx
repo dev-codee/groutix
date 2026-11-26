@@ -509,6 +509,7 @@ export function TeamEarningsView({ query, onQueryChange, onOpenJob, onManageInvo
   const zeroSummaryRows = memberRows.filter(row => !row.earned && !row.paid && !row.estimated);
   const payingMember = data.members.find(member => member.id === payMemberId);
   const payingEntries = payMemberId ? memberPaymentEntries(filtered, payMemberId) : [];
+  const payingRow = memberRows.find(row => row.id === payMemberId);
   function exportCsv(members = false) {
     const contents = members ? earningsMembersCsv(memberRows) : earningsJobsCsv(filtered);
     const url = URL.createObjectURL(new Blob(["\uFEFF", contents], { type: "text/csv;charset=utf-8;" }));
@@ -572,10 +573,20 @@ export function TeamEarningsView({ query, onQueryChange, onOpenJob, onManageInvo
       </section> : tab === "jobs" ? <section className={`${panel} p-4 text-center text-sm text-slate-500`}>Select a job to see earnings and payment details.</section> : null}
       <aside className="space-y-2.5">
         <section className={`${panel} p-2.5`}><ManagerSummary totals={totals} expenseTotal={expenseTotal} managerGross={managerGross} managerFinal={managerFinal} /></section>
-        <section className={panel}><div className="p-2.5"><h3 className="font-bold">Team Summary · This Period</h3></div><div className="overflow-x-auto"><table className="w-full min-w-[340px] text-left text-xs"><thead className="bg-slate-50 text-slate-500"><tr><th className="p-1.5">Employee</th><th className="p-1.5">Earned</th><th className="p-1.5">Paid</th><th className="p-1.5">Remaining</th></tr></thead><tbody>{memberRows.map(row => <tr key={row.id} className="border-t border-slate-100"><td className="p-1.5 font-semibold">{row.name}</td><td className="p-1.5">{money(row.earned)}</td><td className="p-1.5">{money(row.paid)}</td><td className="p-1.5 font-semibold text-rose-700">{money(row.earned - row.paid)}</td></tr>)}<tr className="border-t bg-blue-50 font-bold"><td className="p-1.5">Total</td><td className="p-1.5">{money(totals.earned)}</td><td className="p-1.5">{money(totals.paid)}</td><td className="p-1.5">{money(totals.earned - totals.paid)}</td></tr></tbody></table></div></section>
+        <section className={panel} aria-label="Team Summary · This Period">
+          <div className="border-b border-slate-100 p-2.5"><h3 className="text-sm font-bold">Team Summary · This Period</h3><p className="text-[11px] text-slate-500">Whole dollars shown · exact cents kept in payment records</p></div>
+          <div className="divide-y divide-slate-100">{activeSummaryRows.map(row => {
+            const due = row.earned - row.paid;
+            const payable = memberPaymentEntries(filtered, row.id).reduce((sum, entry) => sum + entry.amountCents, 0);
+            return <div key={row.id} className="space-y-1 p-2 text-xs"><div className="flex items-start justify-between gap-1.5"><span className="min-w-0 break-words font-semibold text-slate-800">{row.name}</span><span className={`shrink-0 font-bold ${due > 0 ? "text-rose-700" : "text-emerald-700"}`}>{wholeMoney(due)}</span></div><div className="flex flex-wrap items-center justify-between gap-1 text-[11px] text-slate-500"><span>Earned {wholeMoney(row.earned)} · Paid {wholeMoney(row.paid)}</span>{due > 0 && <button type="button" className={primary} disabled={!payable} title={payable ? `Record ${money(payable)} already paid to ${row.name}` : "Review changed invoices before recording payment"} onClick={() => setPayMemberId(row.id)}>Pay</button>}</div></div>;
+          })}{!activeSummaryRows.length && <p className="p-2.5 text-xs text-slate-500">No earnings for this period.</p>}</div>
+          {!!zeroSummaryRows.length && <details className="border-t border-slate-100 px-2.5 py-1.5 text-xs"><summary className="cursor-pointer text-slate-500">Show {zeroSummaryRows.length} member{zeroSummaryRows.length === 1 ? "" : "s"} with no earnings</summary><div className="mt-1.5 space-y-1 text-slate-600">{zeroSummaryRows.map(row => <p key={row.id} className="break-words">{row.name}</p>)}</div></details>}
+          <div className="border-t border-blue-100 bg-blue-50 p-2.5 text-xs"><div className="flex justify-between gap-2 font-bold"><span>Total outstanding</span><span className="text-rose-700">{wholeMoney(totals.earned - totals.paid)}</span></div><p className="mt-0.5 text-[11px] text-slate-600">Earned {wholeMoney(totals.earned)} · Paid {wholeMoney(totals.paid)}</p></div>
+        </section>
       </aside>
     </div>}
     <p className="text-xs text-slate-500">Payments record money already paid to workers; they do not transfer funds. Customer receipts remain separate. Currency displays cents, and ledger calculations use integer cents.</p>
+    {payingMember && <MemberPaymentDialog key={payingMember.id} member={payingMember} entries={payingEntries} totalDueCents={(payingRow?.earned || 0) - (payingRow?.paid || 0)} onClose={() => setPayMemberId(null)} onPaid={amountCents => { setPayMemberId(null); setNotice(`Recorded ${money(amountCents)} paid to ${payingMember.name}.`); void load(); }} />}
     {settingsOpen && <EarningsSettingsDialog members={data.members} current={data.settings} onClose={() => setSettingsOpen(false)} onManageTeam={onManageTeam} onSaved={settings => { setData(current => ({ ...current, settings })); setSettingsOpen(false); setNotice("Team earnings settings saved."); void load(); }} />}
   </div>;
 }
