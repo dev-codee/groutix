@@ -725,7 +725,7 @@ const dashboardFields = [
   "assigned", "inspectorId", "inspectorUsername", "technician", "technicianId", "technicianUsername",
   "priority", "received", "contacted", "follow", "source", "notes",
   "technicianNotes", "inspectionNotes", "scopeNotes", "customerType", "agency", "tenants",
-  "areas", "leaking", "damagedTiles", "quoteItemCode", "quoteTaxMode", "quoteTaxRate",
+  "areas", "leaking", "damagedTiles", "quoteChecklist", "quoteItemCode", "quoteTaxMode", "quoteTaxRate",
   "quoteUpdated", "quoteAmount", "photosCount", "gps", "warranty", "warrantyProvided",
   "quoteReference", "quoteNumber", "hasCustomerQuotes", "acceptedCustomerQuoteCount", "quoteSentAt", "quoteOpenedAt",
   "quoteAcceptedAt", "quoteDeclinedAt", "quoteSignedName", "quoteSignedAt", "followUpStage", "followUpNext",

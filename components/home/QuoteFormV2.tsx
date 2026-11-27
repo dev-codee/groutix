@@ -13,22 +13,14 @@ import { formatBytes, MAX_FILE_SIZE_BYTES, MAX_TOTAL_BYTES } from "@/lib/imageCo
 import { trackEvent } from "@/lib/analytics";
 import { formatSlotRange } from "@/lib/scheduling";
 import { useContact } from "@/components/SiteContentProvider";
+import QuoteChecklist, { emptyChecklist, type Checklist } from "@/components/QuoteChecklist";
 import PhotoUploadTips from "@/components/PhotoUploadTips";
 import { isCompletePropertyAddress, PROPERTY_ADDRESS_ERROR } from "@/lib/propertyAddress";
 
 const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 
-const LEAKING = ["Yes", "No", "Not sure"];
-
 type Mode = "insp" | "quote";
 type StepId = "details" | "job" | "tenants" | "finish";
-type Checklist = {
-  location: string; showerType: string; wallHeight: string; work: string; showerScope: string;
-  wallCount: string; tileSize: string; mosaic: string; screen: string; siliconeJoints: string;
-  wallTiles: string; floorTiles: string; tileAction: string; balconyArea: string;
-  balconyTileSize: string; additional: string[]; notes: string;
-};
-const emptyChecklist: Checklist = { location: "", showerType: "", wallHeight: "", work: "", showerScope: "", wallCount: "", tileSize: "", mosaic: "", screen: "", siliconeJoints: "", wallTiles: "", floorTiles: "", tileAction: "", balconyArea: "", balconyTileSize: "", additional: [], notes: "" };
 type Tenant = { name: string; phone: string; email: string };
 type Slot = { time: string; booked: boolean };
 type Day = { date: string; label: string; slots: Slot[] };
@@ -622,18 +614,6 @@ export default function QuoteFormV2({
     </div>
   );
 
-  const checkSelect = (key: keyof Checklist, title: string, options: string[], required = false) => (
-    <label className="block min-w-0 text-[12px] font-semibold text-neutral-700">
-      <span className="mb-1 block">{title} {required && req}</span>
-      <select value={checklist[key] as string} onChange={(e) => { setChecklist((c) => ({ ...c, [key]: e.target.value })); setJobErrors((all) => ({ ...all, [key]: "" })); }}
-        aria-invalid={!!jobErrors[key]} className={`h-10 w-full rounded-lg border bg-[#FBFCFE] px-2.5 text-[13px] text-neutral-900 focus:border-[#2F63CC] focus:outline-none ${jobErrors[key] ? "border-red-500" : "border-[#DBE3F0]"}`}>
-        <option value="">Select…</option>
-        {options.map((v) => <option key={v} value={v}>{v}</option>)}
-      </select>
-      <FieldError msg={jobErrors[key]} />
-    </label>
-  );
-
   /* ---------- render ---------- */
   return (
     <div
@@ -716,45 +696,25 @@ export default function QuoteFormV2({
 
           {/* STEP 2: JOB CHECKLIST */}
           {step === "job" && (
-            <div className="flex flex-1 flex-col gap-3 pt-2">
-              <p className="text-[13px] text-neutral-600">Tell us what needs attention. Approximate details are fine; photos can be added at the end.</p>
-              <div className="grid grid-cols-1 gap-2.5 min-[420px]:grid-cols-2">
-                {checkSelect("location", "Area", ["Ensuite shower", "Main bathroom shower", "Other shower", "Balcony"], true)}
-                {checkSelect("work", "Work needed", ["Grout only", "Silicone only", "Grout and silicone", "Not sure"], true)}
-                <label className="block text-[12px] font-semibold text-neutral-700"><span className="mb-1 block">Leaking? {req}</span>
-                  <select value={leaking} onChange={(e) => { setLeaking(e.target.value); setJobErrors((x) => ({ ...x, leaking: "" })); }} className={`h-10 w-full rounded-lg border bg-[#FBFCFE] px-2.5 text-[13px] ${jobErrors.leaking ? "border-red-500" : "border-[#DBE3F0]"}`}><option value="">Select…</option>{LEAKING.map((v) => <option key={v}>{v}</option>)}</select><FieldError msg={jobErrors.leaking} />
-                </label>
-                {checklist.location === "Balcony" ? (
-                  <label className="block text-[12px] font-semibold text-neutral-700"><span className="mb-1 block">Balcony area (m²) {req}</span><input type="number" min="0.1" step="0.1" value={checklist.balconyArea} onChange={(e) => { setChecklist((c) => ({ ...c, balconyArea: e.target.value })); setJobErrors((x) => ({ ...x, balconyArea: "" })); }} placeholder="Approx. size" className={`h-10 w-full rounded-lg border bg-[#FBFCFE] px-2.5 text-[13px] ${jobErrors.balconyArea ? "border-red-500" : "border-[#DBE3F0]"}`} /><FieldError msg={jobErrors.balconyArea} /></label>
-                ) : null}
-              </div>
-              {checklist.location === "Balcony" ? (
-                <div className="grid grid-cols-1 gap-2.5 min-[420px]:grid-cols-2">{checkSelect("balconyTileSize", "Tile size", ["Small", "Medium", "Large", "Extra large", "Not sure"])}</div>
-              ) : checklist.location ? (
-                <div className="rounded-xl border border-[#DBE3F0] bg-[#F8FAFF] p-3">
-                  <p className="mb-2 text-[13px] font-bold text-[#001F97]">Shower details</p>
-                  <div className="grid grid-cols-1 gap-2.5 min-[420px]:grid-cols-2">
-                    {checkSelect("showerScope", "Area to work on", ["Walls and floor", "Floor only", "Walls only", "Selected areas"], true)}
-                    {checkSelect("showerType", "Shower size", ["Single", "Double", "Extended", "Not sure"])}
-                    {checklist.showerScope !== "Floor only" && checkSelect("wallHeight", "Wall height", ["To screen (~2.1 m)", "Above screen", "To ceiling", "Not sure"])}
-                    {checklist.showerScope !== "Floor only" && checkSelect("wallCount", "Tiled walls", ["1", "2", "3", "More", "Not sure"])}
-                    {checkSelect("tileSize", "Tile size", ["Small", "Medium", "Large", "Extra large", "Not sure"])}
-                    {checkSelect("mosaic", "Mosaic tiles?", ["Yes", "No", "Not sure"])}
-                    {checklist.work !== "Grout only" && checkSelect("screen", "Shower screen", ["Frameless", "Semi-frameless", "Framed", "Not sure"])}
-                    {checklist.work !== "Grout only" && checklist.screen === "Frameless" && checkSelect("siliconeJoints", "Screen silicone", ["Inside", "Outside", "Both", "Vertical and horizontal", "Not sure"])}
-                  </div>
-                </div>
-              ) : null}
-              {checklist.location && <details className="rounded-xl border border-[#DBE3F0] p-3"><summary className="cursor-pointer text-[13px] font-semibold text-[#001F97]">Tile damage &amp; extra areas <span className="font-normal text-neutral-500">(if applicable)</span></summary>
-                <div className="mt-3 grid grid-cols-1 gap-2.5 min-[420px]:grid-cols-2">
-                  {checkSelect("wallTiles", "Damaged wall tiles", ["None", "1", "2", "3", "4+", "Not sure"])}
-                  {checkSelect("floorTiles", "Damaged floor tiles", ["None", "1", "2", "3", "4+", "Not sure"])}
-                  {checkSelect("tileAction", "Tile work", ["Repair", "Replace", "Not sure"])}
-                </div>
-                <p className="mb-1 mt-3 text-[12px] font-semibold text-neutral-700">Also quote</p>
-                <div className="grid grid-cols-2 gap-1.5">{["Kitchen", "Vanity", "Bathtub", "Niche", "Bathroom floor", "Other"].map((v) => <label key={v} className="flex items-center gap-1.5 text-[12px]"><input type="checkbox" checked={checklist.additional.includes(v)} onChange={() => setChecklist((c) => ({ ...c, additional: c.additional.includes(v) ? c.additional.filter((x) => x !== v) : [...c.additional, v] }))} className="accent-[#001F97]" />{v}</label>)}</div>
-              </details>}
-              <label className="text-[12px] font-semibold text-neutral-700">Anything else we should know? <span className="font-normal text-neutral-500">(optional)</span><textarea rows={2} value={checklist.notes} onChange={(e) => setChecklist((c) => ({ ...c, notes: e.target.value }))} placeholder="Where is the leak or damage?" className="mt-1 block w-full resize-y rounded-lg border border-[#DBE3F0] bg-[#FBFCFE] px-2.5 py-2 text-[13px] font-normal" /></label>
+            <div className="flex flex-1 flex-col pt-2">
+              <QuoteChecklist
+                id={P}
+                checklist={checklist}
+                leaking={leaking}
+                errors={jobErrors}
+                onChange={(patch) => {
+                  setChecklist((current) => ({ ...current, ...patch }));
+                  setJobErrors((current) => {
+                    const next = { ...current };
+                    for (const key of Object.keys(patch)) delete next[key];
+                    return next;
+                  });
+                }}
+                onLeakChange={(value) => {
+                  setLeaking(value);
+                  setJobErrors((current) => ({ ...current, leaking: "" }));
+                }}
+              />
               {nav(<button type="button" onClick={next} className={primaryBtn}>Continue</button>)}
             </div>
           )}

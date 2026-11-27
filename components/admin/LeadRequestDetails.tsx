@@ -2,11 +2,11 @@
 
 import { useRef, useState } from "react";
 import { ChevronRight, MessageSquare, Pencil, StickyNote } from "lucide-react";
+import QuoteChecklist, { emptyChecklist } from "@/components/QuoteChecklist";
 import type { Lead } from "./types";
 
 const fields = ["notes", "message", "enquiry"] as const;
 const labels = { notes: "Lead Notes", message: "Customer Request Detail", enquiry: "Additional Customer Request Detail" };
-const checklistLabels: Record<string, string> = { location: "Area", showerType: "Shower size", wallHeight: "Wall height", work: "Work needed", showerScope: "Work area", wallCount: "Tiled walls", tileSize: "Tile size", mosaic: "Mosaic tiles", screen: "Screen", siliconeJoints: "Screen silicone", wallTiles: "Damaged wall tiles", floorTiles: "Damaged floor tiles", tileAction: "Tile work", balconyArea: "Balcony area (m²)", balconyTileSize: "Balcony tile size", additional: "Also quote", notes: "Checklist notes" };
 
 export function LeadRequestDetails({ lead, onSave }: {
   lead: Lead;
@@ -50,6 +50,13 @@ export function LeadRequestDetails({ lead, onSave }: {
     }
   }
 
+  const answers = lead.quoteChecklist;
+  const checklist = answers && {
+    ...emptyChecklist,
+    ...Object.fromEntries(Object.entries(answers).filter(([, value]) => typeof value === "string")),
+    additional: Array.isArray(answers.additional) ? answers.additional : [],
+  };
+
   return (
     <div className="space-y-1.5">
       <div className="flex items-start justify-between gap-2">
@@ -85,7 +92,12 @@ export function LeadRequestDetails({ lead, onSave }: {
         </div>
       ) : expanded && (
         <div className="space-y-1.5">
-          {lead.quoteChecklist && <div className="rounded-lg border border-blue-100 bg-blue-50/40 p-2.5"><p className="mb-1.5 text-xs font-bold text-blue-900">Customer quote checklist</p><dl className="grid grid-cols-1 gap-x-3 gap-y-1 sm:grid-cols-2">{Object.entries(lead.quoteChecklist).filter(([, value]) => Array.isArray(value) ? value.length : String(value || "").trim()).map(([key, value]) => <div key={key} className="text-xs"><dt className="font-semibold text-slate-600">{checklistLabels[key] || key}</dt><dd className="whitespace-pre-wrap text-slate-900">{Array.isArray(value) ? value.join(", ") : value}</dd></div>)}</dl></div>}
+          {checklist && (
+            <section className="rounded-lg border border-blue-100 bg-blue-50/40 p-2.5">
+              <h3 className="mb-2 text-sm font-bold text-blue-900">Customer quote checklist</h3>
+              <QuoteChecklist id={`lead-checklist-${lead.id}`} checklist={checklist} leaking={lead.leaking ?? ""} />
+            </section>
+          )}
           {fields.filter(field => lead[field]?.trim() && !(field === "enquiry" && lead.enquiry === lead.message)).map(field => (
             <div key={field} className="flex items-start gap-1.5 text-xs text-slate-700 min-w-0">
               {field === "notes" ? <StickyNote className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" /> : <MessageSquare className="w-3.5 h-3.5 text-blue-600 shrink-0 mt-0.5" />}
