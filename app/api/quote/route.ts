@@ -1,3 +1,4 @@
+import { quotePhotoCategory } from "@/lib/quotePhotoCategories";
 import { inspectionConfirmationHtml, inspectionConfirmationSms } from "@/lib/inspectionConfirmation";
 import { isCompletePropertyAddress, PROPERTY_ADDRESS_ERROR } from "@/lib/propertyAddress";
 import { applyBookingCapacity } from "@/lib/bookingAvailabilityDays";
@@ -253,6 +254,7 @@ export async function POST(req: NextRequest) {
           if (p && (p.url || p.secureUrl)) {
             submissionPhotos.push({
               name: p.name || "photo",
+              category: quotePhotoCategory(p.category),
               contentType: p.contentType,
               url: p.secureUrl || p.url,
               secureUrl: p.secureUrl || p.url,
@@ -271,7 +273,9 @@ export async function POST(req: NextRequest) {
   }
 
   // 2) Fallback: Process direct multipart file uploads (if direct upload was bypassed)
-  for (const file of photos) {
+  const photoCategories = form.getAll("photoCategory");
+  for (const [index, file] of photos.entries()) {
+    const category = quotePhotoCategory(photoCategories[index]);
     const buffer = Buffer.from(await file.arrayBuffer());
     const ext = (file.name.split(".").pop() || "").toLowerCase();
     let mime = file.type;
@@ -300,6 +304,7 @@ export async function POST(req: NextRequest) {
         });
         submissionPhotos.push({
           name: file.name || "photo",
+          category,
           contentType: mime,
           url: cldRes.secureUrl,
           secureUrl: cldRes.secureUrl,
@@ -313,6 +318,7 @@ export async function POST(req: NextRequest) {
         console.error("Cloudinary upload failed (falling back to dataUrl):", uploadErr);
         submissionPhotos.push({
           name: file.name || "photo",
+          category,
           contentType: mime,
           dataUrl: `data:${mime};base64,${buffer.toString("base64")}`,
           added: new Date().toISOString(),
@@ -321,11 +327,16 @@ export async function POST(req: NextRequest) {
     } else {
       submissionPhotos.push({
         name: file.name || "photo",
+        category,
         contentType: mime,
         dataUrl: `data:${mime};base64,${buffer.toString("base64")}`,
         added: new Date().toISOString(),
       });
     }
+  }
+
+  if (checklist) {
+    checklist.photoLabels = submissionPhotos.map((photo) => photo.category ? `${photo.category} — ${photo.name}` : photo.name);
   }
 
   const fullName = `${firstName} ${lastName}`.trim();

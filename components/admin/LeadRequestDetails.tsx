@@ -53,9 +53,13 @@ export function LeadRequestDetails({ lead, onSave }: {
   const answers = lead.quoteChecklist;
   const checklist = answers && {
     ...emptyChecklist,
-    ...Object.fromEntries(Object.entries(answers).filter(([, value]) => typeof value === "string")),
-    additional: Array.isArray(answers.additional) ? answers.additional : [],
+    ...Object.fromEntries(Object.entries(emptyChecklist).map(([key, fallback]) => {
+      const value = answers[key];
+      return [key, typeof value === typeof fallback && Array.isArray(value) === Array.isArray(fallback) ? value : fallback];
+    })),
   };
+
+  const photoLabels = Array.isArray(answers?.photoLabels) ? answers.photoLabels : [];
 
   return (
     <div className="space-y-1.5">
@@ -95,7 +99,16 @@ export function LeadRequestDetails({ lead, onSave }: {
           {checklist && (
             <section className="rounded-lg border border-blue-100 bg-blue-50/40 p-2.5">
               <h3 className="mb-2 text-sm font-bold text-blue-900">Customer quote checklist</h3>
-              <QuoteChecklist id={`lead-checklist-${lead.id}`} checklist={checklist} leaking={lead.leaking ?? ""} />
+              <QuoteChecklist
+                id={`lead-checklist-${lead.id}`}
+                checklist={checklist}
+                leaking={lead.leaking ?? ""}
+                photos={photoLabels.length > 0 ? (
+                  <ul className="space-y-1 text-xs">
+                    {photoLabels.map((photo, index) => <li key={index} className="break-words">{photo}</li>)}
+                  </ul>
+                ) : <p className="text-xs text-neutral-600">No photo categories recorded.</p>}
+              />
             </section>
           )}
           {fields.filter(field => lead[field]?.trim() && !(field === "enquiry" && lead.enquiry === lead.message)).map(field => (

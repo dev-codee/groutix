@@ -14,7 +14,7 @@ import { trackEvent } from "@/lib/analytics";
 import { formatSlotRange } from "@/lib/scheduling";
 import { useContact } from "@/components/SiteContentProvider";
 import QuoteChecklist, { emptyChecklist, type Checklist } from "@/components/QuoteChecklist";
-import PhotoUploadTips from "@/components/PhotoUploadTips";
+import { QUOTE_PHOTO_CATEGORIES } from "@/lib/quotePhotoCategories";
 import { isCompletePropertyAddress, PROPERTY_ADDRESS_ERROR } from "@/lib/propertyAddress";
 
 const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
@@ -103,7 +103,7 @@ export default function QuoteFormV2({
   const [leaking, setLeaking] = useState("");
   const [jobErrors, setJobErrors] = useState<Record<string, string>>({});
 
-  const [data, setData] = useState({ firstName: "", lastName: "", agency: "", phone: "", email: "", address: "", message: "" });
+  const [data, setData] = useState({ firstName: "", lastName: "", agency: "", phone: "", email: "", address: "" });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const [tenants, setTenants] = useState<Tenant[]>([{ name: "", phone: "", email: "" }]);
@@ -119,14 +119,13 @@ export default function QuoteFormV2({
   const [inspError, setInspError] = useState("");
   const [showHow, setShowHow] = useState(false);
 
-  const [photos, setPhotos] = useState<File[]>([]);
+  const [photos, setPhotos] = useState<{ file: File; category: string }[]>([]);
   const [photoError, setPhotoError] = useState("");
-  const [dragging, setDragging] = useState(false);
+  const [photoCategory, setPhotoCategory] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
   const camRef = useRef<HTMLInputElement>(null);
 
   const [started, setStarted] = useState(false);
-  const [noteOpen, setNoteOpen] = useState(false);
   const [photoAsk, setPhotoAsk] = useState(false);
   const photoAskBtnRef = useRef<HTMLButtonElement>(null);
   const [photoMenu, setPhotoMenu] = useState(false);
@@ -153,7 +152,7 @@ export default function QuoteFormV2({
     job: "Job checklist",
     details: isPM ? "Manager details" : "Your details",
     tenants: "Tenant access",
-    finish: mode === "insp" ? "Book & finish" : "Photos & finish",
+    finish: mode === "insp" ? "Book & finish" : "Review & send",
   };
   const stepIndex = Math.max(0, flow.indexOf(step));
 
@@ -246,8 +245,12 @@ export default function QuoteFormV2({
     const e: Record<string, string> = {};
     if (!checklist.location) e.location = "Choose the area";
     if (!checklist.work) e.work = "Choose the work required";
-    if (!leaking) e.leaking = "Choose one";
-    if (checklist.location === "Balcony" && !checklist.balconyArea.trim()) e.balconyArea = "Enter an approximate area";
+    const balconyOnly = checklist.location === "Balcony";
+    if (checklist.location && !balconyOnly && !leaking) e.leaking = "Choose one";
+    if (balconyOnly && !checklist.balconyLeakage) e.balconyLeakage = "Choose one";
+    if ((balconyOnly || checklist.balconyLeakage) && !(Number.isFinite(Number(checklist.balconyArea)) && Number(checklist.balconyArea) > 0)) {
+      e.balconyArea = "Enter a balcony area greater than zero";
+    }
     if (checklist.location !== "Balcony" && checklist.location && !checklist.showerScope) e.showerScope = "Choose the area to work on";
     setJobErrors(e);
     return Object.keys(e).length === 0;
@@ -284,7 +287,13 @@ export default function QuoteFormV2({
   };
 
   const next = () => {
-    if (step === "job" && !validateJob()) return;
+    if (step === "job" && !validateJob()) {
+      requestAnimationFrame(() => {
+        const invalid = rootRef.current?.querySelector<HTMLElement>('fieldset[aria-invalid="true"], input[aria-invalid="true"]');
+        (invalid?.querySelector<HTMLElement>("input") ?? invalid)?.focus();
+      });
+      return;
+    }
     if (step === "details" && !validateDetails()) return;
     if (step === "tenants" && !validateTenants()) return;
     setStarted(true);
@@ -306,7 +315,7 @@ export default function QuoteFormV2({
   // instead of rejecting the whole selection because of one bad file.
   const addFiles = (list: FileList | File[]) => {
     const files = Array.from(list);
-    if (!files.length) return;
+    if (!files.length || !photoCategory) return;
     const notes: string[] = [];
     const images = files.filter((f) => {
       if (isImageFile(f)) return true;
@@ -321,15 +330,15 @@ export default function QuoteFormV2({
     // No photo-count limit: customers can add as many photos as they like.
     // The per-photo size check above and the total size check below still apply.
     const picked = sized;
-    let all = [...photos, ...picked];
-    let total = all.reduce((a, f) => a + f.size, 0);
+    let all = [...photos, ...picked.map((file) => ({ file, category: photoCategory }))];
+    let total = all.reduce((a, photo) => a + photo.file.size, 0);
     if (total > MAX_TOTAL_BYTES) {
       while (picked.length && total > MAX_TOTAL_BYTES) {
         const dropped = picked.pop() as File;
         total -= dropped.size;
         notes.push(`"${dropped.name}" would take the total over ${formatBytes(MAX_TOTAL_BYTES)}. It was skipped.`);
       }
-      all = [...photos, ...picked];
+      all = [...photos, ...picked.map((file) => ({ file, category: photoCategory }))];
     }
     if (picked.length) { setPhotos(all); trackEvent("photo_upload", { form: "quote_form_v2", photo_count: all.length }); }
     setPhotoError(notes.join(" "));
@@ -338,9 +347,9 @@ export default function QuoteFormV2({
     setPhotos((p) => p.filter((_, x) => x !== i));
     setPhotoError("");
   };
-  const thumbs = useMemo(() => photos.map((f) => URL.createObjectURL(f)), [photos]);
+  const thumbs = useMemo(() => photos.map(({ file }) => URL.createObjectURL(file)), [photos]);
   useEffect(() => () => thumbs.forEach((u) => URL.revokeObjectURL(u)), [thumbs]);
-  const photoBytes = photos.reduce((a, f) => a + f.size, 0);
+  const photoBytes = photos.reduce((a, photo) => a + photo.file.size, 0);
 
   // Tapping the upload box: on touch devices (phones/tablets) open the source
   // chooser popup first — jumping straight into the gallery picker leaves no way
@@ -397,14 +406,14 @@ export default function QuoteFormV2({
     }
     setLoading(true);
     try {
-      type Uploaded = { name: string; contentType: string; url: string; secureUrl: string; publicId: string; width?: number; height?: number; size: number; added: string };
+      type Uploaded = { category: string; name: string; contentType: string; url: string; secureUrl: string; publicId: string; width?: number; height?: number; size: number; added: string };
       let uploaded: Uploaded[] = [];
       const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || "hsg6orfs";
       const preset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || "groutix";
       if (photos.length && cloudName && preset) {
         try {
           uploaded = await Promise.all(
-            photos.map(async (file) => {
+            photos.map(async ({ file, category }) => {
               const fd = new FormData();
               fd.append("file", file);
               fd.append("upload_preset", preset);
@@ -413,6 +422,7 @@ export default function QuoteFormV2({
               if (!r.ok) throw new Error(`Upload failed for ${file.name}`);
               const j = await r.json();
               return {
+                category,
                 name: file.name,
                 contentType: file.type || "image/jpeg",
                 url: j.secure_url || j.url,
@@ -443,13 +453,13 @@ export default function QuoteFormV2({
       payload.append("email", data.email.trim());
       payload.append("phone", data.phone.trim());
       payload.append("address", data.address.trim());
-      payload.append("message", [checklist.notes.trim(), data.message.trim()].filter(Boolean).join("\n"));
-      payload.append("areas", [checklist.location, ...checklist.additional].filter(Boolean).join(", "));
+      payload.append("message", [checklist.leakNotes.trim(), checklist.notes.trim()].filter(Boolean).join("\n"));
+      payload.append("areas", [checklist.location, checklist.location !== "Balcony" && checklist.balconyLeakage ? "Balcony" : "", ...checklist.additional].filter(Boolean).join(", "));
       const quotedService = `${checklist.location === "Balcony" ? "Balcony" : "Shower"} ${checklist.work}`;
       payload.append("service", quotedService);
       payload.append("enquiry", quotedService);
-      payload.append("damagedTiles", [checklist.wallTiles && `${checklist.wallTiles} wall`, checklist.floorTiles && `${checklist.floorTiles} floor`, checklist.tileAction].filter(Boolean).join(", "));
-      payload.append("leaking", leaking);
+      payload.append("damagedTiles", [checklist.wallTiles && `${checklist.wallTiles} wall`, checklist.floorTiles && `${checklist.floorTiles} floor`, ...checklist.tileActions].filter(Boolean).join(", "));
+      payload.append("leaking", checklist.location === "Balcony" ? checklist.balconyLeakage : leaking);
       payload.append("checklist", JSON.stringify(checklist));
       payload.append("sourcePage", typeof window !== "undefined" ? window.location.pathname : "");
       if (captchaToken) payload.append("cf-turnstile-response", captchaToken);
@@ -458,7 +468,10 @@ export default function QuoteFormV2({
         payload.append("inspectionTime", time);
       }
       if (uploaded.length) payload.append("uploadedPhotos", JSON.stringify(uploaded));
-      else photos.forEach((f) => payload.append("photos", f));
+      else photos.forEach(({ file, category }) => {
+        payload.append("photos", file);
+        payload.append("photoCategory", category);
+      });
 
       const res = await fetch("/api/quote", { method: "POST", body: payload });
       if (!res.ok) {
@@ -497,19 +510,19 @@ export default function QuoteFormV2({
     setIsPM(false);
     setLeaking("");
     setJobErrors({});
-    setData({ firstName: "", lastName: "", agency: "", phone: "", email: "", address: "", message: "" });
+    setData({ firstName: "", lastName: "", agency: "", phone: "", email: "", address: "" });
     setErrors({});
     setTenants([{ name: "", phone: "", email: "" }]);
     setTenantIdx(0);
     setTenantErrors({});
     setPhotos([]);
+    setPhotoCategory("");
     setPhotoError("");
     setDate("");
     setTime("");
     setCalendarOpen(false);
     setInspError("");
     setSubmitError("");
-    setNoteOpen(false);
     setPhotoAsk(false);
     setAvail({ status: "idle" });
     setAvailFor("");
@@ -701,6 +714,51 @@ export default function QuoteFormV2({
                 id={P}
                 checklist={checklist}
                 leaking={leaking}
+                photos={
+                  <div className="space-y-2"
+                    onDragOver={(event) => event.preventDefault()}
+                    onDrop={(event) => {
+                      event.preventDefault();
+                      if (photoCategory) addFiles(event.dataTransfer.files);
+                      else setPhotoError("Choose a photo category first.");
+                    }}>
+                    <label className="block text-xs font-semibold" htmlFor={`${P}-photo-category`}>Category (optional photos)</label>
+                    <div className="flex flex-wrap gap-2">
+                      <select id={`${P}-photo-category`} value={photoCategory} onChange={(event) => { setPhotoCategory(event.target.value); setPhotoError(""); }}
+                        className="h-9 min-w-0 grow rounded-lg border border-[#DBE3F0] bg-white px-2 text-[13px]">
+                        <option value="">Choose a category</option>
+                        {QUOTE_PHOTO_CATEGORIES.map((category) => <option key={category}>{category}</option>)}
+                      </select>
+                      <button type="button" disabled={!photoCategory} onClick={openPhotoPicker}
+                        className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-[#001F97] px-3 text-[13px] font-semibold text-white disabled:opacity-50">
+                        <ImagePlus className="h-4 w-4" aria-hidden="true" /> Add photos
+                      </button>
+                      <input ref={fileRef} type="file" accept="image/*" multiple hidden onChange={(event) => {
+                        if (event.target.files) addFiles(event.target.files);
+                        event.target.value = "";
+                      }} />
+                      <input ref={camRef} type="file" accept="image/*" capture="environment" hidden onChange={(event) => {
+                        if (event.target.files) addFiles(event.target.files);
+                        event.target.value = "";
+                      }} />
+                    </div>
+                    <FieldError msg={photoError} />
+                    {photos.length > 0 && <>
+                      <ul className="space-y-1" aria-label="Added photos">
+                        {photos.map(({ file, category }, index) => (
+                          <li key={thumbs[index]} className="flex items-center gap-2 text-xs">
+                            <span className="h-8 w-8 shrink-0 rounded bg-slate-100 bg-cover bg-center" style={{ backgroundImage: `url(${thumbs[index]})` }} />
+                            <span className="min-w-0 grow break-words"><strong>{category}</strong><br />{file.name}</span>
+                            <button type="button" onClick={() => removePhoto(index)} className="p-2" aria-label={`Remove photo ${index + 1}: ${file.name}`}>
+                              <X className="h-4 w-4" aria-hidden="true" />
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                      <p className="text-xs text-neutral-500">{formatBytes(photoBytes)} of {formatBytes(MAX_TOTAL_BYTES)}</p>
+                    </>}
+                  </div>
+                }
                 errors={jobErrors}
                 onChange={(patch) => {
                   setChecklist((current) => ({ ...current, ...patch }));
@@ -923,65 +981,7 @@ export default function QuoteFormV2({
 
               {!calendarOpen && (
                 <>
-                  <div className={`${mode === "insp" ? "mt-2.5" : "mt-1.5"} flex items-stretch gap-2`}>
-                  <div
-                    role="button"
-                    tabIndex={0}
-                    aria-label={photos.length ? "Add more photos" : "Add photos"}
-                    onClick={() => openPhotoPicker()}
-                    onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); openPhotoPicker(); } }}
-                    onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
-                    onDragLeave={(e) => { e.preventDefault(); setDragging(false); }}
-                    onDrop={(e) => { e.preventDefault(); setDragging(false); addFiles(e.dataTransfer.files); }}
-                    className={`flex min-h-[46px] min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-xl border-[1.5px] border-dashed px-2 py-1 transition-colors ${dragging ? "border-[#1A2A8C] bg-[#EEF3FF]" : photoError ? "border-red-500 bg-[#FBFCFE]" : "border-[#B8C5DC] bg-[#FBFCFE] hover:border-[#2F63CC]"}`}
-                  >
-                    {photos.length ? (
-                      <ul className="flex min-w-0 flex-1 flex-wrap items-center gap-2" aria-label="Added photos">
-                        {thumbs.map((u, i) => (
-                          <li key={u} className="relative h-9 w-9 rounded-md bg-slate-100 bg-cover bg-center ring-1 ring-black/5" style={{ backgroundImage: `url(${u})` }} title={photos[i]?.name}>
-                            <button type="button" aria-label={`Remove photo ${i + 1}`} onClick={(e) => { e.stopPropagation(); removePhoto(i); }}
-                              className="absolute -right-1.5 -top-1.5 flex h-[18px] w-[18px] items-center justify-center rounded-full bg-[#0A123F] text-white hover:bg-red-600">
-                              <X className="h-2.5 w-2.5" aria-hidden="true" />
-                            </button>
-                          </li>
-                        ))}
-                          <li className="flex h-9 w-9 items-center justify-center rounded-md border-[1.5px] border-dashed border-[#B8C5DC] text-lg leading-none text-[#1A2A8C]" aria-hidden="true">+</li>
-                        <li className="text-[11px] leading-tight text-neutral-500">
-                          {photos.length} photos
-                          <br />
-                          {formatBytes(photoBytes)} of {formatBytes(MAX_TOTAL_BYTES)}
-                        </li>
-                      </ul>
-                    ) : (
-                      <>
-                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#EEF2F8]"><ImagePlus className="h-4 w-4 text-[#1A2A8C]" aria-hidden="true" /></span>
-                        <span className="min-w-0 flex-1 text-[13px] font-semibold leading-tight">
-                          Upload photos<span className="hidden sm:inline"> of the problem</span>
-                          <small className="block truncate text-[11px] font-normal text-neutral-500"><span className="sm:hidden">Tap to add</span><span className="hidden sm:inline">Click or drag · {formatBytes(MAX_TOTAL_BYTES)} max in total</span></small>
-                        </span>
-                      </>
-                    )}
-                    <input ref={fileRef} type="file" accept="image/*" multiple hidden onChange={(e) => { if (e.target.files) addFiles(e.target.files); e.target.value = ""; }} />
-                    <input ref={camRef} type="file" accept="image/*" capture="environment" hidden onChange={(e) => { if (e.target.files) addFiles(e.target.files); e.target.value = ""; }} />
-                  </div>
-                  {!(noteOpen || data.message) && (
-                    <button type="button" onClick={() => setNoteOpen(true)} aria-label="Add a note (optional)"
-                      className="flex w-[64px] shrink-0 flex-col items-center justify-center rounded-xl border-[1.5px] border-[#DBE3F0] bg-white text-[11.5px] font-semibold leading-tight text-[#2F63CC] hover:border-[#2F63CC]">
-                      <span className="text-base leading-none">+</span>Add note
-                    </button>
-                  )}
-                  </div>
-                  <FieldError msg={photoError} />
-                  <PhotoUploadTips />
-
-                  {(noteOpen || data.message) && (
-                    <div className="mt-2">
-                      <label htmlFor={`${P}-message`} className={label}>Anything else we should know? <small className={opt}>(optional)</small></label>
-                      <textarea id={`${P}-message`} rows={2} autoFocus value={data.message} onChange={(e) => setData((p) => ({ ...p, message: e.target.value }))}
-                        placeholder="e.g. cracked tiles, mould, ceiling stains"
-                        className="block min-h-10 w-full resize-y rounded-[10px] border-[1.5px] border-[#DBE3F0] bg-[#FBFCFE] px-3 py-2 text-[15px] leading-snug placeholder:text-neutral-400 focus:border-[#2F63CC] focus:outline-none focus:ring-[3px] focus:ring-[#2F63CC]/15" />
-                    </div>
-                  )}
+                  <p className="mt-2 text-sm text-neutral-600">{photos.length ? `${photos.length} photo(s) attached from your checklist.` : "You can add photos in section 13 of the job checklist."}</p>
 
                   {submitError && <p role="alert" className="mt-2 rounded-lg bg-red-50 px-2.5 py-2 text-[13px] text-red-700">{submitError}</p>}
 
@@ -1032,7 +1032,11 @@ export default function QuoteFormV2({
                 <p className="mt-1.5 text-sm text-slate-600">
                   A few photos of the shower, grout or leak help us understand the problem and give you an accurate quote faster.
                 </p>
-                <button ref={photoAskBtnRef} type="button" onClick={() => { setPhotoAsk(false); openPhotoPicker(); }}
+                <button ref={photoAskBtnRef} type="button" onClick={() => {
+                  setPhotoAsk(false);
+                  goTo("job");
+                  requestAnimationFrame(() => document.getElementById(`${P}-photo-category`)?.focus());
+                }}
                   className="mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-b from-[#2F63CC] to-[#001F97] text-[15px] font-bold text-white">
                   <ImagePlus className="h-4 w-4" aria-hidden="true" /> Upload photos
                 </button>
