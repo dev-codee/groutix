@@ -240,17 +240,23 @@ export default function QuoteFormV2({
   };
 
   /* ---------- validation ---------- */
+  const hasBalcony = Boolean(checklist.balconyLeakage || checklist.balconyArea || checklist.balconyTileSizes.length);
+  const hasShower = Boolean(checklist.location || leaking || checklist.leakAreas.length || checklist.showerScope || checklist.showerType);
+  const balconyOnly = hasBalcony && !hasShower;
+
   const validateJob = () => {
     const e: Record<string, string> = {};
-    if (!checklist.location) e.location = "Choose the area";
     if (!checklist.work) e.work = "Choose the work required";
-    const balconyOnly = checklist.location === "Balcony";
-    if (checklist.location && !balconyOnly && !leaking) e.leaking = "Choose one";
-    if (balconyOnly && !checklist.balconyLeakage) e.balconyLeakage = "Choose one";
-    if ((balconyOnly || checklist.balconyLeakage) && !(Number.isFinite(Number(checklist.balconyArea)) && Number(checklist.balconyArea) > 0)) {
-      e.balconyArea = "Enter a balcony area greater than zero";
+    if (!balconyOnly) {
+      if (!leaking) e.leaking = "Choose yes or no";
+      if (!checklist.location && !checklist.leakAreas.length) e.location = "Choose the shower area";
+      if (!checklist.showerScope) e.showerScope = "Choose the area to work on";
     }
-    if (checklist.location !== "Balcony" && checklist.location && !checklist.showerScope) e.showerScope = "Choose the area to work on";
+    if (hasBalcony) {
+      if (!checklist.balconyLeakage) e.balconyLeakage = "Choose yes or no";
+      const area = Number(checklist.balconyArea);
+      if (!Number.isFinite(area) || area <= 0) e.balconyArea = "Enter a balcony area greater than zero";
+    }
     setJobErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -285,13 +291,18 @@ export default function QuoteFormV2({
     return true;
   };
 
-  const next = () => {
+  const next = (skipPhotoCheck = false) => {
     if (step === "job" && !validateJob()) {
       requestAnimationFrame(() => {
         rootRef.current?.querySelector<HTMLInputElement>('input[aria-invalid="true"]')?.focus();
       });
       return;
     }
+    if (step === "job" && !photos.length && !skipPhotoCheck) {
+      setPhotoAsk(true);
+      return;
+    }
+    setPhotoAsk(false);
     if (step === "details" && !validateDetails()) return;
     if (step === "tenants" && !validateTenants()) return;
     setStarted(true);
@@ -299,6 +310,7 @@ export default function QuoteFormV2({
     goTo(flow[stepIndex + 1]);
   };
   const back = () => {
+    setPhotoAsk(false);
     setCalendarOpen(false);
     goTo(flow[Math.max(0, stepIndex - 1)]);
   };
@@ -338,7 +350,11 @@ export default function QuoteFormV2({
       }
       all = [...photos, ...picked.map((file) => ({ file, category: photoCategory }))];
     }
-    if (picked.length) { setPhotos(all); trackEvent("photo_upload", { form: "quote_form_v2", photo_count: all.length }); }
+    if (picked.length) {
+      setPhotos(all);
+      setPhotoAsk(false);
+      trackEvent("photo_upload", { form: "quote_form_v2", photo_count: all.length });
+    }
     setPhotoError(notes.join(" "));
   };
   const removePhoto = (i: number) => {
@@ -362,9 +378,6 @@ export default function QuoteFormV2({
   useEffect(() => {
     if (!photoAsk) return;
     photoAskBtnRef.current?.focus();
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setPhotoAsk(false); };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
   }, [photoAsk]);
 
   useEffect(() => {
@@ -379,7 +392,7 @@ export default function QuoteFormV2({
   const canBook = mode === "insp" && avail.status === "ok" && avail.days.length > 0;
   const submitLabel = mode === "quote" ? "Get My Free Quote" : canBook ? "Book My Free Inspection" : "Submit Details";
 
-  const submit = async (skipPhotoCheck = false) => {
+  const submit = async () => {
     setSubmitError("");
     setInspError("");
     if (!validateDetails()) { goTo("details"); return; }
@@ -391,11 +404,6 @@ export default function QuoteFormV2({
     }
     if (canBook && (!date || !time)) {
       setInspError(!date ? "Please pick a day for your free inspection." : "Please choose an arrival time.");
-      return;
-    }
-    // No photos yet: ask once (upload or skip) before sending.
-    if (!photos.length && !skipPhotoCheck) {
-      setPhotoAsk(true);
       return;
     }
     if (TURNSTILE_SITE_KEY && !captchaToken) {
@@ -451,14 +459,20 @@ export default function QuoteFormV2({
       payload.append("email", data.email.trim());
       payload.append("phone", data.phone.trim());
       payload.append("address", data.address.trim());
-      payload.append("message", [checklist.leakNotes.trim(), checklist.notes.trim()].filter(Boolean).join("\n"));
-      payload.append("areas", [checklist.location, checklist.location !== "Balcony" && checklist.balconyLeakage ? "Balcony" : "", ...checklist.additional].filter(Boolean).join(", "));
-      const quotedService = `${checklist.location === "Balcony" ? "Balcony" : "Shower"} ${checklist.work}`;
+      const location = balconyOnly ? "Balcony" : checklist.location || "Other shower";
+      const notes = [checklist.leakNotes, checklist.workDetails, checklist.notes, checklist.summaryNotes];
+      payload.append("message", notes.map((note) => note.trim()).filter(Boolean).join("\n"));
+      payload.append("areas", [location, hasBalcony && !balconyOnly ? "Balcony" : "", ...checklist.additional].filter(Boolean).join(", "));
+      const quotedService = `${balconyOnly ? "Balcony" : "Shower"} ${checklist.work}`;
       payload.append("service", quotedService);
       payload.append("enquiry", quotedService);
-      payload.append("damagedTiles", [checklist.wallTiles && `${checklist.wallTiles} wall`, checklist.floorTiles && `${checklist.floorTiles} floor`, ...checklist.tileActions].filter(Boolean).join(", "));
-      payload.append("leaking", checklist.location === "Balcony" ? checklist.balconyLeakage : leaking);
-      payload.append("checklist", JSON.stringify(checklist));
+      const damagedTiles = [
+        [checklist.wallTiles && `${checklist.wallTiles} wall`, ...checklist.wallTileActions].filter(Boolean).join(" "),
+        [checklist.floorTiles && `${checklist.floorTiles} floor`, ...checklist.floorTileActions].filter(Boolean).join(" "),
+      ];
+      payload.append("damagedTiles", damagedTiles.filter(Boolean).join(", "));
+      payload.append("leaking", balconyOnly ? checklist.balconyLeakage : leaking);
+      payload.append("checklist", JSON.stringify({ ...checklist, location: balconyOnly ? "Balcony" : checklist.location }));
       payload.append("sourcePage", typeof window !== "undefined" ? window.location.pathname : "");
       if (captchaToken) payload.append("cf-turnstile-response", captchaToken);
       if (canBook && date && time) {
@@ -763,6 +777,7 @@ export default function QuoteFormV2({
                   setJobErrors((current) => {
                     const next = { ...current };
                     for (const key of Object.keys(patch)) delete next[key];
+                    if (patch.leakAreas?.length) delete next.location;
                     return next;
                   });
                 }}
@@ -771,7 +786,23 @@ export default function QuoteFormV2({
                   setJobErrors((current) => ({ ...current, leaking: "" }));
                 }}
               />
-              {nav(<button type="button" onClick={next} className={primaryBtn}>Continue</button>)}
+              {photoAsk && (
+                <section aria-labelledby={`${P}-photo-ask`} className="rounded-xl border border-[#DBE3F0] bg-[#F8FAFF] p-3">
+                  <h3 id={`${P}-photo-ask`} className="text-sm font-bold text-[#001F97]">Continue without photos?</h3>
+                  <p className="mt-1 text-[13px] text-neutral-600">Photos help us understand the issue and prepare a more accurate quote.</p>
+                  <button ref={photoAskBtnRef} type="button" onClick={() => {
+                    setPhotoAsk(false);
+                    document.getElementById(`${P}-photo-category`)?.focus();
+                  }} className="mt-2 inline-flex min-h-10 items-center gap-1.5 rounded-lg border border-[#DBE3F0] bg-white px-3 text-sm font-semibold text-[#001F97]">
+                    <ImagePlus className="h-4 w-4" aria-hidden="true" /> Add photos
+                  </button>
+                </section>
+              )}
+              {nav(
+                <button type="button" onClick={() => next(photoAsk)} className={primaryBtn}>
+                  {photoAsk ? "Continue without photos" : "Continue"}
+                </button>
+              )}
             </div>
           )}
 
@@ -835,7 +866,7 @@ export default function QuoteFormV2({
                 <FieldError msg={errors.address} />
                 <p className="mt-1 text-[11px] text-neutral-500">Street number, street name, suburb, state and postcode, e.g. 12 Smith Street, Richmond VIC 3121.</p>
               </div>
-              {nav(<button type="button" onClick={next} className={primaryBtn}>Continue</button>)}
+              {nav(<button type="button" onClick={() => next()} className={primaryBtn}>Continue</button>)}
             </div>
           )}
 
@@ -877,7 +908,7 @@ export default function QuoteFormV2({
                   </div>
                 );
               })()}
-              {nav(<button type="button" onClick={next} className={primaryBtn}>Continue</button>)}
+              {nav(<button type="button" onClick={() => next()} className={primaryBtn}>Continue</button>)}
             </div>
           )}
 
@@ -1013,34 +1044,6 @@ export default function QuoteFormV2({
                 <button type="button" onClick={() => setPhotoMenu(false)}
                   className="mt-2 h-10 w-full rounded-xl text-sm font-semibold text-neutral-500 hover:text-neutral-800">
                   Cancel
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Photo reminder: shown when they submit without photos. */}
-          {photoAsk && (
-            <div className="absolute inset-0 z-40 flex items-center justify-center rounded-2xl bg-[#0A123F]/45 p-4 backdrop-blur-[2px]" onClick={() => setPhotoAsk(false)}>
-              <div role="dialog" aria-modal="true" data-qf-popup aria-labelledby={`${P}-photo-ask`} onClick={(e) => e.stopPropagation()}
-                className="w-full max-w-[380px] rounded-2xl bg-white p-5 text-center shadow-[0_20px_50px_rgba(0,0,0,0.35)]">
-                <span className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-[#EEF3FF]">
-                  <ImagePlus className="h-6 w-6 text-[#1A2A8C]" aria-hidden="true" />
-                </span>
-                <h3 id={`${P}-photo-ask`} className="text-lg font-bold text-[#001F97]">Please upload photos</h3>
-                <p className="mt-1.5 text-sm text-slate-600">
-                  A few photos of the shower, grout or leak help us understand the problem and give you an accurate quote faster.
-                </p>
-                <button ref={photoAskBtnRef} type="button" onClick={() => {
-                  setPhotoAsk(false);
-                  goTo("job");
-                  requestAnimationFrame(() => document.getElementById(`${P}-photo-category`)?.focus());
-                }}
-                  className="mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-b from-[#2F63CC] to-[#001F97] text-[15px] font-bold text-white">
-                  <ImagePlus className="h-4 w-4" aria-hidden="true" /> Upload photos
-                </button>
-                <button type="button" onClick={() => { setPhotoAsk(false); submit(true); }}
-                  className="mt-2 h-10 w-full rounded-xl border-[1.5px] border-[#DBE3F0] text-sm font-semibold text-neutral-600 hover:border-[#2F63CC] hover:text-neutral-900">
-                  Skip &amp; submit without photos
                 </button>
               </div>
             </div>

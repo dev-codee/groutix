@@ -299,8 +299,9 @@ export function getMatchedQuoteItemsForLead(lead: {
       ? `${answer("location")} ${answer("showerType")} shower ${scope} ${answer("wallHeight") === "To ceiling" ? "to ceiling" : ""} regrouting and resealing`
       : "Balcony regrouting"
     : lead.service || lead.enquiry || "";
-  // Silicone-only and uncertain work require a custom scope rather than a grout template.
-  const customerServices = checklist && !groutWork ? [] : parseCustomerServices(matchingService);
+  // The catalog covers standard regrouting and resealing scopes.
+  const useCustomScope = checklist && (!groutWork || scope === "Selected areas");
+  const customerServices = useCustomScope ? [] : parseCustomerServices(matchingService);
   const areas = lead.areas || "";
   const items: MatchedQuoteItem[] = [];
   const usedTemplateCodes = new Set<string>();
@@ -334,8 +335,16 @@ export function getMatchedQuoteItemsForLead(lead: {
     }
   }
 
-  if (checklist && !groutWork) {
-    items.push({ templateNo: "", code: "", service: `${answer("location")} — ${answer("work") || "Assessment"}`, scope: [answer("showerScope"), answer("siliconeJoints"), answer("notes")].filter(Boolean).join(" · "), price: 0, qty: 1, matchedFrom: "Customer checklist" });
+  if (useCustomScope) {
+    items.push({
+      templateNo: "",
+      code: "",
+      service: `${answer("location") || "Shower"} — ${answer("work") || "Assessment"}`,
+      scope: [answer("showerScope"), answer("workDetails"), answer("siliconeJoints"), answer("notes")].filter(Boolean).join(" · "),
+      price: 0,
+      qty: 1,
+      matchedFrom: "Customer checklist",
+    });
   }
 
   if (isShower && answer("balconyLeakage")) {
