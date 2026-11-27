@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, use } from "react";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
+import { DEFAULT_CHECKLIST_FORM, type ChecklistForm } from "@/lib/checklistForm";
 import {
   AlertCircle,
   CheckCircle2,
@@ -332,6 +333,7 @@ export default function ChecklistPage({ params }: { params: Promise<{ id: string
   const [loading, setLoading] = useState(Boolean(id && token));
   const [error, setError] = useState<string | null>(id && token ? null : "This quote request link is missing or invalid.");
   const [customer, setCustomer] = useState<Customer | null>(null);
+  const [form, setForm] = useState<ChecklistForm>(DEFAULT_CHECKLIST_FORM);
   const [pages, setPages] = useState<PageState[]>([blankPage()]);
   const [timeframe, setTimeframe] = useState("");
   const [propertyType, setPropertyType] = useState("");
@@ -348,6 +350,7 @@ export default function ChecklistPage({ params }: { params: Promise<{ id: string
       .then(async res => { const data = await res.json(); if (!res.ok || !data.ok) throw new Error(data.error || "Quote request could not be loaded."); return data; })
       .then(data => {
         setCustomer(data.customer || null);
+        if (data.form) setForm({ ...data.form, title: /Shower \/ Balcony|Grouting.*Checklist/i.test(data.form.title || "") ? DEFAULT_CHECKLIST_FORM.title : data.form.title, intro: /accurate quote|page per shower/i.test(data.form.intro || "") ? DEFAULT_CHECKLIST_FORM.intro : data.form.intro });
         const saved = data.answers;
         if (Array.isArray(saved?.pages) && saved.pages.length) setPages(saved.pages.map((p: Partial<PageState>, i: number) => hydratePage(p, i)));
         setTimeframe(saved?.timeframe || ""); setPropertyType(saved?.propertyType || "");
@@ -396,9 +399,9 @@ export default function ChecklistPage({ params }: { params: Promise<{ id: string
   if (done) return <div className="min-h-screen flex items-center justify-center p-4"><div className={`${card} max-w-lg text-center`}><CheckCircle2 className="w-12 h-12 text-emerald-600 mx-auto"/><h1 className="text-2xl font-black">Thank you!</h1><p className="text-sm text-slate-600">Your quote request has been received. Our team will review the details and photos, then contact you about a preliminary quote or next steps.</p><p className="font-bold text-[#001f97]">Stay Sealed. Stay Smiling.</p></div></div>;
   return <div className="min-h-screen py-8 px-4 sm:px-6"><div className="max-w-3xl mx-auto space-y-6">
     <header className="flex items-center justify-between bg-white rounded-2xl p-5 border border-slate-200"><Image src="/new_logo.jpeg" alt="Groutix" width={150} height={44} className="h-11 w-auto object-contain"/><a href="tel:+61370238094" className="text-sm font-bold text-[#001f97] inline-flex gap-1.5 items-center"><Phone className="w-4 h-4"/>(03) 7023 8094</a></header>
-    <div className={card}><p className="text-xs font-bold uppercase tracking-wide text-[#001f97]">Groutix · Smart Quote Request</p><h1 className="text-2xl font-black text-slate-900">Let’s restore your space.</h1><p className="text-sm text-slate-600">{customer?.name ? `Hi ${customer.name.split(" ")[0]}, ` : ""}answer a few simple questions and upload photos so our team can prepare your quote. Allow about 3–5 minutes per area. Choose “Not sure” whenever you need our advice.</p></div>
+    <div className={card}><p className="text-xs font-bold uppercase tracking-wide text-[#001f97]">{form.title}</p><h1 className="text-2xl font-black text-slate-900">Let’s restore your space.</h1><p className="text-sm text-slate-600">{customer?.name ? `Hi ${customer.name.split(" ")[0]}, ` : ""}{form.intro} Allow about 3–5 minutes per area. Choose “Not sure” whenever you need our advice.</p></div>
     {pages.map((page, index) => <section key={page.id} className={card}>
-      <div className="flex items-center justify-between"><h2 className="text-lg font-black text-[#001f97]">Area {index + 1}{page.service ? ` · ${page.service}` : ""}</h2>{pages.length > 1 && <button type="button" className="text-xs font-semibold text-rose-600 inline-flex gap-1 items-center" onClick={() => setPages(prev => prev.filter((_, i) => i !== index))}><Trash2 className="w-4 h-4"/>Remove</button>}</div>
+      <div className="flex items-center justify-between"><h2 className="text-lg font-black text-[#001f97]">{form.pageTitle} {index + 1}{page.service ? ` · ${page.service}` : ""}</h2>{pages.length > 1 && <button type="button" className="text-xs font-semibold text-rose-600 inline-flex gap-1 items-center" onClick={() => setPages(prev => prev.filter((_, i) => i !== index))}><Trash2 className="w-4 h-4"/>Remove</button>}</div>
       {question("What area requires attention?", <div className="grid grid-cols-2 gap-2">{serviceChoices.map(service => <button key={service} type="button" aria-pressed={page.service === service} onClick={() => { if (page.service !== service) updatePage(index, { ...blankPage(), id: page.id, service }); }} className={`rounded-xl border-2 min-h-16 p-3 text-left font-bold text-sm ${page.service === service ? "border-[#001f97] bg-blue-50 text-[#001f97]" : "border-slate-200 text-slate-700"}`}>{service}</button>)}</div>)}
       {page.service && <>
         {question("Select Photo Category", <Chips options={photoCategories.map((name, i) => [String(i + 1), `${i + 1}. ${name}`] as const)} value={page.photoCategory} onChange={v => updatePage(index, { photoCategory: v })}/>, "Choose the category that matches the photos you will add. Change it before adding another set.")}

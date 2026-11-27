@@ -49,7 +49,7 @@ export type ChecklistForm = {
 
 export const DEFAULT_CHECKLIST_FORM: ChecklistForm = {
   title: "Groutix — Smart Quote Request",
-  intro: "answer a few simple questions and upload photos so our team can prepare your preliminary quote.",
+  intro: "Answer a few simple questions and upload photos so our team can prepare your preliminary quote.",
   pageTitle: "Area",
   fields: Object.fromEntries(CHECKLIST_FIELDS) as ChecklistForm["fields"],
   placeholders: Object.fromEntries(CHECKLIST_PLACEHOLDERS) as ChecklistForm["placeholders"],

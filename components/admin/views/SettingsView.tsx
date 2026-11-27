@@ -16,7 +16,7 @@ export function settingsSection(value: string | null): SettingsSection {
 const sections = [
   { id: "booking-hours", label: "Booking Hours", icon: CalendarClock },
   { id: "service-zones", label: "Service Zones", icon: MapPin },
-  { id: "checklist", label: "Checklist Form", icon: ClipboardList },
+  { id: "checklist", label: "Quote Request Form", icon: ClipboardList },
   { id: "logo", label: "Logo", icon: Image },
   { id: "quickbooks", label: "QuickBooks", icon: Link2 },
 ] as const;
@@ -29,7 +29,7 @@ export function SettingsView({ section, onSectionChange, logo, quickbooks }: {
 }) {
   return (
     <div className="space-y-5">
-      <p className="text-sm text-slate-500">Manage booking hours, service areas, the customer checklist, branding and accounting connections.</p>
+      <p className="text-sm text-slate-500">Manage booking hours, service areas, the customer quote request, branding and accounting connections.</p>
       <div role="tablist" aria-label="Settings" className="flex flex-wrap gap-2">
         {sections.map(({ id, label, icon: Icon }) => (
           <button key={id} type="button" role="tab" id={`settings-tab-${id}`} aria-controls={`settings-panel-${id}`}
