@@ -50,7 +50,6 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_RE = /^[0-9+\-\s()]{8,}$/;
 
 const fieldBad = "border-red-500 bg-red-50/40";
-const label = "mb-1 block text-[13px] font-semibold text-neutral-800";
 const opt = "font-normal text-neutral-500";
 const req = <span className="text-red-600" aria-hidden="true">*</span>;
 const primaryBtn =
@@ -725,7 +724,7 @@ export default function QuoteFormV2({
                     <label className="block text-xs font-semibold" htmlFor={`${P}-photo-category`}>Category (optional photos)</label>
                     <div className="flex flex-wrap gap-2">
                       <select id={`${P}-photo-category`} value={photoCategory} onChange={(event) => { setPhotoCategory(event.target.value); setPhotoError(""); }}
-                        className="h-9 min-w-0 grow rounded-lg border border-[#DBE3F0] bg-white px-2 text-[13px]">
+                        className="h-9 min-w-0 max-w-full grow basis-48 rounded-lg border border-[#DBE3F0] bg-white px-2 text-[13px]">
                         <option value="">Choose a category</option>
                         {QUOTE_PHOTO_CATEGORIES.map((category) => <option key={category}>{category}</option>)}
                       </select>
