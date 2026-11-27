@@ -9,6 +9,27 @@ import { loadTs } from "./test-ts-loader.mjs";
 
 const { SERVICE_TEMPLATES, bestTemplateForTask } = loadTs("lib/serviceTemplates.ts");
 const { findBestTemplateForService, getMatchedQuoteItemsForLead, parseCustomerServices } = loadTs("lib/serviceMatching.ts");
+
+test("website checklist suggests the matching shower scope and separate extra work", () => {
+  const items = getMatchedQuoteItemsForLead({ service: "Shower Grout and silicone", areas: "Ensuite shower", quoteChecklist: { location: "Ensuite shower", work: "Grout and silicone", showerType: "Double", showerScope: "Walls and floor", wallHeight: "To ceiling", wallTiles: "2", floorTiles: "None", additional: ["Vanity"] } });
+  assert.ok(items.some(item => item.code.startsWith("EN-DS-WF-TC-")));
+  assert.ok(items.some(item => item.service.includes("Vanity")));
+  assert.ok(items.some(item => item.service.toLowerCase().includes("tile")));
+});
+
+test("silicone-only checklist does not suggest a regrouting template", () => {
+  const items = getMatchedQuoteItemsForLead({ service: "Shower Silicone only", quoteChecklist: { location: "Main bathroom shower", work: "Silicone only", showerScope: "Walls and floor", siliconeJoints: "Both", additional: [] } });
+  assert.equal(items.length, 1);
+  assert.equal(items[0].code, "");
+  assert.match(items[0].service, /Silicone only/);
+});
+
+test("grout-only checklist stays custom when catalog scopes also include silicone", () => {
+  const items = getMatchedQuoteItemsForLead({ quoteChecklist: { location: "Ensuite shower", work: "Grout only", showerScope: "Floor only", additional: [] } });
+  assert.equal(items.length, 1);
+  assert.equal(items[0].code, "");
+  assert.match(items[0].service, /Grout only/);
+});
 const byCode = code => SERVICE_TEMPLATES.find(item => item.code === code);
 const expectedCodes = `EN-DS-WB-TC-PG
 EN-DS-WB-SH-EG

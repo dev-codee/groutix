@@ -189,6 +189,7 @@ export interface Lead {
   amountPaid?: number;                        // actual amount received (for partial)
   // Regrouting & resealing checklist lifecycle.
   checklist?: import("@/lib/checklist").ChecklistDoc;
+  quoteChecklist?: Record<string, string | string[]>;
   checklistSentAt?: string;
   checklistOpenedAt?: string;
   checklistFilledAt?: string;

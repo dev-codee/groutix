@@ -151,6 +151,7 @@ export interface SubmissionDoc {
   damagedTiles?: string;
   leaking?: string;
   message?: string;
+  quoteChecklist?: Record<string, string | string[]>;
   areas?: string;
   heard?: string;
   sourcePage?: string;

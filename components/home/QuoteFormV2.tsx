@@ -6,10 +6,9 @@
 // so leads, bookings, the admin and the CRM keep working unchanged.
 // HeroQuoteForm is untouched and is still used by the older pages.
 
-import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Turnstile, type TurnstileInstance } from "@marsidev/react-turnstile";
-import { CalendarDays, Camera, Check, ChevronDown, ImagePlus, Info, MapPin, X } from "lucide-react";
+import { CalendarDays, Camera, Check, ImagePlus, Info, MapPin, X } from "lucide-react";
 import { formatBytes, MAX_FILE_SIZE_BYTES, MAX_TOTAL_BYTES } from "@/lib/imageCompression";
 import { trackEvent } from "@/lib/analytics";
 import { formatSlotRange } from "@/lib/scheduling";
@@ -19,33 +18,17 @@ import { isCompletePropertyAddress, PROPERTY_ADDRESS_ERROR } from "@/lib/propert
 
 const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 
-// label shown on the chip → value the CRM already understands (same values as HeroQuoteForm)
-const SERVICES: [string, string][] = [
-  ["Shower Regrouting", "Shower Cubicle Regrouting"],
-  ["Leaking Shower Repair", "Leaking Shower Repair"],
-  ["Shower Base Repair", "Shower Base Repair"],
-  ["Silicone Replacement", "Silicone Replacement"],
-  ["Balcony Regrouting", "Balcony Regrouting"],
-  ["Balcony Leak Repair", "Balcony Leak Repair"],
-  ["Tile Regrouting", "Tile Regrouting"],
-  ["Small Tiling Job", "Small Tiling Job"],
-  ["Other", "Other"],
-];
-const AREAS: [string, string][] = [
-  ["Main Bathroom", "Main Bathroom"],
-  ["Ensuite", "Ensuite Bathroom"],
-  ["Guest Bathroom", "Guest Bathroom"],
-  ["Toilet", "Toilet"],
-  ["Kitchen", "Kitchen"],
-  ["Laundry", "Laundry"],
-  ["Balcony", "Balcony"],
-  ["Other", "Other"],
-];
 const LEAKING = ["Yes", "No", "Not sure"];
-const DAMAGED = ["No", "Cracked tiles", "Loose / drummy tiles", "Lifting tiles", "Not sure"];
 
 type Mode = "insp" | "quote";
-type StepId = "job" | "details" | "tenants" | "finish";
+type StepId = "details" | "job" | "tenants" | "finish";
+type Checklist = {
+  location: string; showerType: string; wallHeight: string; work: string; showerScope: string;
+  wallCount: string; tileSize: string; mosaic: string; screen: string; siliconeJoints: string;
+  wallTiles: string; floorTiles: string; tileAction: string; balconyArea: string;
+  balconyTileSize: string; additional: string[]; notes: string;
+};
+const emptyChecklist: Checklist = { location: "", showerType: "", wallHeight: "", work: "", showerScope: "", wallCount: "", tileSize: "", mosaic: "", screen: "", siliconeJoints: "", wallTiles: "", floorTiles: "", tileAction: "", balconyArea: "", balconyTileSize: "", additional: [], notes: "" };
 type Tenant = { name: string; phone: string; email: string };
 type Slot = { time: string; booked: boolean };
 type Day = { date: string; label: string; slots: Slot[] };
@@ -89,161 +72,6 @@ const floatField =
 const floatLabel =
   "pointer-events-none absolute left-3 right-3 top-1.5 truncate text-[11px] font-semibold text-neutral-500 transition-all peer-placeholder-shown:top-1/2 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:text-[14.5px] peer-placeholder-shown:font-normal peer-placeholder-shown:text-neutral-500 peer-focus:top-1.5 peer-focus:translate-y-0 peer-focus:text-[11px] peer-focus:font-semibold peer-focus:text-[#2F63CC]";
 
-const HIDDEN: React.CSSProperties = { position: "fixed", top: 0, left: 0, visibility: "hidden" };
-
-// Click-to-open select list (multi or single choice). Keeps step 1 short.
-function Dropdown({
-  id,
-  label: lbl,
-  options,
-  value,
-  onToggle,
-  multiple = true,
-  placeholder,
-  error,
-}: {
-  id: string;
-  label: React.ReactNode;
-  options: [string, string][];
-  value: string[];
-  onToggle: (v: string) => void;
-  multiple?: boolean;
-  placeholder: string;
-  error?: string;
-}) {
-  const [open, setOpen] = useState(false);
-  const [active, setActive] = useState(0);
-  const wrapRef = useRef<HTMLDivElement>(null);
-  const btnRef = useRef<HTMLButtonElement>(null);
-  const popRef = useRef<HTMLDivElement>(null);
-  const listRef = useRef<HTMLUListElement>(null);
-  const [pos, setPos] = useState<React.CSSProperties>(HIDDEN);
-
-  // The list is rendered in a portal with fixed position, so the hero section
-  // can never clip it. It opens upwards when there isn't room below.
-  useLayoutEffect(() => {
-    if (!open) return;
-    const place = () => {
-      const r = btnRef.current?.getBoundingClientRect();
-      if (!r) return;
-      const want = Math.min(popRef.current?.offsetHeight || 300, 300);
-      const below = window.innerHeight - r.bottom - 8;
-      const up = below < want && r.top - 8 > below;
-      setPos(up ? { position: "fixed", left: r.left, width: r.width, bottom: window.innerHeight - r.top + 4, maxHeight: r.top - 12 } : { position: "fixed", left: r.left, width: r.width, top: r.bottom + 4, maxHeight: Math.max(160, below) });
-    };
-    place();
-    window.addEventListener("scroll", place, true);
-    window.addEventListener("resize", place);
-    return () => {
-      window.removeEventListener("scroll", place, true);
-      window.removeEventListener("resize", place);
-      setPos(HIDDEN);
-    };
-  }, [open]);
-
-  useEffect(() => {
-    if (!open) return;
-    const close = (e: MouseEvent | TouchEvent) => {
-      const t = e.target as Node;
-      if (!wrapRef.current?.contains(t) && !popRef.current?.contains(t)) setOpen(false);
-    };
-    document.addEventListener("mousedown", close);
-    document.addEventListener("touchstart", close);
-    return () => {
-      document.removeEventListener("mousedown", close);
-      document.removeEventListener("touchstart", close);
-    };
-  }, [open]);
-
-  // Keep the keyboard-highlighted option visible (scrolls the list only, never the page).
-  useEffect(() => {
-    const list = listRef.current;
-    const el = list?.querySelector<HTMLElement>(`[data-i="${active}"]`);
-    if (!open || !list || !el) return;
-    if (el.offsetTop < list.scrollTop) list.scrollTop = el.offsetTop;
-    else if (el.offsetTop + el.offsetHeight > list.scrollTop + list.clientHeight) list.scrollTop = el.offsetTop + el.offsetHeight - list.clientHeight;
-  }, [open, active]);
-
-  const pick = (v: string) => {
-    onToggle(v);
-    if (!multiple) setOpen(false);
-  };
-  const shown = options.filter(([, v]) => value.includes(v)).map(([l]) => l);
-
-  return (
-    <div ref={wrapRef} className="relative min-w-0">
-      <span id={`${id}-label`} className={label}>{lbl}</span>
-      <button
-        ref={btnRef}
-        id={id}
-        type="button"
-        role="combobox"
-        aria-haspopup="listbox"
-        aria-expanded={open}
-        aria-labelledby={`${id}-label ${id}`}
-        aria-controls={`${id}-list`}
-        aria-activedescendant={open ? `${id}-opt-${active}` : undefined}
-        aria-invalid={!!error}
-        onClick={() => setOpen((o) => !o)}
-        onKeyDown={(e) => {
-          if (e.key === "ArrowDown") { e.preventDefault(); if (!open) setOpen(true); else setActive((i) => (i + 1) % options.length); }
-          else if (e.key === "ArrowUp") { e.preventDefault(); if (!open) setOpen(true); else setActive((i) => (i - 1 + options.length) % options.length); }
-          else if ((e.key === "Enter" || e.key === " ") && open) { e.preventDefault(); pick(options[active][1]); }
-          else if (e.key === "Escape" && open) { e.preventDefault(); setOpen(false); }
-          else if (e.key === "Tab") setOpen(false);
-        }}
-        className={`flex h-11 w-full items-center gap-2 rounded-[10px] border-[1.5px] bg-[#FBFCFE] pl-3 pr-2.5 text-left text-[15px] focus:outline-none focus:ring-[3px] focus:ring-[#2F63CC]/15 ${
-          error ? fieldBad : open ? "border-[#2F63CC]" : "border-[#DBE3F0] hover:border-[#2F63CC]"
-        }`}
-      >
-        <span className={`min-w-0 flex-1 truncate ${shown.length ? "text-neutral-900" : "text-neutral-400"}`}>
-          {shown.length ? shown.join(", ") : placeholder}
-        </span>
-        {multiple && shown.length > 1 && (
-          <span className="shrink-0 rounded-full bg-[#1A2A8C] px-1.5 text-[11px] font-bold leading-[18px] text-white">{shown.length}</span>
-        )}
-        <ChevronDown className={`h-4 w-4 shrink-0 text-[#1A2A8C] transition-transform ${open ? "rotate-180" : ""}`} aria-hidden="true" />
-      </button>
-      {open && typeof document !== "undefined" && createPortal(
-        <div ref={popRef} style={pos} className="z-[95] flex flex-col overflow-hidden rounded-xl border-[1.5px] border-[#DBE3F0] bg-white font-sans text-neutral-900 shadow-[0_14px_30px_rgba(15,23,42,0.22)]">
-          <ul ref={listRef} id={`${id}-list`} role="listbox" aria-multiselectable={multiple || undefined} aria-labelledby={`${id}-label`} className="min-h-0 flex-1 overflow-y-auto overscroll-contain py-1">
-            {options.map(([l, v], i) => {
-              const on = value.includes(v);
-              return (
-                <li
-                  key={v}
-                  id={`${id}-opt-${i}`}
-                  data-i={i}
-                  role="option"
-                  aria-selected={on}
-                  onMouseDown={(e) => e.preventDefault()}
-                  onMouseEnter={() => setActive(i)}
-                  onClick={() => pick(v)}
-                  className={`flex cursor-pointer items-center gap-2.5 px-3 py-2 text-[14px] ${i === active ? "bg-[#EEF3FF]" : ""} ${on ? "font-semibold text-[#1A2A8C]" : "text-neutral-800"}`}
-                >
-                  <span className={`flex h-[18px] w-[18px] shrink-0 items-center justify-center border-[1.5px] ${multiple ? "rounded-[5px]" : "rounded-full"} ${on ? "border-[#1A2A8C] bg-[#1A2A8C] text-white" : "border-[#B8C5DC] bg-white"}`}>
-                    {on && <Check className="h-3 w-3" aria-hidden="true" />}
-                  </span>
-                  {l}
-                </li>
-              );
-            })}
-          </ul>
-          {multiple && (
-            <div className="border-t border-[#EEF2F8] px-2 py-1.5">
-              <button type="button" onClick={() => { setOpen(false); btnRef.current?.focus(); }} className="h-8 w-full rounded-lg bg-[#1A2A8C] text-[13px] font-bold text-white">
-                Done
-              </button>
-            </div>
-          )}
-        </div>,
-        document.body
-      )}
-      <FieldError msg={error} />
-    </div>
-  );
-}
-
 function FloatInput({ id, label: lbl, error, ...props }: React.InputHTMLAttributes<HTMLInputElement> & { id: string; label: React.ReactNode; error?: string }) {
   return (
     <div className="min-w-0">
@@ -275,22 +103,12 @@ export default function QuoteFormV2({
   const { phone: phoneDisplay, tel } = useContact();
   const rootRef = useRef<HTMLDivElement>(null);
 
-  // A page can preselect its service (e.g. "Epoxy Grout"). If it isn't one of the
-  // standard chips it gets its own chip, exactly like the old form sent it.
-  const serviceChips = useMemo<[string, string][]>(
-    () => (defaultService && !SERVICES.some(([, v]) => v === defaultService) ? [[defaultService, defaultService], ...SERVICES] : SERVICES),
-    [defaultService]
-  );
-  const initialServices = defaultService ? [defaultService] : [];
-
-  const [mode, setMode] = useState<Mode>("insp");
+  const [mode, setMode] = useState<Mode>("quote");
   const [isPM, setIsPM] = useState(false);
-  const [step, setStep] = useState<StepId>("job");
+  const [step, setStep] = useState<StepId>("details");
+  const [checklist, setChecklist] = useState<Checklist>(emptyChecklist);
 
-  const [services, setServices] = useState<string[]>(initialServices);
-  const [areas, setAreas] = useState<string[]>([]);
   const [leaking, setLeaking] = useState("");
-  const [damaged, setDamaged] = useState<string[]>([]);
   const [jobErrors, setJobErrors] = useState<Record<string, string>>({});
 
   const [data, setData] = useState({ firstName: "", lastName: "", agency: "", phone: "", email: "", address: "", message: "" });
@@ -338,9 +156,9 @@ export default function QuoteFormV2({
   const [suggestionLoading, setSuggestionLoading] = useState(false);
   const [suggestionAttribution, setSuggestionAttribution] = useState("");
 
-  const flow: StepId[] = isPM ? ["job", "details", "tenants", "finish"] : ["job", "details", "finish"];
+  const flow: StepId[] = isPM ? ["details", "job", "tenants", "finish"] : ["details", "job", "finish"];
   const stepLabels: Record<StepId, string> = {
-    job: "The job",
+    job: "Job checklist",
     details: isPM ? "Manager details" : "Your details",
     tenants: "Tenant access",
     finish: mode === "insp" ? "Book & finish" : "Photos & finish",
@@ -434,9 +252,11 @@ export default function QuoteFormV2({
   /* ---------- validation ---------- */
   const validateJob = () => {
     const e: Record<string, string> = {};
-    if (!services.length) e.services = "Select at least one";
-    if (!areas.length) e.areas = "Select at least one";
+    if (!checklist.location) e.location = "Choose the area";
+    if (!checklist.work) e.work = "Choose the work required";
     if (!leaking) e.leaking = "Choose one";
+    if (checklist.location === "Balcony" && !checklist.balconyArea.trim()) e.balconyArea = "Enter an approximate area";
+    if (checklist.location !== "Balcony" && checklist.location && !checklist.showerScope) e.showerScope = "Choose the area to work on";
     setJobErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -564,6 +384,8 @@ export default function QuoteFormV2({
     setSubmitError("");
     setInspError("");
     if (!validateDetails()) { goTo("details"); return; }
+    if (!validateJob()) { goTo("job"); return; }
+    if (isPM && !validateTenants()) { goTo("tenants"); return; }
     if (mode === "insp" && avail.status === "loading") {
       setInspError("Loading inspection times, one moment…");
       return;
@@ -629,12 +451,14 @@ export default function QuoteFormV2({
       payload.append("email", data.email.trim());
       payload.append("phone", data.phone.trim());
       payload.append("address", data.address.trim());
-      payload.append("message", data.message.trim());
-      payload.append("areas", areas.join(", "));
-      payload.append("service", services.join(", "));
-      payload.append("enquiry", services.join(", "));
-      payload.append("damagedTiles", damaged.join(", "));
+      payload.append("message", [checklist.notes.trim(), data.message.trim()].filter(Boolean).join("\n"));
+      payload.append("areas", [checklist.location, ...checklist.additional].filter(Boolean).join(", "));
+      const quotedService = `${checklist.location === "Balcony" ? "Balcony" : "Shower"} ${checklist.work}`;
+      payload.append("service", quotedService);
+      payload.append("enquiry", quotedService);
+      payload.append("damagedTiles", [checklist.wallTiles && `${checklist.wallTiles} wall`, checklist.floorTiles && `${checklist.floorTiles} floor`, checklist.tileAction].filter(Boolean).join(", "));
       payload.append("leaking", leaking);
+      payload.append("checklist", JSON.stringify(checklist));
       payload.append("sourcePage", typeof window !== "undefined" ? window.location.pathname : "");
       if (captchaToken) payload.append("cf-turnstile-response", captchaToken);
       if (canBook && date && time) {
@@ -676,12 +500,10 @@ export default function QuoteFormV2({
 
   const reset = () => {
     setDone(null);
-    setStep("job");
+    setStep("details");
+    setChecklist(emptyChecklist);
     setIsPM(false);
-    setServices(initialServices);
-    setAreas([]);
     setLeaking("");
-    setDamaged([]);
     setJobErrors({});
     setData({ firstName: "", lastName: "", agency: "", phone: "", email: "", address: "", message: "" });
     setErrors({});
@@ -702,20 +524,6 @@ export default function QuoteFormV2({
   };
 
   /* ---------- pieces ---------- */
-  const toggle = (list: string[], set: (v: string[]) => void, v: string, key: string) => {
-    const nextList = list.includes(v) ? list.filter((x) => x !== v) : [...list, v];
-    set(nextList);
-    if (nextList.length && jobErrors[key]) setJobErrors((e) => ({ ...e, [key]: "" }));
-  };
-  // "No" and "Not sure" are exclusive, the other answers can be combined (same as HeroQuoteForm)
-  const toggleDamaged = (v: string) => {
-    setDamaged((list) => {
-      if (v === "No" || v === "Not sure") return list.includes(v) ? [] : [v];
-      const f = list.filter((x) => x !== "No" && x !== "Not sure");
-      return f.includes(v) ? f.filter((x) => x !== v) : [...f, v];
-    });
-  };
-
   const input = (name: keyof typeof data, lbl: React.ReactNode, props: React.InputHTMLAttributes<HTMLInputElement> = {}) => (
     <FloatInput
       id={`${P}-${name}`}
@@ -814,6 +622,18 @@ export default function QuoteFormV2({
     </div>
   );
 
+  const checkSelect = (key: keyof Checklist, title: string, options: string[], required = false) => (
+    <label className="block min-w-0 text-[12px] font-semibold text-neutral-700">
+      <span className="mb-1 block">{title} {required && req}</span>
+      <select value={checklist[key] as string} onChange={(e) => { setChecklist((c) => ({ ...c, [key]: e.target.value })); setJobErrors((all) => ({ ...all, [key]: "" })); }}
+        aria-invalid={!!jobErrors[key]} className={`h-10 w-full rounded-lg border bg-[#FBFCFE] px-2.5 text-[13px] text-neutral-900 focus:border-[#2F63CC] focus:outline-none ${jobErrors[key] ? "border-red-500" : "border-[#DBE3F0]"}`}>
+        <option value="">Select…</option>
+        {options.map((v) => <option key={v} value={v}>{v}</option>)}
+      </select>
+      <FieldError msg={jobErrors[key]} />
+    </label>
+  );
+
   /* ---------- render ---------- */
   return (
     <div
@@ -863,8 +683,8 @@ export default function QuoteFormV2({
 
           <div className="mb-2.5 mt-3.5 grid grid-cols-2 gap-2.5">
             {([
-              ["insp", "Book free inspection", "Pick a day, we come to you"],
               ["quote", "Just get a quote", "Send details or photos"],
+              ["insp", "Book free inspection", "Pick a day, we come to you"],
             ] as const).map(([m, t, s]) => (
               <button
                 key={m}
@@ -875,7 +695,7 @@ export default function QuoteFormV2({
                   mode === m ? "border-[#001F97] bg-[#EEF3FF] shadow-[0_0_0_3px_rgba(47,99,204,0.15)]" : "border-[#DBE3F0] bg-white hover:border-[#2F63CC]"
                 }`}
               >
-                {m === "insp" && (
+                {m === "quote" && (
                   <span className="absolute -top-2.5 right-2.5 rounded-[10px] bg-[#001F97] px-2 py-0.5 text-[10.5px] font-bold leading-tight text-white">Recommended</span>
                 )}
                 <strong className="block text-sm leading-snug">{t}</strong>
@@ -891,61 +711,58 @@ export default function QuoteFormV2({
           </div>
           <div className="mb-1 flex justify-between text-xs text-neutral-500" aria-live="polite">
             <span>Step {stepIndex + 1} of {flow.length} · {stepLabels[step]}</span>
-            <span>About 1 minute</span>
+            <span>Just a few details</span>
           </div>
 
-          {/* STEP 1: THE JOB */}
+          {/* STEP 2: JOB CHECKLIST */}
           {step === "job" && (
-            <div className="flex flex-1 flex-col">
-              <label className="mt-1 flex cursor-pointer select-none items-center gap-2.5 text-sm font-semibold text-[#1F2D4D]">
-                <input type="checkbox" checked={isPM} onChange={(e) => setIsPM(e.target.checked)} className="h-[18px] w-[18px] accent-[#001F97]" />
-                I am a Property Manager / agent
-              </label>
-              <div className="mt-3 grid grid-cols-1 gap-x-3 gap-y-3 min-[420px]:grid-cols-2">
-                <Dropdown
-                  id={`${P}-areas`}
-                  label={<>Which area? {req}</>}
-                  placeholder="Select area(s)"
-                  options={AREAS}
-                  value={areas}
-                  onToggle={(v) => toggle(areas, setAreas, v, "areas")}
-                  error={jobErrors.areas}
-                />
-                <Dropdown
-                  id={`${P}-services`}
-                  label={<>What do you need done? {req}</>}
-                  placeholder="Select service(s)"
-                  options={serviceChips}
-                  value={services}
-                  onToggle={(v) => toggle(services, setServices, v, "services")}
-                  error={jobErrors.services}
-                />
-                <Dropdown
-                  id={`${P}-leaking`}
-                  label={<>Is it currently leaking? {req}</>}
-                  placeholder="Select one"
-                  options={LEAKING.map((v) => [v, v] as [string, string])}
-                  value={leaking ? [leaking] : []}
-                  multiple={false}
-                  onToggle={(v) => { setLeaking(v); setJobErrors((e) => ({ ...e, leaking: "" })); }}
-                  error={jobErrors.leaking}
-                />
-                <Dropdown
-                  id={`${P}-damaged`}
-                  label={<>Any damaged tiles? <small className={opt}>(optional)</small></>}
-                  placeholder="Select if any"
-                  options={DAMAGED.map((v) => [v, v] as [string, string])}
-                  value={damaged}
-                  onToggle={toggleDamaged}
-                />
+            <div className="flex flex-1 flex-col gap-3 pt-2">
+              <p className="text-[13px] text-neutral-600">Tell us what needs attention. Approximate details are fine; photos can be added at the end.</p>
+              <div className="grid grid-cols-1 gap-2.5 min-[420px]:grid-cols-2">
+                {checkSelect("location", "Area", ["Ensuite shower", "Main bathroom shower", "Other shower", "Balcony"], true)}
+                {checkSelect("work", "Work needed", ["Grout only", "Silicone only", "Grout and silicone", "Not sure"], true)}
+                <label className="block text-[12px] font-semibold text-neutral-700"><span className="mb-1 block">Leaking? {req}</span>
+                  <select value={leaking} onChange={(e) => { setLeaking(e.target.value); setJobErrors((x) => ({ ...x, leaking: "" })); }} className={`h-10 w-full rounded-lg border bg-[#FBFCFE] px-2.5 text-[13px] ${jobErrors.leaking ? "border-red-500" : "border-[#DBE3F0]"}`}><option value="">Select…</option>{LEAKING.map((v) => <option key={v}>{v}</option>)}</select><FieldError msg={jobErrors.leaking} />
+                </label>
+                {checklist.location === "Balcony" ? (
+                  <label className="block text-[12px] font-semibold text-neutral-700"><span className="mb-1 block">Balcony area (m²) {req}</span><input type="number" min="0.1" step="0.1" value={checklist.balconyArea} onChange={(e) => { setChecklist((c) => ({ ...c, balconyArea: e.target.value })); setJobErrors((x) => ({ ...x, balconyArea: "" })); }} placeholder="Approx. size" className={`h-10 w-full rounded-lg border bg-[#FBFCFE] px-2.5 text-[13px] ${jobErrors.balconyArea ? "border-red-500" : "border-[#DBE3F0]"}`} /><FieldError msg={jobErrors.balconyArea} /></label>
+                ) : null}
               </div>
+              {checklist.location === "Balcony" ? (
+                <div className="grid grid-cols-1 gap-2.5 min-[420px]:grid-cols-2">{checkSelect("balconyTileSize", "Tile size", ["Small", "Medium", "Large", "Extra large", "Not sure"])}</div>
+              ) : checklist.location ? (
+                <div className="rounded-xl border border-[#DBE3F0] bg-[#F8FAFF] p-3">
+                  <p className="mb-2 text-[13px] font-bold text-[#001F97]">Shower details</p>
+                  <div className="grid grid-cols-1 gap-2.5 min-[420px]:grid-cols-2">
+                    {checkSelect("showerScope", "Area to work on", ["Walls and floor", "Floor only", "Walls only", "Selected areas"], true)}
+                    {checkSelect("showerType", "Shower size", ["Single", "Double", "Extended", "Not sure"])}
+                    {checklist.showerScope !== "Floor only" && checkSelect("wallHeight", "Wall height", ["To screen (~2.1 m)", "Above screen", "To ceiling", "Not sure"])}
+                    {checklist.showerScope !== "Floor only" && checkSelect("wallCount", "Tiled walls", ["1", "2", "3", "More", "Not sure"])}
+                    {checkSelect("tileSize", "Tile size", ["Small", "Medium", "Large", "Extra large", "Not sure"])}
+                    {checkSelect("mosaic", "Mosaic tiles?", ["Yes", "No", "Not sure"])}
+                    {checklist.work !== "Grout only" && checkSelect("screen", "Shower screen", ["Frameless", "Semi-frameless", "Framed", "Not sure"])}
+                    {checklist.work !== "Grout only" && checklist.screen === "Frameless" && checkSelect("siliconeJoints", "Screen silicone", ["Inside", "Outside", "Both", "Vertical and horizontal", "Not sure"])}
+                  </div>
+                </div>
+              ) : null}
+              {checklist.location && <details className="rounded-xl border border-[#DBE3F0] p-3"><summary className="cursor-pointer text-[13px] font-semibold text-[#001F97]">Tile damage &amp; extra areas <span className="font-normal text-neutral-500">(if applicable)</span></summary>
+                <div className="mt-3 grid grid-cols-1 gap-2.5 min-[420px]:grid-cols-2">
+                  {checkSelect("wallTiles", "Damaged wall tiles", ["None", "1", "2", "3", "4+", "Not sure"])}
+                  {checkSelect("floorTiles", "Damaged floor tiles", ["None", "1", "2", "3", "4+", "Not sure"])}
+                  {checkSelect("tileAction", "Tile work", ["Repair", "Replace", "Not sure"])}
+                </div>
+                <p className="mb-1 mt-3 text-[12px] font-semibold text-neutral-700">Also quote</p>
+                <div className="grid grid-cols-2 gap-1.5">{["Kitchen", "Vanity", "Bathtub", "Niche", "Bathroom floor", "Other"].map((v) => <label key={v} className="flex items-center gap-1.5 text-[12px]"><input type="checkbox" checked={checklist.additional.includes(v)} onChange={() => setChecklist((c) => ({ ...c, additional: c.additional.includes(v) ? c.additional.filter((x) => x !== v) : [...c.additional, v] }))} className="accent-[#001F97]" />{v}</label>)}</div>
+              </details>}
+              <label className="text-[12px] font-semibold text-neutral-700">Anything else we should know? <span className="font-normal text-neutral-500">(optional)</span><textarea rows={2} value={checklist.notes} onChange={(e) => setChecklist((c) => ({ ...c, notes: e.target.value }))} placeholder="Where is the leak or damage?" className="mt-1 block w-full resize-y rounded-lg border border-[#DBE3F0] bg-[#FBFCFE] px-2.5 py-2 text-[13px] font-normal" /></label>
               {nav(<button type="button" onClick={next} className={primaryBtn}>Continue</button>)}
             </div>
           )}
 
-          {/* STEP 2: DETAILS */}
+          {/* STEP 1: DETAILS */}
           {step === "details" && (
             <div className="flex flex-1 flex-col gap-2.5 pt-2">
+              <label className="flex cursor-pointer items-center gap-2 text-[13px] font-semibold text-[#1F2D4D]"><input type="checkbox" checked={isPM} onChange={(e) => setIsPM(e.target.checked)} className="h-4 w-4 accent-[#001F97]" />I am a Property Manager / agent</label>
               <div className="grid grid-cols-1 gap-2.5 min-[420px]:grid-cols-2">
                 {input("firstName", <>{isPM ? "Manager first name" : "First name"} {req}</>, { autoComplete: "given-name" })}
                 {input("lastName", <>{isPM ? "Manager last name" : "Last name"} {req}</>, { autoComplete: "family-name" })}
@@ -1267,7 +1084,7 @@ export default function QuoteFormV2({
             </div>
           )}
 
-          {/* Bot check: loads once the visitor moves past step 1 and only shows itself if Cloudflare needs a click. */}
+          {/* Bot check: loads once the visitor moves past the contact details step. */}
           {TURNSTILE_SITE_KEY && started && (
             <div className="mt-1 empty:hidden">
               <Turnstile

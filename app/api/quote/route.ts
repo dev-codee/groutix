@@ -175,6 +175,16 @@ export async function POST(req: NextRequest) {
   const damagedTiles = get("damagedTiles");
   const leaking = get("leaking");
   const message = get("message");
+  let checklist: Record<string, string | string[]> | undefined;
+  try {
+    const raw = get("checklist");
+    if (raw && raw.length < 10000) {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        checklist = Object.fromEntries(Object.entries(parsed).filter(([, value]) => typeof value === "string" || (Array.isArray(value) && value.every((item) => typeof item === "string")))) as Record<string, string | string[]>;
+      }
+    }
+  } catch { /* Older forms do not send a checklist. */ }
   const areas = get("areas");
   const heard = get("heard");
   const sourcePage = get("sourcePage");
@@ -356,6 +366,7 @@ export async function POST(req: NextRequest) {
       ${row("Service required", service)}
       ${row("Damaged tiles", damagedTiles)}
       ${row("Is area leaking", leaking)}
+      ${checklist ? Object.entries(checklist).filter(([, value]) => Array.isArray(value) ? value.length : String(value || "").trim()).map(([key, value]) => row(key.replace(/([A-Z])/g, " $1").replace(/^./, c => c.toUpperCase()), Array.isArray(value) ? value.join(", ") : String(value))).join("") : ""}
       ${row("Message", message)}
       ${row("Heard about us", heard)}
       ${row("Photos attached", submissionPhotos.length ? `${submissionPhotos.length} attached${photoLinksHtml ? ` (${photoLinksHtml})` : ""}` : "")}
@@ -381,6 +392,7 @@ export async function POST(req: NextRequest) {
     damagedTiles,
     leaking,
     message,
+    quoteChecklist: checklist,
     areas,
     heard,
     sourcePage,

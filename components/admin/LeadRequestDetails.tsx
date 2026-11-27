@@ -6,6 +6,7 @@ import type { Lead } from "./types";
 
 const fields = ["notes", "message", "enquiry"] as const;
 const labels = { notes: "Lead Notes", message: "Customer Request Detail", enquiry: "Additional Customer Request Detail" };
+const checklistLabels: Record<string, string> = { location: "Area", showerType: "Shower size", wallHeight: "Wall height", work: "Work needed", showerScope: "Work area", wallCount: "Tiled walls", tileSize: "Tile size", mosaic: "Mosaic tiles", screen: "Screen", siliconeJoints: "Screen silicone", wallTiles: "Damaged wall tiles", floorTiles: "Damaged floor tiles", tileAction: "Tile work", balconyArea: "Balcony area (m²)", balconyTileSize: "Balcony tile size", additional: "Also quote", notes: "Checklist notes" };
 
 export function LeadRequestDetails({ lead, onSave }: {
   lead: Lead;
@@ -56,7 +57,7 @@ export function LeadRequestDetails({ lead, onSave }: {
           onClick={() => setExpanded(!expanded)}
           className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-700 hover:text-blue-900 cursor-pointer">
           <MessageSquare className="w-3.5 h-3.5 shrink-0" />
-          {expanded ? "Hide lead notes & customer request" : "View lead notes & customer request"}
+          {expanded ? "Hide request & checklist" : "View request & checklist"}
           <ChevronRight className={`w-3.5 h-3.5 shrink-0 transition-transform ${expanded ? "rotate-90" : ""}`} />
         </button>
         {!draft && <button type="button" onClick={edit} aria-label="Edit lead notes and customer request"
@@ -84,6 +85,7 @@ export function LeadRequestDetails({ lead, onSave }: {
         </div>
       ) : expanded && (
         <div className="space-y-1.5">
+          {lead.quoteChecklist && <div className="rounded-lg border border-blue-100 bg-blue-50/40 p-2.5"><p className="mb-1.5 text-xs font-bold text-blue-900">Customer quote checklist</p><dl className="grid grid-cols-1 gap-x-3 gap-y-1 sm:grid-cols-2">{Object.entries(lead.quoteChecklist).filter(([, value]) => Array.isArray(value) ? value.length : String(value || "").trim()).map(([key, value]) => <div key={key} className="text-xs"><dt className="font-semibold text-slate-600">{checklistLabels[key] || key}</dt><dd className="whitespace-pre-wrap text-slate-900">{Array.isArray(value) ? value.join(", ") : value}</dd></div>)}</dl></div>}
           {fields.filter(field => lead[field]?.trim() && !(field === "enquiry" && lead.enquiry === lead.message)).map(field => (
             <div key={field} className="flex items-start gap-1.5 text-xs text-slate-700 min-w-0">
               {field === "notes" ? <StickyNote className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" /> : <MessageSquare className="w-3.5 h-3.5 text-blue-600 shrink-0 mt-0.5" />}

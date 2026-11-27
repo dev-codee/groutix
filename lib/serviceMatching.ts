@@ -286,8 +286,21 @@ export function getMatchedQuoteItemsForLead(lead: {
   areas?: string;
   damagedTiles?: string;
   leaking?: string;
+  quoteChecklist?: Record<string, string | string[]>;
 }): MatchedQuoteItem[] {
-  const customerServices = parseCustomerServices(lead.service || lead.enquiry || "");
+  const checklist = lead.quoteChecklist;
+  const answer = (key: string) => typeof checklist?.[key] === "string" ? checklist[key] as string : "";
+  const work = answer("work").toLowerCase();
+  const isShower = Boolean(checklist && answer("location") !== "Balcony");
+  const groutWork = work === "grout and silicone";
+  const scope = answer("showerScope");
+  const matchingService = checklist && groutWork
+    ? isShower
+      ? `${answer("location")} ${answer("showerType")} shower ${scope} ${answer("wallHeight") === "To ceiling" ? "to ceiling" : ""} regrouting and resealing`
+      : "Balcony regrouting"
+    : lead.service || lead.enquiry || "";
+  // Silicone-only and uncertain work require a custom scope rather than a grout template.
+  const customerServices = checklist && !groutWork ? [] : parseCustomerServices(matchingService);
   const areas = lead.areas || "";
   const items: MatchedQuoteItem[] = [];
   const usedTemplateCodes = new Set<string>();
@@ -321,10 +334,21 @@ export function getMatchedQuoteItemsForLead(lead: {
     }
   }
 
+  if (checklist && !groutWork) {
+    items.push({ templateNo: "", code: "", service: `${answer("location")} — ${answer("work") || "Assessment"}`, scope: [answer("showerScope"), answer("siliconeJoints"), answer("notes")].filter(Boolean).join(" · "), price: 0, qty: 1, matchedFrom: "Customer checklist" });
+  }
+
+  if (checklist && Array.isArray(checklist.additional)) {
+    for (const area of checklist.additional) {
+      items.push({ templateNo: "", code: "", service: `${area} — additional work`, scope: "Confirm work and price from customer photos or inspection.", price: 0, qty: 1, matchedFrom: "Customer checklist" });
+    }
+  }
+
   // If customer reported cracked/loose tiles and not yet in quote, suggest cracked tile repair
   const damaged = (lead.damagedTiles || "").toLowerCase();
+  const tileCount = checklist && [answer("wallTiles"), answer("floorTiles")].some((count) => /^\d+$/.test(count) && Number(count) > 0 || count === "4+");
   if (
-    (damaged.includes("cracked") || damaged.includes("loose") || damaged.includes("drummy")) &&
+    (tileCount || damaged.includes("cracked") || damaged.includes("loose") || damaged.includes("drummy")) &&
     !usedTemplateCodes.has("CT - GROUTIX TO SUPPLY & INSTALL") &&
     !usedTemplateCodes.has("TILE REPAIR") &&
     !usedTemplateCodes.has("CT - (CLIENT TO SOURCE)")
@@ -338,7 +362,7 @@ export function getMatchedQuoteItemsForLead(lead: {
         scope: ctTemplate.scope,
         price: Number(ctTemplate.price) || 0,
         qty: 1,
-        matchedFrom: `Customer condition: ${lead.damagedTiles}`,
+        matchedFrom: `Customer condition: ${lead.damagedTiles || `${answer("wallTiles")} wall, ${answer("floorTiles")} floor tiles`}`,
       });
     }
   }
