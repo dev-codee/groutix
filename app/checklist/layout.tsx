@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 // Customer checklist pages are private, token-gated links, keep them unindexed.
 export const metadata: Metadata = {
-  title: "Grouting & Resealing Checklist, Groutix",
+  title: "Smart Quote Request, Groutix",
   robots: { index: false, follow: false, nocache: true },
 };
 

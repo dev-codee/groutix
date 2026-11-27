@@ -116,6 +116,7 @@ export interface ActivityEntry {
 
 export interface SubmissionPhoto {
   name: string;
+  category?: string;
   contentType?: string;
   url?: string;
   secureUrl?: string;

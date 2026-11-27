@@ -2373,16 +2373,16 @@ export default function CrmDashboardPage() {
         body: JSON.stringify({ id: activeQuoteLead.id }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) return alert(data.error || "Could not send the checklist.");
+      if (!res.ok) return alert(data.error || "Could not send the quote request.");
       if (data.item) {
         ++leadReadVersion.current;
         setLeads(current => current.map(item => item.id === data.item.id ? { ...item, ...data.item } : item));
         setActiveQuoteLead(current => current && current.id === data.item.id ? { ...current, ...data.item } : current);
         publishCrmChange(data.item);
       }
-      alert(`Checklist emailed to ${activeQuoteLead.email}.`);
+      alert(`Smart Quote Request emailed to ${activeQuoteLead.email}.`);
     } catch {
-      alert("Network error while sending the checklist.");
+      alert("Network error while sending the quote request.");
     } finally {
       setChecklistSending(false);
     }
@@ -5315,17 +5315,17 @@ export default function CrmDashboardPage() {
                         <div className="p-2.5 rounded-lg bg-white border border-indigo-200 space-y-1.5">
                           <div className="flex items-center justify-between gap-2">
                             <div className="text-[10px] font-bold text-indigo-700 uppercase tracking-wider">
-                              Regrouting &amp; Resealing Checklist
+                              Smart Quote Request
                             </div>
                             <button
                               type="button"
                               onClick={handleSendChecklist}
                               disabled={checklistSending || !activeQuoteLead.email}
-                              title={activeQuoteLead.email ? "Email the checklist form to the customer" : "No email address saved"}
+                              title={activeQuoteLead.email ? "Email the Smart Quote Request to the customer" : "No email address saved"}
                               className="flex items-center gap-1 px-2 py-1 rounded-md border border-indigo-300 bg-indigo-50 text-indigo-700 text-[10px] font-bold hover:bg-indigo-100 disabled:opacity-50 cursor-pointer shrink-0"
                             >
                               {checklistSending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
-                              {checklistSending ? "Sending…" : activeQuoteLead.checklistSentAt ? "Resend Checklist" : "Send Checklist"}
+                              {checklistSending ? "Sending…" : activeQuoteLead.checklistSentAt ? "Resend Request" : "Send Quote Request"}
                             </button>
                           </div>
                           <div className="space-y-1 text-[10px] text-slate-600">

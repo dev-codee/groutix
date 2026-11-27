@@ -16,6 +16,7 @@ export { CHECKLIST_OPTIONS, checklistRequestText } from "./checklistOptions";
 
 export type ChecklistPhoto = {
   name: string;
+  category?: string;
   contentType?: string;
   url?: string;
   secureUrl?: string;
@@ -26,6 +27,25 @@ export type ChecklistPhoto = {
 /** One shower (or balcony) page of the checklist, matching the DOCX questions. */
 export interface ChecklistPage {
   id: string;
+  service?: "Shower" | "Bathroom" | "Balcony" | "Other tiled area";
+  photoCategory?: string;
+  areaName?: string;
+  issues?: string[];
+  dimensionsLength?: string;
+  dimensionsWidth?: string;
+  measurementsUnknown?: boolean;
+  floorTileSize?: string;
+  damagedTiles?: string;
+  spareTiles?: string;
+  groutPreference?: string;
+  preferInspection?: boolean;
+  balconyLevel?: string;
+  balconyBelow?: string;
+  balconySkirting?: string;
+  balconyWork?: string[];
+  previousRepairs?: string;
+  previousRepairNotes?: string;
+  areaWork?: string[];
   // 1. Shower leakage
   showerLeakage?: string; // "Yes" | "No"
   leakageNotes?: string;
@@ -63,6 +83,10 @@ export interface ChecklistPage {
 
 export interface ChecklistAnswers {
   pages: ChecklistPage[];
+  timeframe?: string;
+  propertyType?: string;
+  accessNotes?: string;
+  additionalInformation?: string;
 }
 
 /** Stored on the lead under `checklist`. */
@@ -124,11 +148,10 @@ export function checklistToQuoteItems(
   const room = roomFromLead(lead);
   const grout = groutFromLead(lead);
   const items: ChecklistQuoteItem[] = [];
-  const usedCodes = new Set<string>();
 
   const add = (template: ServiceTemplate | null, matchedFrom: string, note?: string) => {
-    if (!template || usedCodes.has(template.code)) return;
-    usedCodes.add(template.code);
+    if (!template) return;
+    // Each area is a separate scope, even when it uses the same catalog code.
     items.push({
       templateNo: template.no,
       code: template.code,
@@ -141,21 +164,26 @@ export function checklistToQuoteItems(
   };
 
   for (const page of answers?.pages || []) {
-    const hasShower = Boolean(
-      page.showerType || page.workRequired || page.wallHeight || page.showerLeakage
-    );
+    if (page.service === "Bathroom" || page.service === "Other tiled area") {
+      items.push({ templateNo: "", code: "", service: page.service, scope: `${page.areaName || page.service}: ${(page.areaWork || []).join(", ") || "Review requested"}${page.additionalNotes ? ` — ${page.additionalNotes}` : ""}`, price: 0, qty: 1, matchedFrom: "Smart quote request: manual pricing" });
+      continue;
+    }
+    const hasShower = page.service ? page.service === "Shower" : Boolean(page.showerType || page.workRequired || page.wallHeight || page.showerLeakage);
 
     if (hasShower) {
       const size = page.showerType === "DS" ? "DS" : "SS";
       const height = page.wallHeight === "TC" || page.wallHeight === "ABOVE" ? "TC" : "SH";
       const surface = page.workRequired === "FO" ? "FO" : page.workRequired === "WO" ? "WO" : "WF";
+      const pageRoom = page.areaName ? (/ensuite/i.test(page.areaName) ? "EN" : "MB") : room;
+      const pageGrout = page.groutPreference === "PG" ? "PG" : page.groutPreference === "EG" ? "EG" : grout;
       const code =
-        surface === "FO" ? `${room}-${size}-FO-${grout}` : `${room}-${size}-${surface}-${height}-${grout}`;
-      add(
-        firstTemplateForCode(code),
-        `Checklist: ${size === "DS" ? "double" : "single"} shower ${surface === "FO" ? "floor only" : surface === "WO" ? "walls only" : "walls & floor"}`,
-        pageDetailNote(page) || undefined
-      );
+        surface === "FO" ? `${pageRoom}-${size}-FO-${pageGrout}` : `${pageRoom}-${size}-${surface}-${height}-${pageGrout}`;
+      const needsReview = page.preferInspection || (Boolean(page.service) && !["EG", "PG"].includes(page.groutPreference || "")) || page.tileSize === "Mosaic" || page.floorTileSize === "Mosaic" || page.damagedTiles === "Yes" || page.issues?.some(issue => /leak|water stains|loose/i.test(issue));
+      if (page.showerType && page.showerType !== "Not sure" && ["WF", "FO", "WO"].includes(page.workRequired || "") && (surface === "FO" || ["SH", "TC"].includes(page.wallHeight || "")) && !needsReview) {
+        add(firstTemplateForCode(code), `Smart quote request: ${page.areaName || "shower"}`, pageDetailNote(page) || undefined);
+      } else {
+        items.push({ templateNo: "", code: "", service: `${page.areaName || "Shower"} assessment`, scope: `Review shower scope and photos${page.preferInspection ? "; on-site assessment requested" : ""}${needsReview ? "; technical details require review" : ""}`, price: 0, qty: 1, matchedFrom: "Smart quote request: manual review" });
+      }
     }
 
     for (const joint of page.siliconeJoints || []) {
@@ -164,11 +192,7 @@ export function checklistToQuoteItems(
 
     const cracked = Number(page.crackedWallTiles || 0) + Number(page.crackedFloorTiles || 0);
     if (cracked > 0) {
-      const code = page.tileAction === "Replace" ? "CT - GROUTIX TO SUPPLY & INSTALL" : "TILE REPAIR";
-      add(
-        firstTemplateForCode(code),
-        `Checklist: ${cracked} cracked/loose tile${cracked === 1 ? "" : "s"} — ${page.tileAction || "Repair"}`
-      );
+      items.push({ templateNo: "", code: "", service: "Tile assessment", scope: `${cracked} damaged tile${cracked === 1 ? "" : "s"} reported; Groutix to recommend repair or replacement`, price: 0, qty: 1, matchedFrom: "Smart quote request: technical review" });
     }
 
     for (const area of page.additionalAreas || []) {
@@ -189,7 +213,7 @@ export function checklistToQuoteItems(
       });
     }
 
-    const isBalcony = Boolean(page.balconyLeakage || page.balconyArea || page.balconyTileSize);
+    const isBalcony = page.service ? page.service === "Balcony" : Boolean(page.balconyLeakage || page.balconyArea || page.balconyTileSize);
     if (isBalcony) {
       const note = [
         page.balconyArea ? `${page.balconyArea} sq m` : "",
@@ -198,7 +222,10 @@ export function checklistToQuoteItems(
       ]
         .filter(Boolean)
         .join(" · ");
-      add(firstTemplateForCode("BALCONY"), "Checklist: balcony", note || undefined);
+      add(firstTemplateForCode("BALCONY"), `Smart quote request: ${page.areaName || "balcony"}`, note || undefined);
+      if (page.issues?.some(issue => /leak|water/i.test(issue)) || page.balconyBelow === "Another apartment" || page.previousRepairs === "Yes") {
+        items.push({ templateNo: "", code: "", service: "Balcony technical review", scope: `${page.areaName || "Balcony"}: water ingress or previous repairs reported; assess suitability before quoting`, price: 0, qty: 1, matchedFrom: "Smart quote request: technical review" });
+      }
     }
   }
 
@@ -241,9 +268,6 @@ export function mergeQuoteItems<T extends { code?: string; service?: string }>(
     });
   }
   for (const addition of additions) {
-    const code = (addition.code || "").trim().toUpperCase();
-    if (code && seenCodes.has(code)) continue;
-    if (code) seenCodes.add(code);
     merged.push(addition);
   }
   return merged;

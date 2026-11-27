@@ -44,6 +44,25 @@ function sanitizeAnswers(raw: unknown): ChecklistAnswers {
     const page = (entry || {}) as Record<string, unknown>;
     return {
       id: str(page.id, 64) || `page-${index + 1}`,
+      service: (["Shower", "Bathroom", "Balcony", "Other tiled area"].includes(str(page.service)) ? str(page.service) : "") as ChecklistPage["service"],
+      photoCategory: str(page.photoCategory, 2),
+      areaName: str(page.areaName, 120),
+      issues: strList(page.issues),
+      dimensionsLength: str(page.dimensionsLength, 20),
+      dimensionsWidth: str(page.dimensionsWidth, 20),
+      measurementsUnknown: page.measurementsUnknown === true,
+      floorTileSize: str(page.floorTileSize, 40),
+      damagedTiles: str(page.damagedTiles, 20),
+      spareTiles: str(page.spareTiles, 20),
+      groutPreference: str(page.groutPreference, 20),
+      preferInspection: page.preferInspection === true,
+      balconyLevel: str(page.balconyLevel, 80),
+      balconyBelow: str(page.balconyBelow, 80),
+      balconySkirting: str(page.balconySkirting, 20),
+      balconyWork: strList(page.balconyWork),
+      previousRepairs: str(page.previousRepairs, 20),
+      previousRepairNotes: str(page.previousRepairNotes),
+      areaWork: strList(page.areaWork),
       showerLeakage: str(page.showerLeakage, 20),
       leakageNotes: str(page.leakageNotes),
       showerType: str(page.showerType, 10),
@@ -63,10 +82,15 @@ function sanitizeAnswers(raw: unknown): ChecklistAnswers {
       balconyLeakage: str(page.balconyLeakage, 20),
       balconyArea: str(page.balconyArea, 40),
       balconyTileSize: str(page.balconyTileSize, 40),
-      photos: [],
+      photos: Array.isArray(page.photos) ? page.photos.slice(0, MAX_PHOTOS_PER_PAGE).map(item => {
+        const photo = (item || {}) as Record<string, unknown>;
+        const url = str(photo.secureUrl, 500) || str(photo.url, 500);
+        return { name: str(photo.name, 200) || "photo", category: str(photo.category, 120), contentType: str(photo.contentType, 100), url, secureUrl: url, publicId: str(photo.publicId, 300) };
+      }).filter(photo => { try { return new URL(photo.url).hostname === "res.cloudinary.com"; } catch { return false; } }) : [],
     };
   });
-  return { pages: cleanPages };
+  const source = (raw || {}) as Record<string, unknown>;
+  return { pages: cleanPages, timeframe: str(source.timeframe, 40), propertyType: str(source.propertyType, 40), accessNotes: str(source.accessNotes), additionalInformation: str(source.additionalInformation) };
 }
 
 function collectPhotos(raw: unknown): SubmissionPhoto[] {
@@ -80,9 +104,10 @@ function collectPhotos(raw: unknown): SubmissionPhoto[] {
     for (const item of list.slice(0, MAX_PHOTOS_PER_PAGE)) {
       const photo = (item || {}) as Record<string, unknown>;
       const url = str(photo.secureUrl, 500) || str(photo.url, 500);
-      if (!url) continue;
+      try { if (new URL(url).hostname !== "res.cloudinary.com") continue; } catch { continue; }
       photos.push({
         name: str(photo.name, 200) || "photo",
+        category: str(photo.category, 120) || undefined,
         contentType: str(photo.contentType, 100) || undefined,
         url,
         secureUrl: url,
@@ -139,6 +164,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const lead = await getSubmission(id);
   if (!lead) return NextResponse.json({ error: "Checklist not found." }, { status: 404 });
+  if (lead.checklistSubmittedAt && body.event !== "viewed") return NextResponse.json({ error: "This quote request has already been submitted." }, { status: 409 });
 
   // Lightweight lifecycle pings from the form.
   if (body.event === "viewed") return NextResponse.json({ ok: true });
@@ -154,6 +180,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const answers = sanitizeAnswers(body.answers);
   if (!answers.pages.length) {
     return NextResponse.json({ error: "Please complete at least one checklist page." }, { status: 400 });
+  }
+  if (answers.pages.some(page => !page.service)) {
+    return NextResponse.json({ error: "Please select a service for each area." }, { status: 400 });
+  }
+  if (answers.pages.some(page => !page.preferInspection && (page.photos?.length || 0) < (page.service === "Shower" ? 4 : 3))) {
+    return NextResponse.json({ error: "Please add the requested photos or choose an on-site assessment for each area." }, { status: 400 });
   }
 
   const photos = collectPhotos(body.answers);
