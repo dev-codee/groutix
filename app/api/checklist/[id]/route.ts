@@ -44,8 +44,14 @@ function sanitizeAnswers(raw: unknown): ChecklistAnswers {
     const page = (entry || {}) as Record<string, unknown>;
     return {
       id: str(page.id, 64) || `page-${index + 1}`,
-      service: (["Shower", "Bathroom", "Balcony", "Other tiled area"].includes(str(page.service)) ? str(page.service) : "") as ChecklistPage["service"],
+      service: str(page.service, 80),
       photoCategory: str(page.photoCategory, 2),
+      customAnswers: page.customAnswers && typeof page.customAnswers === "object" && !Array.isArray(page.customAnswers)
+        ? Object.fromEntries(Object.entries(page.customAnswers as Record<string, unknown>).slice(0, 50).flatMap(([id, rawAnswer]) => {
+          if (!/^[a-zA-Z0-9_-]{1,64}$/.test(id) || !rawAnswer || typeof rawAnswer !== "object") return [];
+          const answer = rawAnswer as Record<string, unknown>;
+          return [[id, { label: str(answer.label, 160), value: Array.isArray(answer.value) ? strList(answer.value) : str(answer.value) }]];
+        })) : {},
       areaName: str(page.areaName, 120),
       issues: strList(page.issues),
       dimensionsLength: str(page.dimensionsLength, 20),
@@ -184,7 +190,25 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (answers.pages.some(page => !page.service)) {
     return NextResponse.json({ error: "Please select a service for each area." }, { status: 400 });
   }
-  if (answers.pages.some(page => !page.preferInspection && (page.photos?.length || 0) < (page.service === "Shower" ? 4 : 3))) {
+  const form = await getChecklistForm();
+  if (answers.pages.some(page => !form.serviceChoices.includes(page.service || ""))) {
+    return NextResponse.json({ error: "Please select an available service for each area." }, { status: 400 });
+  }
+  for (const page of answers.pages) {
+    page.customAnswers = Object.fromEntries(form.customQuestions.filter(q => q.service === "All" || q.service === page.service).flatMap(q => {
+      const value = page.customAnswers?.[q.id]?.value;
+      if (value === undefined) return [];
+      if (["single", "multiple"].includes(q.type)) {
+        const values = Array.isArray(value) ? value : [value];
+        if (values.some(item => !q.options.includes(item))) return [];
+      }
+      return [[q.id, { label: q.label, value }]];
+    }));
+  }
+  if (answers.pages.some(page => form.customQuestions.some(q => q.required && (q.service === "All" || q.service === page.service) && !(Array.isArray(page.customAnswers?.[q.id]?.value) ? (page.customAnswers![q.id].value as string[]).length : String(page.customAnswers?.[q.id]?.value || "").trim())))) {
+    return NextResponse.json({ error: "Please answer all required questions." }, { status: 400 });
+  }
+  if (!form.hiddenQuestions.includes("Photos for your quote") && answers.pages.some(page => !page.preferInspection && (page.photos?.length || 0) < (page.service === "Shower" ? 4 : 3))) {
     return NextResponse.json({ error: "Please add the requested photos or choose an on-site assessment for each area." }, { status: 400 });
   }
 

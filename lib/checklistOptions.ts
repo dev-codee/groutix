@@ -84,6 +84,9 @@ export function checklistRequestText(answers: ChecklistAnswers): string {
     if (page.previousRepairs) pageLines.push(`Previous repairs: ${page.previousRepairs}${page.previousRepairNotes ? ` (${page.previousRepairNotes})` : ""}`);
     if (page.areaWork?.length) pageLines.push(`Areas needing work: ${page.areaWork.join(", ")}`);
     if (page.preferInspection) pageLines.push("On-site assessment requested");
+    for (const answer of Object.values(page.customAnswers || {})) {
+      if (answer.label) pageLines.push(`${answer.label}: ${Array.isArray(answer.value) ? answer.value.join(", ") : answer.value}`);
+    }
     if (page.showerLeakage) pageLines.push(`Shower leakage: ${page.showerLeakage}${page.leakageNotes ? ` (${page.leakageNotes})` : ""}`);
     if (page.showerType) pageLines.push(`Shower type: ${page.showerType === "DS" ? "Double" : "Single"}`);
     if (page.wallHeight) pageLines.push(`Wall height: ${page.wallHeight}`);

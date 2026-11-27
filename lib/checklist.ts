@@ -27,8 +27,9 @@ export type ChecklistPhoto = {
 /** One shower (or balcony) page of the checklist, matching the DOCX questions. */
 export interface ChecklistPage {
   id: string;
-  service?: "Shower" | "Bathroom" | "Balcony" | "Other tiled area";
+  service?: string;
   photoCategory?: string;
+  customAnswers?: Record<string, { label: string; value: string | string[] }>;
   areaName?: string;
   issues?: string[];
   dimensionsLength?: string;
@@ -164,7 +165,7 @@ export function checklistToQuoteItems(
   };
 
   for (const page of answers?.pages || []) {
-    if (page.service === "Bathroom" || page.service === "Other tiled area") {
+    if (page.service && !["Shower", "Balcony"].includes(page.service)) {
       items.push({ templateNo: "", code: "", service: page.service, scope: `${page.areaName || page.service}: ${(page.areaWork || []).join(", ") || "Review requested"}${page.additionalNotes ? ` — ${page.additionalNotes}` : ""}`, price: 0, qty: 1, matchedFrom: "Smart quote request: manual pricing" });
       continue;
     }
@@ -252,11 +253,13 @@ export function mergeQuoteItems<T extends { code?: string; service?: string }>(
 ): ChecklistQuoteItem[] {
   const merged: ChecklistQuoteItem[] = [];
   const seenCodes = new Set<string>();
+  const existingCodeCounts = new Map<string, number>();
   for (const item of existing || []) {
     const code = (item.code || "").trim().toUpperCase();
     if (code) {
       if (seenCodes.has(code)) continue;
       seenCodes.add(code);
+      existingCodeCounts.set(code, (existingCodeCounts.get(code) || 0) + 1);
     }
     merged.push({
       templateNo: String((item as { templateNo?: string }).templateNo ?? ""),
@@ -268,6 +271,9 @@ export function mergeQuoteItems<T extends { code?: string; service?: string }>(
     });
   }
   for (const addition of additions) {
+    const code = (addition.code || "").trim().toUpperCase();
+    const alreadyPresent = code ? existingCodeCounts.get(code) || 0 : 0;
+    if (alreadyPresent) { existingCodeCounts.set(code, alreadyPresent - 1); continue; }
     merged.push(addition);
   }
   return merged;

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, use } from "react";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
-import { DEFAULT_CHECKLIST_FORM, type ChecklistForm } from "@/lib/checklistForm";
+import { DEFAULT_CHECKLIST_FORM, type ChecklistForm, type SmartQuestion } from "@/lib/checklistForm";
 import {
   AlertCircle,
   CheckCircle2,
@@ -28,6 +28,7 @@ type PageState = {
   id: string;
   service: string;
   photoCategory: string;
+  customAnswers: Record<string, { label: string; value: string | string[] }>;
   areaName: string;
   issues: string[];
   dimensionsLength: string;
@@ -79,6 +80,7 @@ function blankPage(): PageState {
     id: `page-${Date.now()}-${pageCounter}`,
     service: "",
     photoCategory: "",
+    customAnswers: {},
     areaName: "",
     issues: [],
     dimensionsLength: "",
@@ -142,6 +144,7 @@ function hydratePage(raw: Partial<PageState> | undefined, index: number): PageSt
     }
   }
   base.photos = Array.isArray(raw?.photos) ? (raw!.photos as Photo[]) : [];
+  base.customAnswers = raw?.customAnswers && typeof raw.customAnswers === "object" ? raw.customAnswers : {};
   base.measurementsUnknown = Boolean(raw?.measurementsUnknown);
   base.preferInspection = Boolean(raw?.preferInspection);
   return base;
@@ -312,13 +315,11 @@ function Photos({
   );
 }
 
-const serviceChoices = ["Shower", "Bathroom", "Balcony", "Other tiled area"] as const;
 const showerIssues = ["Water leaking outside the shower", "Water stains on walls or ceiling below", "Cracked or missing grout", "Mouldy or deteriorated silicone", "Discoloured or dirty grout", "Loose or cracked tiles", "General shower restoration", "Not sure"] as const;
 const balconyIssues = ["Water leaking into the property below", "Water entering through the balcony door", "Cracked or missing grout", "Deteriorated perimeter sealant", "Loose or cracked tiles", "Water pooling on the balcony", "General maintenance", "Not sure"] as const;
 const otherWork = ["Floor tiles", "Wall tiles", "Perimeter sealant", "Cracked or loose tiles", "Other"] as const;
 const yesNoUnknown = [["Yes", "Yes"], ["No", "No"], ["Not sure", "Not sure"]] as const;
 const tileSizes = [["Mosaic", "Mosaic · up to 50 mm"], ["Small", "Small · about 100 mm"], ["Medium", "Medium · about 200–300 mm"], ["Large", "Large · about 300–600 mm"], ["Extra Large", "Extra large · 600 mm+"], ["Not sure", "Not sure"]] as const;
-const photoCategories = ["Shower area inside", "Outside shower, bath & walls", "Shower screen height with wall tiles", "Number of walls with height & tile size", "Mosaic tiles", "Cracked, loose, drummy or lifted tiles", "Other areas · bathtub, niche, kitchen, vanity", "Balcony full view, zoomed in/out & leaking area"] as const;
 
 function VisualGuide({ kind }: { kind: "shower" | "walls" | "tiles" }) {
   if (kind === "shower") return <div className="grid grid-cols-2 gap-3 text-center text-xs text-slate-600" aria-label="Standard showers are about 900 by 900 millimetres; large showers are wider"><div className="rounded-xl bg-slate-50 p-3"><div className="mx-auto mb-2 h-14 w-14 rounded-md border-4 border-[#001f97] bg-blue-50"/>Standard · about 900 × 900 mm</div><div className="rounded-xl bg-slate-50 p-3"><div className="mx-auto mb-2 h-14 w-24 rounded-md border-4 border-[#001f97] bg-blue-50"/>Large · wider or double</div></div>;
@@ -374,15 +375,27 @@ export default function ChecklistPage({ params }: { params: Promise<{ id: string
     return <input type={type} min={type === "number" ? "0" : undefined} inputMode={type === "number" ? "decimal" : undefined} className={inputCls} placeholder={placeholder} value={String(pages[index][key] ?? "")} onChange={e => updatePage(index, { [key]: e.target.value })} />;
   }
   function question(title: string, children: React.ReactNode, hint?: string) {
-    return <div className="space-y-2.5 border-t border-slate-100 pt-5"><h3 className={label}>{title}</h3>{hint && <p className="text-xs text-slate-500">{hint}</p>}{children}</div>;
+    if (title !== "What area requires attention?" && form.hiddenQuestions?.includes(title)) return null;
+    return <div className="space-y-2.5 border-t border-slate-100 pt-5"><h3 className={label}>{form.questionLabels?.[title] || title}</h3>{hint && <p className="text-xs text-slate-500">{hint}</p>}{children}</div>;
   }
   function multi(options: readonly string[], values: string[], change: (value: string[]) => void) {
     return <CheckboxGroup options={options.map(item => [item, item] as const)} value={values} onChange={change} />;
   }
+  function customQuestion(page: PageState, index: number, q: SmartQuestion) {
+    const value = page.customAnswers[q.id]?.value ?? (q.type === "multiple" ? [] : "");
+    const update = (next: string | string[]) => updatePage(index, { customAnswers: { ...page.customAnswers, [q.id]: { label: q.label, value: next } } });
+    let control: React.ReactNode;
+    if (q.type === "multiple") control = multi(q.options, Array.isArray(value) ? value : [], update);
+    else if (q.type === "single") control = <Chips options={q.options.map(option => [option, option] as const)} value={String(value)} onChange={update}/>;
+    else if (q.type === "textarea") control = <textarea className={inputCls} rows={3} value={String(value)} onChange={event => update(event.target.value)}/>;
+    else control = <input className={inputCls} type={q.type === "number" ? "number" : "text"} min={q.type === "number" ? 0 : undefined} value={String(value)} onChange={event => update(event.target.value)}/>;
+    return <div key={q.id} className="space-y-2.5 border-t border-slate-100 pt-5"><h3 className={label}>{q.label}{q.required ? " *" : ""}</h3>{control}</div>;
+  }
   async function handleSubmit() {
     setSubmitError("");
     if (pages.some(page => !page.service)) { setSubmitError("Select a service for each area."); return; }
-    if (pages.some(page => !page.preferInspection && page.photos.length < (page.service === "Shower" ? 4 : 3))) {
+    if (pages.some(page => form.customQuestions?.some(q => q.required && (q.service === "All" || q.service === page.service) && !(Array.isArray(page.customAnswers[q.id]?.value) ? (page.customAnswers[q.id].value as string[]).length : String(page.customAnswers[q.id]?.value || "").trim())))) { setSubmitError("Please answer all questions marked with *."); return; }
+    if (!form.hiddenQuestions.includes("Photos for your quote") && pages.some(page => !page.preferInspection && page.photos.length < (page.service === "Shower" ? 4 : 3))) {
       setSubmitError("Add the requested photos for each area, or choose an on-site assessment."); return;
     }
     setSubmitting(true);
@@ -402,9 +415,9 @@ export default function ChecklistPage({ params }: { params: Promise<{ id: string
     <div className={card}><p className="text-xs font-bold uppercase tracking-wide text-[#001f97]">{form.title}</p><h1 className="text-2xl font-black text-slate-900">Let’s restore your space.</h1><p className="text-sm text-slate-600">{customer?.name ? `Hi ${customer.name.split(" ")[0]}, ` : ""}{form.intro} Allow about 3–5 minutes per area. Choose “Not sure” whenever you need our advice.</p></div>
     {pages.map((page, index) => <section key={page.id} className={card}>
       <div className="flex items-center justify-between"><h2 className="text-lg font-black text-[#001f97]">{form.pageTitle} {index + 1}{page.service ? ` · ${page.service}` : ""}</h2>{pages.length > 1 && <button type="button" className="text-xs font-semibold text-rose-600 inline-flex gap-1 items-center" onClick={() => setPages(prev => prev.filter((_, i) => i !== index))}><Trash2 className="w-4 h-4"/>Remove</button>}</div>
-      {question("What area requires attention?", <div className="grid grid-cols-2 gap-2">{serviceChoices.map(service => <button key={service} type="button" aria-pressed={page.service === service} onClick={() => { if (page.service !== service) updatePage(index, { ...blankPage(), id: page.id, service }); }} className={`rounded-xl border-2 min-h-16 p-3 text-left font-bold text-sm ${page.service === service ? "border-[#001f97] bg-blue-50 text-[#001f97]" : "border-slate-200 text-slate-700"}`}>{service}</button>)}</div>)}
+      {question("What area requires attention?", <div className="grid grid-cols-2 gap-2">{form.serviceChoices.map(service => <button key={service} type="button" aria-pressed={page.service === service} onClick={() => { if (page.service !== service) updatePage(index, { ...blankPage(), id: page.id, service }); }} className={`rounded-xl border-2 min-h-16 p-3 text-left font-bold text-sm ${page.service === service ? "border-[#001f97] bg-blue-50 text-[#001f97]" : "border-slate-200 text-slate-700"}`}>{form.serviceLabels?.[service] || service}</button>)}</div>)}
       {page.service && <>
-        {question("Select Photo Category", <Chips options={photoCategories.map((name, i) => [String(i + 1), `${i + 1}. ${name}`] as const)} value={page.photoCategory} onChange={v => updatePage(index, { photoCategory: v })}/>, "Choose the category that matches the photos you will add. Change it before adding another set.")}
+        {question("Select Photo Category", <Chips options={(form.photoCategories || []).map((name, i) => [String(i + 1), `${i + 1}. ${name}`] as const)} value={page.photoCategory} onChange={v => updatePage(index, { photoCategory: v })}/>, "Choose the category that matches the photos you will add. Change it before adding another set.")}
         {question(page.service === "Shower" ? "Which shower requires attention?" : "What should we call this area?", <><Chips options={(page.service === "Shower" ? ["Main bathroom", "Ensuite", "Guest bathroom", "Other"] : page.service === "Balcony" ? ["Front balcony", "Rear balcony", "Other"] : ["Main bathroom", "Ensuite", "Laundry", "Kitchen", "Other"]).map(v => [v, v] as const)} value={page.areaName} onChange={v => updatePage(index, { areaName: v })}/>{page.areaName === "Other" && textField(index, "additionalNotes", "Describe this area")}</>)}
         {question("What problems are you experiencing?", multi(page.service === "Shower" ? showerIssues : page.service === "Balcony" ? balconyIssues : otherWork, page.issues, v => updatePage(index, { issues: v })), "Select all that apply.")}
         {page.issues.some(issue => /water|leak/i.test(issue)) && question("Where do you notice water or moisture?", textField(index, "leakageNotes", "For example, outside the shower or ceiling downstairs"))}
@@ -429,8 +442,9 @@ export default function ChecklistPage({ params }: { params: Promise<{ id: string
           {question("What work would you like completed?", multi(["Entire balcony regrouting and resealing", "Floor regrouting only", "Perimeter resealing only", "Skirting tile repairs", "Cracked or loose tile repairs", "Not sure — please recommend"], page.balconyWork, v => updatePage(index, { balconyWork: v })))}
           {question("Has the balcony been repaired or investigated before?", <><Chips options={yesNoUnknown} value={page.previousRepairs} onChange={v => updatePage(index, { previousRepairs: v })}/>{page.previousRepairs === "Yes" && textField(index, "previousRepairNotes", "Tell us about repairs or reports")}</>)}
         </>}
-        {(page.service === "Bathroom" || page.service === "Other tiled area") && <>{question("Which parts need attention?", multi(otherWork, page.areaWork, v => updatePage(index, { areaWork: v })))}{question("Approximate dimensions, if known", <div className="grid grid-cols-2 gap-2">{textField(index, "dimensionsLength", "Length in metres", "number")}{textField(index, "dimensionsWidth", "Width in metres", "number")}</div>)}{question("Tell us more about the work", textField(index, "additionalNotes", "Describe the area and what you would like help with"))}</>}
-        {question("Photos for your quote", <><div className="grid sm:grid-cols-2 gap-2 text-xs text-slate-600">{(page.service === "Shower" ? ["Entire shower, including screen", "Floor, drain and edges", "Tiled walls and corners", "Close-ups of problem areas"] : page.service === "Balcony" ? ["Entire balcony", "Floor tiles", "Edges, skirting and drainage", "Close-ups of damage"] : ["Entire area", "Floor and walls", "Edges and joints", "Close-ups of problem areas"]).map((hint, i) => <div key={hint} className="rounded-lg bg-slate-50 p-2"><strong>Photo {i + 1}:</strong> {hint}</div>)}</div><Photos photos={page.photos} category={page.photoCategory ? photoCategories[Number(page.photoCategory) - 1] : ""} onChange={v => updatePage(index, { photos: v })}/><p className="text-xs text-slate-500">{page.service === "Shower" ? "Please add at least four clear photos" : "Please add at least three clear photos"} for a remote quote.</p><label className="flex gap-2 items-start text-sm text-slate-700"><input className="mt-1" type="checkbox" checked={page.preferInspection} onChange={e => updatePage(index, { preferInspection: e.target.checked })}/>I can’t provide photos and would prefer an on-site assessment.</label></>)}
+        {page.service !== "Shower" && page.service !== "Balcony" && <>{question("Which parts need attention?", multi(otherWork, page.areaWork, v => updatePage(index, { areaWork: v })))}{question("Approximate dimensions, if known", <div className="grid grid-cols-2 gap-2">{textField(index, "dimensionsLength", "Length in metres", "number")}{textField(index, "dimensionsWidth", "Width in metres", "number")}</div>)}{question("Tell us more about the work", textField(index, "additionalNotes", "Describe the area and what you would like help with"))}</>}
+        {form.customQuestions?.filter(q => q.service === "All" || q.service === page.service).map(q => customQuestion(page, index, q))}
+        {question("Photos for your quote", <><div className="grid sm:grid-cols-2 gap-2 text-xs text-slate-600">{(page.service === "Shower" ? ["Entire shower, including screen", "Floor, drain and edges", "Tiled walls and corners", "Close-ups of problem areas"] : page.service === "Balcony" ? ["Entire balcony", "Floor tiles", "Edges, skirting and drainage", "Close-ups of damage"] : ["Entire area", "Floor and walls", "Edges and joints", "Close-ups of problem areas"]).map((hint, i) => <div key={hint} className="rounded-lg bg-slate-50 p-2"><strong>Photo {i + 1}:</strong> {hint}</div>)}</div><Photos photos={page.photos} category={page.photoCategory ? form.photoCategories?.[Number(page.photoCategory) - 1] || "General photos" : "General photos"} onChange={v => updatePage(index, { photos: v })}/><p className="text-xs text-slate-500">{page.service === "Shower" ? "Please add at least four clear photos" : "Please add at least three clear photos"} for a remote quote.</p><label className="flex gap-2 items-start text-sm text-slate-700"><input className="mt-1" type="checkbox" checked={page.preferInspection} onChange={e => updatePage(index, { preferInspection: e.target.checked })}/>I can’t provide photos and would prefer an on-site assessment.</label></>)}
       </>}
     </section>)}
     <button type="button" onClick={() => { pingStarted(); setPages(prev => [...prev, blankPage()]); }} className="w-full rounded-2xl border-2 border-dashed border-[#001f97]/40 bg-white p-4 font-bold text-[#001f97] inline-flex items-center justify-center gap-2"><Plus className="w-4 h-4"/>Add another area</button>
