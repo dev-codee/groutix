@@ -17,8 +17,9 @@ export type Checklist = {
 export const emptyChecklist: Checklist = { location: "", showerType: "", wallHeight: "", work: "", showerScope: "", wallCount: "", tileSize: "", mosaic: "", screen: "", siliconeJoints: "", wallTiles: "", floorTiles: "", tileAction: "", balconyArea: "", balconyTileSize: "", additional: [], notes: "", leakAreas: [], tileSizes: [], balconyTileSizes: [], verticalJoints: [], horizontalJoints: [], tileActions: [], leakNotes: "", balconyLeakage: "" };
 
 const checklistGrid = "grid grid-cols-1 gap-x-4 gap-y-2 @min-[440px]:grid-cols-2";
+const sectionStyle = "min-w-0 rounded-lg border border-[#DBE3F0] px-2.5 py-1.5";
 
-function ChecklistChoices({ id, title, options, selected, onToggle, multiple = false, required = false, error, readOnly }: {
+function ChecklistChoices({ id, title, options, selected, onToggle, multiple = false, required = false, error, readOnly, sectionNumber }: {
   id: string;
   title: string;
   options: readonly string[];
@@ -28,35 +29,42 @@ function ChecklistChoices({ id, title, options, selected, onToggle, multiple = f
   required?: boolean;
   error?: string;
   readOnly: boolean;
+  sectionNumber?: number;
 }) {
+  const Title = sectionNumber ? "h3" : "span";
+  const titleId = `${id}-title`;
   return (
-    <fieldset className="min-w-0" aria-describedby={error ? `${id}-error` : undefined} aria-invalid={error ? true : undefined}>
-      <legend className="text-[13px] font-semibold text-neutral-800">
-        {title} {required && req}
+    <div
+      role="group"
+      aria-labelledby={titleId}
+      aria-describedby={error ? `${id}-error` : undefined}
+      className={`flex min-w-0 flex-wrap items-center gap-x-2.5 ${sectionNumber ? sectionStyle : ""}`}
+    >
+      <Title id={titleId} className={`min-w-0 max-w-full py-0.5 text-[13px] ${sectionNumber ? "font-bold text-[#001F97]" : "font-semibold text-neutral-800"}`}>
+        {sectionNumber && `${sectionNumber}. `}{title} {required && req}
         {!multiple && <span className="sr-only"> (choose one{required ? ", required" : ""})</span>}
-      </legend>
-      <div className="flex flex-wrap gap-x-3">
-        {options.map((option) => (
-          <label key={option} className="inline-flex min-h-7 max-w-full has-[:enabled]:cursor-pointer items-center gap-1.5 py-0.5 text-[13px] leading-snug text-neutral-700 hover:text-[#001F97]">
-            <input
-              type="checkbox"
-              disabled={readOnly}
-              checked={selected.includes(option)}
-              onChange={() => onToggle(option)}
-              className="h-4 w-4 shrink-0 accent-[#001F97] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2F63CC]"
-            />
-            {option}
-          </label>
-        ))}
-      </div>
-      {error && <p id={`${id}-error`} role="alert" className="text-xs text-red-700">{error}</p>}
-    </fieldset>
+      </Title>
+      {options.map((option) => (
+        <label key={option} className="inline-flex min-h-7 max-w-full has-[:enabled]:cursor-pointer items-center gap-1.5 py-0.5 text-[13px] leading-snug text-neutral-700 hover:text-[#001F97]">
+          <input
+            type="checkbox"
+            aria-invalid={error ? true : undefined}
+            disabled={readOnly}
+            checked={selected.includes(option)}
+            onChange={() => onToggle(option)}
+            className="h-4 w-4 shrink-0 accent-[#001F97] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2F63CC]"
+          />
+          {option}
+        </label>
+      ))}
+      {error && <p id={`${id}-error`} role="alert" className="basis-full text-xs text-red-700">{error}</p>}
+    </div>
   );
 }
 
-function Section({ number, title, children }: { number: number; title: string; children: ReactNode }) {
+function Section({ number, title, children }: { number: number; title: string; children?: ReactNode }) {
   return (
-    <section className="min-w-0 rounded-lg border border-[#DBE3F0] px-2.5 py-2">
+    <section className={sectionStyle}>
       <h3 className="mb-1 text-[13px] font-bold text-[#001F97]">{number}. {title}</h3>
       {children || <p className="text-xs text-neutral-500">Not applicable</p>}
     </section>
@@ -66,8 +74,8 @@ function Section({ number, title, children }: { number: number; title: string; c
 function Count({ title, value, onChange }: { title: string; value: string; onChange?: (value: string) => void }) {
   const count = Number(value) || 0;
   return (
-    <div>
-      <p className="mb-1 text-xs font-semibold">{title}</p>
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+      <p className="text-xs font-semibold">{title}</p>
       {onChange ? (
         <div className="inline-flex overflow-hidden rounded-lg border border-[#DBE3F0]">
           <button type="button" aria-label={`Decrease ${title.toLowerCase()}`} disabled={count <= 0}
@@ -100,25 +108,25 @@ export default function QuoteChecklist({ id, checklist, leaking, errors = {}, on
     ? options.filter((value) => value !== option)
     : [...options, option];
 
-  function single(key: { [K in keyof Checklist]: Checklist[K] extends string ? K : never }[keyof Checklist], title: string, options: string[], required = false) {
+  function single(key: { [K in keyof Checklist]: Checklist[K] extends string ? K : never }[keyof Checklist], title: string, options: string[], { required = false, sectionNumber }: { required?: boolean; sectionNumber?: number } = {}) {
     return <ChecklistChoices id={`${id}-${key}`} title={title} options={options} selected={[checklist[key]]}
       onToggle={(option) => onChange?.({ [key]: checklist[key] === option ? "" : option })}
-      readOnly={readOnly} required={required} error={errors[key]} />;
+      readOnly={readOnly} required={required} error={errors[key]} sectionNumber={sectionNumber} />;
   }
 
-  function multiple(key: { [K in keyof Checklist]: Checklist[K] extends string[] ? K : never }[keyof Checklist], title: string, options: string[], legacy: string[] = []) {
+  function multiple(key: { [K in keyof Checklist]: Checklist[K] extends string[] ? K : never }[keyof Checklist], title: string, options: string[], { legacy = [], sectionNumber }: { legacy?: string[]; sectionNumber?: number } = {}) {
     const selected = checklist[key].length ? checklist[key] : legacy;
     return <ChecklistChoices id={`${id}-${key}`} title={title} options={[...new Set([...options, ...legacy])]} selected={selected}
-      onToggle={(option) => onChange?.({ [key]: toggle(selected, option) })} readOnly={readOnly} multiple />;
+      onToggle={(option) => onChange?.({ [key]: toggle(selected, option) })} readOnly={readOnly} multiple sectionNumber={sectionNumber} />;
   }
 
   function note(key: "notes" | "leakNotes", title: string) {
     return (
-      <label className="block text-xs font-semibold text-neutral-800">
-        {title}
-        <textarea rows={2} maxLength={1000} value={checklist[key]} readOnly={readOnly}
+      <label className="flex flex-wrap items-center gap-x-2 gap-y-1 py-0.5 text-xs font-semibold text-neutral-800">
+        <span>{title}</span>
+        <textarea rows={1} maxLength={1000} value={checklist[key]} readOnly={readOnly}
           onChange={(event) => onChange?.({ [key]: event.target.value })}
-          className="mt-1 block w-full resize-y rounded-lg border border-[#DBE3F0] bg-[#FBFCFE] px-2 py-1.5 text-[13px] font-normal" />
+          className="block min-h-8 min-w-0 grow basis-32 resize-y rounded-lg border border-[#DBE3F0] bg-[#FBFCFE] px-2 py-1.5 text-[13px] font-normal [field-sizing:content]" />
       </label>
     );
   }
@@ -128,7 +136,7 @@ export default function QuoteChecklist({ id, checklist, leaking, errors = {}, on
       <div className={checklistGrid}>
         <div className="space-y-2">
           <Section number={1} title="Shower leakage">
-            {single("location", "Area to quote", ["Ensuite shower", "Main bathroom shower", "Other shower", "Balcony"], true)}
+            {single("location", "Area to quote", ["Ensuite shower", "Main bathroom shower", "Other shower", "Balcony"], { required: true })}
             {showShower && <>
               <ChecklistChoices id={`${id}-leaking`} title="Is the shower leaking?" options={LEAKING}
                 selected={[leaking]} onToggle={(option) => onLeakChange?.(leaking === option ? "" : option)}
@@ -137,30 +145,30 @@ export default function QuoteChecklist({ id, checklist, leaking, errors = {}, on
               {note("leakNotes", "Leak details (optional)")}
             </>}
           </Section>
-          <Section number={2} title="Shower type">
-            {showShower && single("showerType", "Shower size", ["Single", "Double", "Extended", "Not sure"])}
-          </Section>
-          <Section number={3} title="Wall height">
-            {showShower && single("wallHeight", "Tiled wall height", ["To screen (~2.1 m)", "Above screen", "To ceiling", "Not sure"])}
-          </Section>
+          {showShower ? single("showerType", "Shower type", ["Single", "Double", "Extended", "Not sure"], { sectionNumber: 2 }) : (
+            <Section number={2} title="Shower type" />
+          )}
+          {showShower ? single("wallHeight", "Wall height", ["To screen (~2.1 m)", "Above screen", "To ceiling", "Not sure"], { sectionNumber: 3 }) : (
+            <Section number={3} title="Wall height" />
+          )}
           <Section number={4} title="Work required">
-            {single("work", "Work needed", ["Grout only", "Silicone only", "Grout and silicone", "Not sure"], true)}
-            {showShower && single("showerScope", "Shower work area", ["Walls and floor", "Floor only", "Walls only", "Selected areas"], true)}
+            {single("work", "Work needed", ["Grout only", "Silicone only", "Grout and silicone", "Not sure"], { required: true })}
+            {showShower && single("showerScope", "Shower work area", ["Walls and floor", "Floor only", "Walls only", "Selected areas"], { required: true })}
           </Section>
           <Section number={5} title="Number of tiled walls">
             {showShower && <Count title="Tiled walls" value={checklist.wallCount} onChange={onChange && ((wallCount) => onChange({ wallCount }))} />}
           </Section>
         </div>
         <div className="space-y-2">
-          <Section number={6} title="Tile size">
-            {showShower && multiple("tileSizes", "Shower tile sizes (tick all that apply)", [...tileSizes, "Not sure"], checklist.tileSize ? [checklist.tileSize] : [])}
-          </Section>
-          <Section number={7} title="Mosaic tiles">
-            {showShower && single("mosaic", "Are there mosaic tiles?", LEAKING)}
-          </Section>
-          <Section number={8} title="Shower screen type">
-            {showShower && single("screen", "Screen", ["Frameless", "Semi-frameless", "Framed", "Not sure"])}
-          </Section>
+          {showShower ? multiple("tileSizes", "Tile size", [...tileSizes, "Not sure"], { legacy: checklist.tileSize ? [checklist.tileSize] : [], sectionNumber: 6 }) : (
+            <Section number={6} title="Tile size" />
+          )}
+          {showShower ? single("mosaic", "Mosaic tiles", LEAKING, { sectionNumber: 7 }) : (
+            <Section number={7} title="Mosaic tiles" />
+          )}
+          {showShower ? single("screen", "Shower screen type", ["Frameless", "Semi-frameless", "Framed", "Not sure"], { sectionNumber: 8 }) : (
+            <Section number={8} title="Shower screen type" />
+          )}
           <Section number={9} title="Silicone joints (frameless shower screen)">
             {showShower && checklist.screen === "Frameless" ? <>
               {multiple("verticalJoints", "Vertical joints", joints)}
@@ -173,7 +181,7 @@ export default function QuoteChecklist({ id, checklist, leaking, errors = {}, on
               <Count title="Wall tiles" value={checklist.wallTiles} onChange={onChange && ((wallTiles) => onChange({ wallTiles }))} />
               <Count title="Floor tiles" value={checklist.floorTiles} onChange={onChange && ((floorTiles) => onChange({ floorTiles }))} />
             </div>
-            {multiple("tileActions", "Tile work", ["Repair", "Replace", "Not sure"], checklist.tileAction ? [checklist.tileAction] : [])}
+            {multiple("tileActions", "Tile work", ["Repair", "Replace", "Not sure"], { legacy: checklist.tileAction ? [checklist.tileAction] : [] })}
           </Section>
           <Section number={11} title="Additional areas">
             {multiple("additional", "Also quote (tick all that apply)", ["Kitchen", "Vanity", "Bathtub", "Niche", "Bathroom floor", "Other"])}
@@ -199,7 +207,7 @@ export default function QuoteChecklist({ id, checklist, leaking, errors = {}, on
                   className="mt-1 block h-8 w-full rounded-lg border border-[#DBE3F0] px-2 text-[13px]" />
               </label>
               {errors.balconyArea && <p role="alert" className="text-xs text-red-700">{errors.balconyArea}</p>}
-              {multiple("balconyTileSizes", "Balcony tile sizes (tick all that apply)", [...tileSizes, "Not sure"], checklist.balconyTileSize ? [checklist.balconyTileSize] : [])}
+              {multiple("balconyTileSizes", "Balcony tile sizes (tick all that apply)", [...tileSizes, "Not sure"], { legacy: checklist.balconyTileSize ? [checklist.balconyTileSize] : [] })}
             </>}
           </Section>
         </div>

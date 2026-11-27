@@ -288,8 +288,7 @@ export default function QuoteFormV2({
   const next = () => {
     if (step === "job" && !validateJob()) {
       requestAnimationFrame(() => {
-        const invalid = rootRef.current?.querySelector<HTMLElement>('fieldset[aria-invalid="true"], input[aria-invalid="true"]');
-        (invalid?.querySelector<HTMLElement>("input") ?? invalid)?.focus();
+        rootRef.current?.querySelector<HTMLInputElement>('input[aria-invalid="true"]')?.focus();
       });
       return;
     }

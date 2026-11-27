@@ -125,7 +125,7 @@ export default function QuoteModal() {
           aria-modal="true"
           aria-label="Request a quote"
           tabIndex={-1}
-          className="relative w-full outline-none sm:max-w-[540px]"
+          className="relative w-full outline-none sm:max-w-[540px] lg:max-w-[760px]"
         >
           <button
             type="button"
