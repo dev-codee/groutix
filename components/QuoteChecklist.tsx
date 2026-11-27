@@ -150,14 +150,14 @@ export default function QuoteChecklist({ id, checklist, leaking, errors = {}, on
           <Section number={5} title="Number of tiled walls">
             {showShower && <Count title="Tiled walls" value={checklist.wallCount} onChange={onChange && ((wallCount) => onChange({ wallCount }))} />}
           </Section>
+        </div>
+        <div className="space-y-2">
           <Section number={6} title="Tile size">
             {showShower && multiple("tileSizes", "Shower tile sizes (tick all that apply)", [...tileSizes, "Not sure"], checklist.tileSize ? [checklist.tileSize] : [])}
           </Section>
           <Section number={7} title="Mosaic tiles">
             {showShower && single("mosaic", "Are there mosaic tiles?", LEAKING)}
           </Section>
-        </div>
-        <div className="space-y-2">
           <Section number={8} title="Shower screen type">
             {showShower && single("screen", "Screen", ["Frameless", "Semi-frameless", "Framed", "Not sure"])}
           </Section>
