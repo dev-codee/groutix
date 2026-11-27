@@ -110,9 +110,9 @@ export function sanitizeChecklistForm(raw: unknown): ChecklistForm {
   const placeholders = source.placeholders && typeof source.placeholders === "object" ? source.placeholders as Record<string, unknown> : {};
   const optionLabels = source.optionLabels && typeof source.optionLabels === "object" ? source.optionLabels as Record<string, unknown> : {};
   return {
-    title: requiredText(source.title, DEFAULT_CHECKLIST_FORM.title),
-    intro: requiredText(source.intro, DEFAULT_CHECKLIST_FORM.intro, 1000),
-    pageTitle: requiredText(source.pageTitle, DEFAULT_CHECKLIST_FORM.pageTitle),
+    title: /Shower \/ Balcony Grouting.*Checklist/i.test(String(source.title || "")) ? DEFAULT_CHECKLIST_FORM.title : requiredText(source.title, DEFAULT_CHECKLIST_FORM.title),
+    intro: /prepare your accurate quote.*page per shower/i.test(String(source.intro || "")) ? DEFAULT_CHECKLIST_FORM.intro : requiredText(source.intro, DEFAULT_CHECKLIST_FORM.intro, 1000),
+    pageTitle: String(source.pageTitle || "") === "Shower / Balcony" ? DEFAULT_CHECKLIST_FORM.pageTitle : requiredText(source.pageTitle, DEFAULT_CHECKLIST_FORM.pageTitle),
     fields: Object.fromEntries(CHECKLIST_FIELDS.map(([key, fallback]) => [key, requiredText(fields[key], fallback)])) as ChecklistForm["fields"],
     placeholders: Object.fromEntries(CHECKLIST_PLACEHOLDERS.map(([key, fallback]) => [key, requiredText(placeholders[key], fallback)])) as ChecklistForm["placeholders"],
     optionLabels: Object.fromEntries(CHECKLIST_OPTION_GROUPS.map(group => {

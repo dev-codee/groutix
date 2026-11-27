@@ -351,7 +351,7 @@ export default function ChecklistPage({ params }: { params: Promise<{ id: string
       .then(async res => { const data = await res.json(); if (!res.ok || !data.ok) throw new Error(data.error || "Quote request could not be loaded."); return data; })
       .then(data => {
         setCustomer(data.customer || null);
-        if (data.form) setForm({ ...data.form, title: /Shower \/ Balcony|Grouting.*Checklist/i.test(data.form.title || "") ? DEFAULT_CHECKLIST_FORM.title : data.form.title, intro: /accurate quote|page per shower/i.test(data.form.intro || "") ? DEFAULT_CHECKLIST_FORM.intro : data.form.intro });
+        if (data.form) setForm(data.form);
         const saved = data.answers;
         if (Array.isArray(saved?.pages) && saved.pages.length) setPages(saved.pages.map((p: Partial<PageState>, i: number) => hydratePage(p, i)));
         setTimeframe(saved?.timeframe || ""); setPropertyType(saved?.propertyType || "");
