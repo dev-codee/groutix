@@ -728,7 +728,7 @@ export default function QuoteFormV2({
                       mode === m ? "border-[#001F97] bg-[#EEF3FF] shadow-[0_0_0_3px_rgba(47,99,204,0.15)]" : "border-[#DBE3F0] bg-white hover:border-[#2F63CC]"
                     }`}
                   >
-                    {m === "quote" && (
+                    {m === "insp" && (
                       <span className="absolute -top-2.5 right-2.5 rounded-[10px] bg-[#001F97] px-2 py-0.5 text-[10.5px] font-bold leading-tight text-white">Recommended</span>
                     )}
                     <strong className="block text-sm leading-snug">{t}</strong>

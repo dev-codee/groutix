@@ -14,5 +14,5 @@ export function customerQuoteLead(lead: Lead, quote: CustomerQuote): Lead {
   const base = { ...lead };
   // A draft must not inherit the original's signature, acceptance or total.
   for (const key of Object.keys(base)) if (key.startsWith("quote")) delete (base as unknown as Record<string, unknown>)[key];
-  return { ...base, ...quote.values, quoteNumber: quoteNumberForJob({ ...lead, ...quote.values }), id: lead.id } as Lead;
+  return { ...base, ...quote.values, quoteChecklist: lead.quoteChecklist, quoteNumber: quoteNumberForJob({ ...lead, ...quote.values }), id: lead.id } as Lead;
 }

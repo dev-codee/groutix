@@ -10,7 +10,6 @@
 // customer told us is lost.
 
 import { SERVICE_TEMPLATES, type ServiceTemplate } from "./serviceTemplates";
-import { signQuoteToken, siteBaseUrl } from "./quoteToken";
 
 export { CHECKLIST_OPTIONS, checklistRequestText } from "./checklistOptions";
 
@@ -29,6 +28,7 @@ export interface ChecklistPage {
   id: string;
   service?: string;
   photoCategory?: string;
+  photoCategoryLabel?: string;
   customAnswers?: Record<string, { label: string; value: string | string[] }>;
   areaName?: string;
   issues?: string[];
@@ -290,14 +290,4 @@ export function checklistHasAnswers(answers: ChecklistAnswers | undefined): bool
       })
     )
   );
-}
-
-// ── Public link + tracking pixel ─────────────────────────────────────────────
-
-export function buildChecklistUrl(id: string): string {
-  return `${siteBaseUrl()}/checklist/${id}?token=${signQuoteToken(id)}`;
-}
-
-export function checklistTrackingPixel(id: string): string {
-  return `<img src="${siteBaseUrl()}/api/track/checklist/${encodeURIComponent(id)}?token=${signQuoteToken(id)}" width="1" height="1" alt="" style="display:none;width:1px;height:1px;" />`;
 }

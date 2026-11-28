@@ -2,7 +2,6 @@
 
 import { useRef, useState } from "react";
 import { ChevronRight, MessageSquare, Pencil, StickyNote } from "lucide-react";
-import QuoteChecklist, { emptyChecklist } from "@/components/QuoteChecklist";
 import { formatLeadBookingTime } from "@/lib/bookingPresentation";
 import { isPropertyManagerLead } from "@/lib/quoteLeadDetails";
 import { formatApptDate, formatApptTime } from "@/lib/scheduling";
@@ -55,14 +54,6 @@ export function LeadRequestDetails({ lead, onSave, onOpenPhotos }: {
   }
 
   const answers = lead.quoteChecklist;
-  const checklist = answers && {
-    ...emptyChecklist,
-    ...Object.fromEntries(Object.entries(emptyChecklist).map(([key, fallback]) => {
-      const value = answers[key];
-      return [key, typeof value === typeof fallback && Array.isArray(value) === Array.isArray(fallback) ? value : fallback];
-    })),
-  };
-
   const photoLabels = Array.isArray(answers?.photoLabels) ? answers.photoLabels : [];
   const photoCount = lead.photos?.length ?? lead.photosCount ?? photoLabels.length;
   const propertyManager = isPropertyManagerLead(lead);
@@ -80,12 +71,10 @@ export function LeadRequestDetails({ lead, onSave, onOpenPhotos }: {
     ["Preferred inspection", requestedInspection && `${formatApptDate(requestedInspection)} ${formatApptTime(requestedInspection)}`],
     ["Booked inspection", bookedInspection && `${formatApptDate(bookedInspection)} ${formatLeadBookingTime(lead, "inspection")}`],
     ["Inspection status", lead.quoteRequestMode === "inspection" && !bookedInspection ? "To be arranged" : undefined],
-    ...(!checklist ? [
-      ["Service requested", lead.service],
-      ["Areas to service", lead.areas],
-      ["Leakage", lead.leaking],
-      ["Damaged tiles", lead.damagedTiles],
-    ] : []),
+    ["Service requested", lead.service],
+    ["Areas to service", lead.areas],
+    ["Leakage", lead.leaking],
+    ["Damaged tiles", lead.damagedTiles],
   ].filter(([, value]) => value);
 
   return (
@@ -95,7 +84,7 @@ export function LeadRequestDetails({ lead, onSave, onOpenPhotos }: {
           onClick={() => setExpanded(!expanded)}
           className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-700 hover:text-blue-900 cursor-pointer">
           <MessageSquare className="w-3.5 h-3.5 shrink-0" />
-          {expanded ? "Hide request & checklist" : "View request & checklist"}
+          {expanded ? "Hide request" : "View request"}
           <ChevronRight className={`w-3.5 h-3.5 shrink-0 transition-transform ${expanded ? "rotate-90" : ""}`} />
         </button>
         {!draft && <button type="button" onClick={edit} aria-label="Edit lead notes and customer request"
@@ -148,33 +137,10 @@ export function LeadRequestDetails({ lead, onSave, onOpenPhotos }: {
                 </ul>
               </div>
             )}
-            {!checklist && photoCount > 0 && (
+            {photoCount > 0 && (
               <button type="button" onClick={onOpenPhotos} className="mt-2 cursor-pointer font-semibold text-blue-700 hover:text-blue-900">View photos ({photoCount})</button>
             )}
           </section>
-          {checklist && (
-            <section className="rounded-lg border border-blue-100 bg-blue-50/40 p-2.5">
-              <h3 className="mb-2 text-sm font-bold text-blue-900">Customer quote checklist</h3>
-              <QuoteChecklist
-                id={`lead-checklist-${lead.id}`}
-                checklist={checklist}
-                leaking={lead.leaking ?? ""}
-                additionalBalconies={lead.additionalBalconies}
-                photos={(
-                  <div className="space-y-1 text-xs">
-                    {photoLabels.length > 0 ? (
-                      <ul className="space-y-1">
-                        {photoLabels.map((photo, index) => <li key={index} className="break-words">{photo}</li>)}
-                      </ul>
-                    ) : <p className="text-neutral-600">No photo categories recorded.</p>}
-                    {photoCount > 0 && (
-                      <button type="button" onClick={onOpenPhotos} className="cursor-pointer font-semibold text-blue-700 hover:text-blue-900">View photos ({photoCount})</button>
-                    )}
-                  </div>
-                )}
-              />
-            </section>
-          )}
           {!draft && (
             <>
               {fields.filter(field => lead[field]?.trim() && !(field === "enquiry" && lead.enquiry === lead.message)).map(field => (

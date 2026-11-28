@@ -4,12 +4,23 @@
 // pixel so the CRM can show when it was opened.
 
 import { getSubmission, updateSubmission, appendActivity } from "./submissions";
-import { buildChecklistUrl, checklistTrackingPixel, type ChecklistAnswers } from "./checklist";
+import type { ChecklistAnswers } from "./checklist";
+import { signQuoteToken, siteBaseUrl } from "./quoteToken";
 import { sendEmail, wrapEmailHtml, getEmailLogoUrl } from "./email";
 import { emailActionButton } from "./emailPresentation";
 import { buildJobChecklistUrl } from "./quoteChecklistLink";
 
 const FROM_EMAIL = process.env.SMTP_FROM || process.env.SMTP_USER || "info@groutix.com";
+
+// ── Public link + tracking pixel ─────────────────────────────────────────────
+
+function buildChecklistUrl(id: string): string {
+  return `${siteBaseUrl()}/checklist/${id}?token=${signQuoteToken(id)}`;
+}
+
+function checklistTrackingPixel(id: string): string {
+  return `<img src="${siteBaseUrl()}/api/track/checklist/${encodeURIComponent(id)}?token=${signQuoteToken(id)}" width="1" height="1" alt="" style="display:none;width:1px;height:1px;" />`;
+}
 
 export function checklistInvitationHtml(id: string, url = buildChecklistUrl(id)): string {
   return `${emailActionButton(url, "Complete My Quote Form")}${checklistTrackingPixel(id)}`;

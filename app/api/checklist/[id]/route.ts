@@ -75,7 +75,7 @@ function sanitizeAnswers(raw: unknown): ChecklistAnswers {
       wallHeight: str(page.wallHeight, 10),
       workRequired: str(page.workRequired, 10),
       selectiveAreas: str(page.selectiveAreas),
-      numberOfWalls: str(page.numberOfWalls, 5),
+      numberOfWalls: str(page.numberOfWalls, 10),
       tileSize: str(page.tileSize, 40),
       mosaic: str(page.mosaic, 10),
       showerScreen: str(page.showerScreen, 40),
@@ -195,6 +195,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: "Please select an available service for each area." }, { status: 400 });
   }
   for (const page of answers.pages) {
+    if (page.photoCategory) page.photoCategoryLabel = form.photoCategories[Number(page.photoCategory) - 1];
     page.customAnswers = Object.fromEntries(form.customQuestions.filter(q => q.service === "All" || q.service === page.service).flatMap(q => {
       const value = page.customAnswers?.[q.id]?.value;
       if (value === undefined) return [];
