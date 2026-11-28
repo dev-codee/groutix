@@ -20,7 +20,8 @@ import { isCompletePropertyAddress, PROPERTY_ADDRESS_ERROR } from "@/lib/propert
 const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 
 type Mode = "insp" | "quote";
-type StepId = "details" | "job" | "tenants" | "finish";
+const steps = ["details", "job"] as const;
+type StepId = (typeof steps)[number];
 type Tenant = { name: string; phone: string; email: string };
 type Slot = { time: string; booked: boolean };
 type Day = { date: string; label: string; slots: Slot[] };
@@ -56,18 +57,17 @@ const primaryBtn =
   "h-12 w-full rounded-xl bg-gradient-to-b from-[#2F63CC] to-[#001F97] text-base font-extrabold text-white shadow-[0_8px_18px_rgba(0,31,151,0.28)] transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[#2F63CC]/50 disabled:cursor-progress disabled:opacity-70";
 const backBtn =
   "h-12 shrink-0 rounded-xl border-[1.5px] border-[#DBE3F0] bg-white px-4 text-sm font-semibold text-neutral-600 transition-colors hover:border-[#2F63CC] hover:text-neutral-900 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[#2F63CC]/40";
-// Compact input with the label inside the box: it sits in the middle while empty
-// and moves to the top once the field is focused or filled, so the value always shows.
+// Keep the label above the example or entered value inside the field.
 const floatField =
-  "peer h-12 w-full rounded-[10px] border-[1.5px] border-[#DBE3F0] bg-[#FBFCFE] px-3 pb-1 pt-[18px] text-[15px] text-neutral-900 placeholder:text-transparent focus:border-[#2F63CC] focus:outline-none focus:ring-[3px] focus:ring-[#2F63CC]/15";
+  "peer h-12 w-full rounded-[10px] border-[1.5px] border-[#DBE3F0] bg-[#FBFCFE] px-3 pb-1 pt-[18px] text-[15px] text-neutral-900 placeholder:text-neutral-500 focus:border-[#2F63CC] focus:outline-none focus:ring-[3px] focus:ring-[#2F63CC]/15";
 const floatLabel =
-  "pointer-events-none absolute left-3 right-3 top-1.5 truncate text-[11px] font-semibold text-neutral-500 transition-all peer-placeholder-shown:top-1/2 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:text-[14.5px] peer-placeholder-shown:font-normal peer-placeholder-shown:text-neutral-500 peer-focus:top-1.5 peer-focus:translate-y-0 peer-focus:text-[11px] peer-focus:font-semibold peer-focus:text-[#2F63CC]";
+  "pointer-events-none absolute left-3 right-3 top-1.5 truncate text-[11px] font-semibold text-neutral-500 peer-focus:text-[#2F63CC]";
 
 function FloatInput({ id, label: lbl, error, ...props }: React.InputHTMLAttributes<HTMLInputElement> & { id: string; label: React.ReactNode; error?: string }) {
   return (
     <div className="min-w-0">
       <div className="relative">
-        <input id={id} aria-invalid={!!error} {...props} placeholder=" " className={`${floatField} ${error ? fieldBad : ""}`} />
+        <input id={id} aria-invalid={!!error} {...props} className={`${floatField} ${error ? fieldBad : ""}`} />
         <label htmlFor={id} className={floatLabel}>{lbl}</label>
       </div>
       <FieldError msg={error} />
@@ -109,8 +109,9 @@ export default function QuoteFormV2({
   const [tenantIdx, setTenantIdx] = useState(0);
   const [tenantErrors, setTenantErrors] = useState<{ name?: string; phone?: string; email?: string }>({});
 
-  const [avail, setAvail] = useState<Availability>({ status: "idle" });
+  const [availability, setAvail] = useState<Availability>({ status: "idle" });
   const [availFor, setAvailFor] = useState("");
+  const availabilityRequest = useRef(0);
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
   const [calendarOpen, setCalendarOpen] = useState(false);
@@ -146,14 +147,13 @@ export default function QuoteFormV2({
   const [suggestionLoading, setSuggestionLoading] = useState(false);
   const [suggestionAttribution, setSuggestionAttribution] = useState("");
 
-  const flow: StepId[] = isPM ? ["details", "job", "tenants", "finish"] : ["details", "job", "finish"];
   const stepLabels: Record<StepId, string> = {
     job: "Job checklist",
     details: isPM ? "Manager details" : "Your details",
-    tenants: "Tenant access",
-    finish: mode === "insp" ? "Book & finish" : "Review & send",
   };
-  const stepIndex = Math.max(0, flow.indexOf(step));
+  const stepIndex = steps.indexOf(step);
+  const address = data.address.trim();
+  const avail: Availability = availFor === address ? availability : { status: "idle" };
 
   const scrollTop = () => {
     const el = rootRef.current;
@@ -167,7 +167,7 @@ export default function QuoteFormV2({
 
   /* ---------- availability (same endpoint + rules as HeroQuoteForm) ---------- */
   const loadAvailability = useCallback(async (address: string, fresh = false) => {
-    if (!address || address.trim().length < 5) return;
+    const request = ++availabilityRequest.current;
     if (fresh) {
       setDate("");
       setTime("");
@@ -178,6 +178,7 @@ export default function QuoteFormV2({
       const res = await fetch(`/api/inspection-availability?address=${encodeURIComponent(address)}&_=${Date.now()}`, { cache: "no-store" });
       if (!res.ok) throw new Error();
       const json = await res.json();
+      if (request !== availabilityRequest.current) return;
       if (json.inServiceArea === false) {
         setDate("");
         setTime("");
@@ -190,14 +191,15 @@ export default function QuoteFormV2({
         if (firstOpen) setCalMonth(parseYmd(firstOpen.date));
       }
     } catch {
-      setAvail({ status: "error" });
+      if (request === availabilityRequest.current) setAvail({ status: "error" });
     }
   }, []);
 
-  // Load live inspection times when the visitor reaches the last step (or switches back to "inspection" there).
-  const ensureAvailability = (s: StepId, m: Mode) => {
-    if (s === "finish" && m === "insp" && data.address.trim() && availFor !== data.address) loadAvailability(data.address, true);
-  };
+  useEffect(() => {
+    if (mode !== "insp" || availFor === address || !isCompletePropertyAddress(address)) return;
+    const timer = setTimeout(() => loadAvailability(address, true), 350);
+    return () => clearTimeout(timer);
+  }, [address, availFor, loadAvailability, mode]);
 
   /* ---------- address autocomplete ---------- */
   const fetchSuggestions = useCallback(async (q: string) => {
@@ -227,6 +229,8 @@ export default function QuoteFormV2({
     suggestionRequest.current++;
     setSuggestions([]); setSuggestOpen(false); setSuggestionMessage(""); setSuggestionLoading(false);
     setData((p) => ({ ...p, address: v }));
+    setCalendarOpen(false);
+    setInspError("");
     if (errors.address) setErrors((e) => ({ ...e, address: "" }));
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => fetchSuggestions(v), 300);
@@ -235,6 +239,8 @@ export default function QuoteFormV2({
     suggestionRequest.current++;
     if (debounceRef.current) clearTimeout(debounceRef.current);
     setData((p) => ({ ...p, address: s }));
+    setCalendarOpen(false);
+    setInspError("");
     setErrors((e) => ({ ...e, address: "" }));
     setSuggestions([]); setSuggestOpen(false); setSuggestionMessage(""); setSuggestionLoading(false);
   };
@@ -291,28 +297,28 @@ export default function QuoteFormV2({
     return true;
   };
 
-  const next = (skipPhotoCheck = false) => {
-    if (step === "job" && !validateJob()) {
-      requestAnimationFrame(() => {
-        rootRef.current?.querySelector<HTMLInputElement>('input[aria-invalid="true"]')?.focus();
-      });
+  const next = () => {
+    if (!validateDetails() || (isPM && !validateTenants()) || !validateInspection()) return;
+    setStarted(true);
+    setCalendarOpen(false);
+    goTo("job");
+  };
+  const submitChecklist = () => {
+    if (loading) return;
+    if (!validateJob()) {
+      requestAnimationFrame(() => rootRef.current?.querySelector<HTMLInputElement>('input[aria-invalid="true"]')?.focus());
       return;
     }
-    if (step === "job" && !photos.length && !skipPhotoCheck) {
+    if (!photos.length && !photoAsk) {
       setPhotoAsk(true);
       return;
     }
-    setPhotoAsk(false);
-    if (step === "details" && !validateDetails()) return;
-    if (step === "tenants" && !validateTenants()) return;
-    setStarted(true);
-    ensureAvailability(flow[stepIndex + 1], mode);
-    goTo(flow[stepIndex + 1]);
+    void submit();
   };
   const back = () => {
     setPhotoAsk(false);
     setCalendarOpen(false);
-    goTo(flow[Math.max(0, stepIndex - 1)]);
+    goTo("details");
   };
 
   /* ---------- photos (same limits as HeroQuoteForm) ---------- */
@@ -389,23 +395,26 @@ export default function QuoteFormV2({
   }, [photoMenu]);
 
   /* ---------- submit ---------- */
-  const canBook = mode === "insp" && avail.status === "ok" && avail.days.length > 0;
+  const canBook = mode === "insp" && avail.status === "ok" && avail.days.some((day) => day.slots.some((slot) => !slot.booked));
   const submitLabel = mode === "quote" ? "Get My Free Quote" : canBook ? "Book My Free Inspection" : "Submit Details";
+
+  const validateInspection = () => {
+    setInspError("");
+    if (mode !== "insp") return true;
+    if (avail.status === "idle" || avail.status === "loading") {
+      setInspError("Loading inspection times, one moment…");
+      return false;
+    }
+    if (canBook && (avail.status !== "ok" || !avail.days.some((day) => day.date === date && day.slots.some((slot) => slot.time === time && !slot.booked)))) {
+      setInspError(!date ? "Please pick a day for your free inspection." : "Please choose an arrival time.");
+      return false;
+    }
+    return true;
+  };
 
   const submit = async () => {
     setSubmitError("");
-    setInspError("");
-    if (!validateDetails()) { goTo("details"); return; }
-    if (!validateJob()) { goTo("job"); return; }
-    if (isPM && !validateTenants()) { goTo("tenants"); return; }
-    if (mode === "insp" && avail.status === "loading") {
-      setInspError("Loading inspection times, one moment…");
-      return;
-    }
-    if (canBook && (!date || !time)) {
-      setInspError(!date ? "Please pick a day for your free inspection." : "Please choose an arrival time.");
-      return;
-    }
+    if (!validateDetails() || (isPM && !validateTenants()) || !validateInspection()) { back(); return; }
     if (TURNSTILE_SITE_KEY && !captchaToken) {
       setSubmitError("Just a moment, we're checking you're not a robot. Please try again in a few seconds.");
       return;
@@ -459,6 +468,7 @@ export default function QuoteFormV2({
       payload.append("email", data.email.trim());
       payload.append("phone", data.phone.trim());
       payload.append("address", data.address.trim());
+      payload.append("quoteRequestMode", mode === "insp" ? "inspection" : "quote");
       const location = balconyOnly ? "Balcony" : checklist.location || "Other shower";
       const notes = [checklist.leakNotes, checklist.workDetails, checklist.notes, checklist.summaryNotes];
       payload.append("message", notes.map((note) => note.trim()).filter(Boolean).join("\n"));
@@ -492,17 +502,18 @@ export default function QuoteFormV2({
         if (body.slotConflict) {
           setTime("");
           setInspError(body.error || "That time is no longer available. Please pick another.");
-          setAvailFor("");
-          loadAvailability(data.address);
+          loadAvailability(address);
+          back();
           turnstileRef.current?.reset();
           setCaptchaToken("");
           return;
         }
         throw new Error(body.error || "Something went wrong. Please try again.");
       }
+      const result = await res.json();
       setDone({
         mode,
-        booked: canBook && date && time && avail.status === "ok" ? `${dayLabel(date)}, ${formatSlotRange(time, avail.durationMinutes)}` : null,
+        booked: result.inspectionBooked && date && time && avail.status === "ok" ? `${dayLabel(date)}, ${formatSlotRange(time, avail.durationMinutes)}` : null,
       });
       trackEvent("quote_submit", { form: "quote_form_v2", mode });
       requestAnimationFrame(scrollTop);
@@ -536,6 +547,9 @@ export default function QuoteFormV2({
     setInspError("");
     setSubmitError("");
     setPhotoAsk(false);
+    setStarted(false);
+    setCaptchaToken("");
+    availabilityRequest.current++;
     setAvail({ status: "idle" });
     setAvailFor("");
   };
@@ -633,7 +647,7 @@ export default function QuoteFormV2({
   const nav = (cta: React.ReactNode) => (
     <div className="mt-auto flex gap-2 pt-3">
       {stepIndex > 0 && (
-        <button type="button" onClick={back} className={backBtn}>← Back</button>
+        <button type="button" onClick={back} disabled={loading} className={backBtn}>← Back</button>
       )}
       <div className="min-w-0 flex-1">{cta}</div>
     </div>
@@ -695,7 +709,17 @@ export default function QuoteFormV2({
                 key={m}
                 type="button"
                 aria-pressed={mode === m}
-                onClick={() => { setMode(m); setInspError(""); setCalendarOpen(false); ensureAvailability(step, m); if (!startedRef.current) { startedRef.current = true; trackEvent("form_start", { form: "quote_form_v2", mode: m }); } }}
+                disabled={loading}
+                onClick={() => {
+                  setMode(m);
+                  setInspError("");
+                  setCalendarOpen(false);
+                  if (m === "insp" && m !== mode && step === "job") back();
+                  if (!startedRef.current) {
+                    startedRef.current = true;
+                    trackEvent("form_start", { form: "quote_form_v2", mode: m });
+                  }
+                }}
                 className={`relative rounded-xl border-[1.5px] px-3 py-1.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[#2F63CC]/40 ${
                   mode === m ? "border-[#001F97] bg-[#EEF3FF] shadow-[0_0_0_3px_rgba(47,99,204,0.15)]" : "border-[#DBE3F0] bg-white hover:border-[#2F63CC]"
                 }`}
@@ -710,14 +734,212 @@ export default function QuoteFormV2({
           </div>
 
           <div className="mb-1.5 flex gap-1.5" aria-hidden="true">
-            {flow.map((s, i) => (
+            {steps.map((s, i) => (
               <i key={s} className={`h-[5px] flex-1 rounded-sm transition-colors ${i <= stepIndex ? "bg-[#2F63CC]" : "bg-slate-200"}`} />
             ))}
           </div>
           <div className="mb-1 flex justify-between text-xs text-neutral-500" aria-live="polite">
-            <span>Step {stepIndex + 1} of {flow.length} · {stepLabels[step]}</span>
+            <span>Step {stepIndex + 1} of {steps.length} · {stepLabels[step]}</span>
             <span>Just a few details</span>
           </div>
+
+          {/* STEP 1: DETAILS */}
+          {step === "details" && (
+            <div className="flex flex-1 flex-col gap-2.5 pt-2">
+              <label className="flex cursor-pointer items-center gap-2 text-[13px] font-semibold text-[#1F2D4D]"><input type="checkbox" checked={isPM} onChange={(e) => setIsPM(e.target.checked)} className="h-4 w-4 accent-[#001F97]" />I am a Property Manager / agent</label>
+              <div className="grid grid-cols-1 gap-2.5 min-[420px]:grid-cols-2">
+                {input("firstName", <>{isPM ? "Manager first name" : "First name"} {req}</>, { autoComplete: "given-name", placeholder: "e.g. Alex" })}
+                {input("lastName", <>{isPM ? "Manager last name" : "Last name"} {req}</>, { autoComplete: "family-name", placeholder: "e.g. Taylor" })}
+              </div>
+              {isPM && input("agency", <>Real estate agency / company <span className="font-normal">(optional)</span></>, { autoComplete: "organization", placeholder: "e.g. Example Realty" })}
+              <div className="grid grid-cols-1 gap-2.5 min-[420px]:grid-cols-2">
+                {input("phone", <>{isPM ? "Manager mobile" : "Mobile"} {req}</>, { type: "tel", inputMode: "tel", autoComplete: "tel", placeholder: "e.g. 0491 570 006" })}
+                {input("email", <>{isPM ? "Manager email" : "Email"} {req}</>, { type: "email", autoComplete: "email", placeholder: "e.g. alex@example.com" })}
+              </div>
+              <div className="relative">
+                <div className="relative">
+                  <input
+                    id={`${P}-address`}
+                    value={data.address}
+                    onChange={(e) => onAddress(e.target.value)}
+                    onFocus={() => suggestions.length > 0 && setSuggestOpen(true)}
+                    onBlur={() => setTimeout(() => setSuggestOpen(false), 150)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !(suggestOpen && activeSuggest >= 0)) { e.preventDefault(); setSuggestOpen(false); next(); return; }
+                      if (!suggestOpen || !suggestions.length) return;
+                      if (e.key === "ArrowDown") { e.preventDefault(); setActiveSuggest((i) => (i + 1) % suggestions.length); }
+                      else if (e.key === "ArrowUp") { e.preventDefault(); setActiveSuggest((i) => (i - 1 + suggestions.length) % suggestions.length); }
+                      else if (e.key === "Enter") { e.preventDefault(); pickSuggestion(suggestions[activeSuggest]); }
+                      else if (e.key === "Escape") { e.preventDefault(); setSuggestOpen(false); }
+                    }}
+                    role="combobox"
+                    aria-expanded={suggestOpen}
+                    aria-controls={`${P}-address-list`}
+                    aria-autocomplete="list"
+                    aria-invalid={!!errors.address}
+                    autoComplete="off"
+                    placeholder="e.g. 12 Smith St, Richmond VIC 3121"
+                    className={`${floatField} ${errors.address ? fieldBad : ""}`}
+                  />
+                  <label htmlFor={`${P}-address`} className={floatLabel}>Full address {req}</label>
+                </div>
+                {suggestOpen && (
+                  <ul id={`${P}-address-list`} role="listbox" className="absolute left-0 right-0 top-full z-30 mt-0.5 max-sm:bottom-full max-sm:top-auto max-sm:mb-1 max-sm:mt-0 overflow-hidden rounded-[10px] border-[1.5px] border-[#DBE3F0] bg-white py-1 shadow-[0_10px_24px_rgba(15,23,42,0.16)]">
+
+                    {suggestions.map((s, i) => (
+                      <li key={s} role="option" aria-selected={i === activeSuggest}>
+                        <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => pickSuggestion(s)}
+                          className={`flex w-full items-center gap-2.5 px-3 py-2 text-left text-[13.5px] hover:bg-[#EEF3FF] ${i === activeSuggest ? "bg-[#EEF3FF]" : ""}`}>
+                          <MapPin className="h-4 w-4 shrink-0 text-[#1A2A8C]" aria-hidden="true" />
+                          {s}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {suggestionLoading && <p role="status" className="mt-1 text-[11px] text-neutral-500">Finding complete property addresses…</p>}
+                {suggestionMessage && <p role="status" className="mt-1 text-[11px] text-amber-800">{suggestionMessage}</p>}
+                {suggestOpen && suggestionAttribution && <p className="mt-1 text-[10px] text-neutral-500">Address suggestions: {suggestionAttribution}</p>}
+                <FieldError msg={errors.address} />
+                <p className="mt-1 text-[11px] text-neutral-500">Include the street number, street name, suburb, state and postcode.</p>
+              </div>
+              {isPM && (
+                <section className="pt-2">
+                  <h3 className="mb-2 text-sm font-bold">Tenant access details <small className={opt}>(so we can arrange access)</small></h3>
+                  <div className="mb-2.5 flex flex-wrap items-center gap-1.5">
+                    {tenants.map((_, i) => (
+                      <button key={i} type="button" aria-pressed={i === tenantIdx} onClick={() => { setTenantIdx(i); setTenantErrors({}); }}
+                        className={`min-h-8 rounded-full border-[1.5px] px-3 text-[13px] font-semibold ${i === tenantIdx ? "border-[#1A2A8C] bg-[#EEF3FF] text-[#1A2A8C]" : "border-[#DBE3F0] bg-white"}`}>
+                        Tenant {i + 1}
+                      </button>
+                    ))}
+                    {tenants.length < 6 && (
+                      <button type="button" onClick={() => { setTenants((t) => [...t, { name: "", phone: "", email: "" }]); setTenantIdx(tenants.length); setTenantErrors({}); }}
+                        className="min-h-8 rounded-full border-[1.5px] border-dashed border-[#B8C5DC] px-3 text-[13px] font-semibold text-[#2F63CC]">
+                        + Add tenant
+                      </button>
+                    )}
+                    {tenants.length > 1 && (
+                      <button type="button" onClick={() => { setTenants((t) => t.filter((_, i) => i !== tenantIdx)); setTenantIdx(0); setTenantErrors({}); }}
+                        className="ml-auto min-h-8 px-1 text-[12.5px] text-neutral-500 underline">Remove tenant {tenantIdx + 1}</button>
+                    )}
+                  </div>
+                  {(() => {
+                    const t = tenants[tenantIdx] ?? tenants[0];
+                    const upd = (k: keyof Tenant, v: string) => {
+                      setTenants((all) => all.map((x, i) => (i === tenantIdx ? { ...x, [k]: v } : x)));
+                      if (tenantErrors[k]) setTenantErrors((e) => ({ ...e, [k]: undefined }));
+                    };
+                    return (
+                      <div className="flex flex-col gap-2.5">
+                        <FloatInput id={`${P}-tn`} label={<>Tenant {tenantIdx + 1} name {req}</>} placeholder="e.g. Jamie Lee" value={t.name} onChange={(e) => upd("name", e.target.value)} error={tenantErrors.name} />
+                        <div className="grid grid-cols-1 gap-2.5 min-[420px]:grid-cols-2">
+                          <FloatInput id={`${P}-tp`} type="tel" inputMode="tel" label={<>Tenant phone {req}</>} placeholder="e.g. 0491 570 006" value={t.phone} onChange={(e) => upd("phone", e.target.value)} error={tenantErrors.phone} />
+                          <FloatInput id={`${P}-te`} type="email" label={<>Tenant email <span className="font-normal">(optional)</span></>} placeholder="e.g. jamie@example.com" value={t.email} onChange={(e) => upd("email", e.target.value)} error={tenantErrors.email} />
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </section>
+              )}
+              {mode === "insp" && (
+                <section>
+                  {!calendarOpen && (
+                    <>
+                      <div className="mb-1.5 mt-2 flex items-center justify-between gap-2">
+                        <h3 className="text-sm font-bold">Choose your inspection day <small className={opt}>(free)</small></h3>
+                        <button type="button" onClick={() => setShowHow((v) => !v)} aria-expanded={showHow} className="inline-flex shrink-0 items-center gap-1 text-[12.5px] font-semibold text-[#2F63CC] hover:underline">
+                          <Info className="h-3.5 w-3.5" aria-hidden="true" /> How it works
+                        </button>
+                      </div>
+                      {showHow && (
+                        <p className="mb-1.5 rounded-xl border-[1.5px] border-[#2F63CC] bg-white px-3 py-2 text-[12.5px] text-slate-700">
+                          Free on-site inspections are available across our service area. Addresses close to our base can be booked on most days; further out we visit one part of Melbourne per day, so you&apos;ll see the days our inspector is already in your area. For properties more than 50 km away, or in coastal areas, our team arranges the time with you directly.
+                        </p>
+                      )}
+                    </>
+                  )}
+                  {avail.status === "idle" && !isCompletePropertyAddress(address) && (
+                    <p className="text-[13px] text-neutral-600">Enter the full property address to see available inspection times.</p>
+                  )}
+                  {(avail.status === "loading" || (avail.status === "idle" && isCompletePropertyAddress(address))) && (
+                    <div className="grid grid-cols-6 gap-1.5" role="status" aria-label="Loading available days">
+                      {Array.from({ length: 6 }, (_, i) => <span key={i} className="h-[44px] animate-pulse rounded-[10px] bg-slate-100" />)}
+                    </div>
+                  )}
+                  {avail.status === "error" && (
+                    <div className="rounded-[10px] border border-amber-300 bg-amber-50 px-3 py-2 text-[13px] text-amber-900">
+                      We couldn&apos;t load inspection times just now. Submit your details and we&apos;ll call you to book a time.{" "}
+                      <button type="button" onClick={() => loadAvailability(address, true)} className="font-bold underline">Try again</button>
+                    </div>
+                  )}
+                  {avail.status === "outside" && (
+                    <div className="rounded-[10px] border border-amber-300 bg-amber-50 px-3 py-2 text-[13px] text-amber-900">
+                      <b className="block text-sm">{avail.reason === "coastal" ? "Coastal area" : "More than 50 km from our base"}</b>
+                      Online times aren&apos;t offered for this address. Submit your details and our team will arrange your inspection directly.
+                    </div>
+                  )}
+                  {avail.status === "ok" && !canBook && (
+                    <div className="rounded-[10px] border border-amber-300 bg-amber-50 px-3 py-2 text-[13px] text-amber-900">
+                      No online times are open in the next few weeks. Submit your details and we&apos;ll call you to book a time.
+                    </div>
+                  )}
+                  {avail.status === "ok" && canBook && !calendarOpen && (
+                    <>
+                      {avail.zoneDay && !time && (
+                        <p className="mb-1.5 rounded-lg bg-[#EEF3FF] px-2.5 py-1 text-xs text-[#1A2A8C]">
+                          Our inspector visits {avail.suburb ? `the ${avail.suburb} area` : "your area"} on {avail.zoneDay}.
+                        </p>
+                      )}
+                      <div className="grid grid-cols-6 gap-1.5">
+                        {stripDays.map((d) => {
+                          const dt = parseYmd(d.date);
+                          const sel = d.date === date;
+                          const full = !d.slots.some((s) => !s.booked);
+                          return (
+                            <button key={d.date} type="button" disabled={full} aria-pressed={sel} aria-label={dayLabel(d.date)} onClick={() => pickDay(d.date)}
+                              className={`rounded-[10px] border-[1.5px] px-0.5 py-[3px] text-center transition-colors ${sel ? "border-[#1A2A8C] bg-[#1A2A8C] text-white" : "border-[#DBE3F0] bg-white hover:border-[#2F63CC] disabled:opacity-40"}`}>
+                              <small className={`block text-[10.5px] ${sel ? "text-[#CFE0FF]" : "text-neutral-500"}`}>{WD[dt.getDay()]}</small>
+                              <b className="block text-[15px] leading-tight">{dt.getDate()}</b>
+                            </button>
+                          );
+                        })}
+                        <button type="button" onClick={() => { setCalendarOpen(true); setCalMonth(date ? parseYmd(date) : parseYmd(days[0].date)); }}
+                          className="rounded-[10px] border-[1.5px] border-[#2F63CC] bg-[#EEF3FF] px-0.5 py-[3px] text-center">
+                          <small className="block text-[10.5px] text-neutral-500">More</small>
+                          <CalendarDays className="mx-auto h-[19px] w-[19px] text-[#1A2A8C]" aria-hidden="true" />
+                        </button>
+                      </div>
+                      {time && selectedDay ? (
+                        <div className="mt-1.5 rounded-[10px] border border-[#BFE6D0] bg-[#EFFAF4] px-3 py-1">
+                          <div className="flex items-center justify-between gap-2 text-[13px] leading-snug text-[#0F6B43]">
+                            <span>✓ Preferred time: <b>{dayLabel(selectedDay.date)}, {formatSlotRange(time, avail.durationMinutes)}</b></span>
+                            <button type="button" onClick={() => setTime("")} className="shrink-0 text-xs font-bold text-[#1A2A8C] underline">Change time</button>
+                          </div>
+                          <p className="text-[11px] leading-tight text-[#4B6B5C]">If this time becomes unavailable, our team will contact you to arrange an alternative.</p>
+                        </div>
+                      ) : (
+                        timeSelect(`${P}-time`)
+                      )}
+                    </>
+                  )}
+                  {avail.status === "ok" && canBook && calendarOpen && (
+                    <div className="mt-1.5">
+                      <h3 className="mb-1 text-sm font-bold">Pick a date <small className={opt}>(free inspection)</small></h3>
+                      {calendar()}
+                      <h3 className="mb-0 mt-2 text-sm font-bold">Choose a time</h3>
+                      {timeSelect(`${P}-cal-time`)}
+                      <button type="button" onClick={() => setCalendarOpen(false)} className="mt-2 h-10 w-full rounded-[10px] bg-[#1A2A8C] text-sm font-bold text-white">
+                        {date && time ? `Confirm ${shortDay(date)}, ${formatSlotRange(time, avail.durationMinutes)}` : "Back to days"}
+                      </button>
+                    </div>
+                  )}
+                  {inspError && <p role="alert" className="mt-1.5 text-[12.5px] font-medium text-red-700">{inspError}</p>}
+                </section>
+              )}
+              {!calendarOpen && nav(<button type="button" onClick={next} className={primaryBtn}>Continue</button>)}
+            </div>
+          )}
 
           {/* STEP 2: JOB CHECKLIST */}
           {step === "job" && (
@@ -788,7 +1010,7 @@ export default function QuoteFormV2({
               />
               {photoAsk && (
                 <section aria-labelledby={`${P}-photo-ask`} className="rounded-xl border border-[#DBE3F0] bg-[#F8FAFF] p-3">
-                  <h3 id={`${P}-photo-ask`} className="text-sm font-bold text-[#001F97]">Continue without photos?</h3>
+                  <h3 id={`${P}-photo-ask`} className="text-sm font-bold text-[#001F97]">Submit without photos?</h3>
                   <p className="mt-1 text-[13px] text-neutral-600">Photos help us understand the issue and prepare a more accurate quote.</p>
                   <button ref={photoAskBtnRef} type="button" onClick={() => {
                     setPhotoAsk(false);
@@ -798,228 +1020,11 @@ export default function QuoteFormV2({
                   </button>
                 </section>
               )}
+              {submitError && <p role="alert" className="mt-2 rounded-lg bg-red-50 px-2.5 py-2 text-[13px] text-red-700">{submitError}</p>}
               {nav(
-                <button type="button" onClick={() => next(photoAsk)} className={primaryBtn}>
-                  {photoAsk ? "Continue without photos" : "Continue"}
+                <button type="button" onClick={submitChecklist} disabled={loading} className={primaryBtn}>
+                  {loading ? "Sending…" : photoAsk ? "Submit without photos" : submitLabel}
                 </button>
-              )}
-            </div>
-          )}
-
-          {/* STEP 1: DETAILS */}
-          {step === "details" && (
-            <div className="flex flex-1 flex-col gap-2.5 pt-2">
-              <label className="flex cursor-pointer items-center gap-2 text-[13px] font-semibold text-[#1F2D4D]"><input type="checkbox" checked={isPM} onChange={(e) => setIsPM(e.target.checked)} className="h-4 w-4 accent-[#001F97]" />I am a Property Manager / agent</label>
-              <div className="grid grid-cols-1 gap-2.5 min-[420px]:grid-cols-2">
-                {input("firstName", <>{isPM ? "Manager first name" : "First name"} {req}</>, { autoComplete: "given-name" })}
-                {input("lastName", <>{isPM ? "Manager last name" : "Last name"} {req}</>, { autoComplete: "family-name" })}
-              </div>
-              {isPM && input("agency", <>Real estate agency / company <span className="font-normal">(optional)</span></>, { autoComplete: "organization" })}
-              <div className="grid grid-cols-1 gap-2.5 min-[420px]:grid-cols-2">
-                {input("phone", <>{isPM ? "Manager mobile" : "Mobile"} {req}</>, { type: "tel", inputMode: "tel", autoComplete: "tel" })}
-                {input("email", <>{isPM ? "Manager email" : "Email"} {req}</>, { type: "email", autoComplete: "email" })}
-              </div>
-              <div className="relative">
-                <div className="relative">
-                  <input
-                    id={`${P}-address`}
-                    value={data.address}
-                    onChange={(e) => onAddress(e.target.value)}
-                    onFocus={() => suggestions.length > 0 && setSuggestOpen(true)}
-                    onBlur={() => setTimeout(() => setSuggestOpen(false), 150)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && !(suggestOpen && activeSuggest >= 0)) { e.preventDefault(); setSuggestOpen(false); next(); return; }
-                      if (!suggestOpen || !suggestions.length) return;
-                      if (e.key === "ArrowDown") { e.preventDefault(); setActiveSuggest((i) => (i + 1) % suggestions.length); }
-                      else if (e.key === "ArrowUp") { e.preventDefault(); setActiveSuggest((i) => (i - 1 + suggestions.length) % suggestions.length); }
-                      else if (e.key === "Enter") { e.preventDefault(); pickSuggestion(suggestions[activeSuggest]); }
-                      else if (e.key === "Escape") { e.preventDefault(); setSuggestOpen(false); }
-                    }}
-                    role="combobox"
-                    aria-expanded={suggestOpen}
-                    aria-controls={`${P}-address-list`}
-                    aria-autocomplete="list"
-                    aria-invalid={!!errors.address}
-                    autoComplete="off"
-                    placeholder=" "
-                    className={`${floatField} ${errors.address ? fieldBad : ""}`}
-                  />
-                  <label htmlFor={`${P}-address`} className={floatLabel}>Full address {req}</label>
-                </div>
-                {suggestOpen && (
-                  <ul id={`${P}-address-list`} role="listbox" className="absolute left-0 right-0 top-full z-30 mt-0.5 max-sm:bottom-full max-sm:top-auto max-sm:mb-1 max-sm:mt-0 overflow-hidden rounded-[10px] border-[1.5px] border-[#DBE3F0] bg-white py-1 shadow-[0_10px_24px_rgba(15,23,42,0.16)]">
-
-                    {suggestions.map((s, i) => (
-                      <li key={s} role="option" aria-selected={i === activeSuggest}>
-                        <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => pickSuggestion(s)}
-                          className={`flex w-full items-center gap-2.5 px-3 py-2 text-left text-[13.5px] hover:bg-[#EEF3FF] ${i === activeSuggest ? "bg-[#EEF3FF]" : ""}`}>
-                          <MapPin className="h-4 w-4 shrink-0 text-[#1A2A8C]" aria-hidden="true" />
-                          {s}
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                {suggestionLoading && <p role="status" className="mt-1 text-[11px] text-neutral-500">Finding complete property addresses…</p>}
-                {suggestionMessage && <p role="status" className="mt-1 text-[11px] text-amber-800">{suggestionMessage}</p>}
-                {suggestOpen && suggestionAttribution && <p className="mt-1 text-[10px] text-neutral-500">Address suggestions: {suggestionAttribution}</p>}
-                <FieldError msg={errors.address} />
-                <p className="mt-1 text-[11px] text-neutral-500">Street number, street name, suburb, state and postcode, e.g. 12 Smith Street, Richmond VIC 3121.</p>
-              </div>
-              {nav(<button type="button" onClick={() => next()} className={primaryBtn}>Continue</button>)}
-            </div>
-          )}
-
-          {/* STEP 3 (property managers): TENANT ACCESS */}
-          {step === "tenants" && (
-            <div className="flex flex-1 flex-col pt-2">
-              <h3 className="mb-2 text-sm font-bold">Tenant access details <small className={opt}>(so we can arrange access)</small></h3>
-              <div className="mb-2.5 flex flex-wrap items-center gap-1.5">
-                {tenants.map((_, i) => (
-                  <button key={i} type="button" aria-pressed={i === tenantIdx} onClick={() => { setTenantIdx(i); setTenantErrors({}); }}
-                    className={`min-h-8 rounded-full border-[1.5px] px-3 text-[13px] font-semibold ${i === tenantIdx ? "border-[#1A2A8C] bg-[#EEF3FF] text-[#1A2A8C]" : "border-[#DBE3F0] bg-white"}`}>
-                    Tenant {i + 1}
-                  </button>
-                ))}
-                {tenants.length < 6 && (
-                  <button type="button" onClick={() => { setTenants((t) => [...t, { name: "", phone: "", email: "" }]); setTenantIdx(tenants.length); setTenantErrors({}); }}
-                    className="min-h-8 rounded-full border-[1.5px] border-dashed border-[#B8C5DC] px-3 text-[13px] font-semibold text-[#2F63CC]">
-                    + Add tenant
-                  </button>
-                )}
-                {tenants.length > 1 && (
-                  <button type="button" onClick={() => { setTenants((t) => t.filter((_, i) => i !== tenantIdx)); setTenantIdx(0); setTenantErrors({}); }}
-                    className="ml-auto min-h-8 px-1 text-[12.5px] text-neutral-500 underline">Remove tenant {tenantIdx + 1}</button>
-                )}
-              </div>
-              {(() => {
-                const t = tenants[tenantIdx] ?? tenants[0];
-                const upd = (k: keyof Tenant, v: string) => {
-                  setTenants((all) => all.map((x, i) => (i === tenantIdx ? { ...x, [k]: v } : x)));
-                  if (tenantErrors[k]) setTenantErrors((e) => ({ ...e, [k]: undefined }));
-                };
-                return (
-                  <div className="flex flex-col gap-2.5">
-                    <FloatInput id={`${P}-tn`} label={<>Tenant {tenantIdx + 1} name {req}</>} value={t.name} onChange={(e) => upd("name", e.target.value)} error={tenantErrors.name} />
-                    <div className="grid grid-cols-1 gap-2.5 min-[420px]:grid-cols-2">
-                      <FloatInput id={`${P}-tp`} type="tel" inputMode="tel" label={<>Tenant phone {req}</>} value={t.phone} onChange={(e) => upd("phone", e.target.value)} error={tenantErrors.phone} />
-                      <FloatInput id={`${P}-te`} type="email" label={<>Tenant email <span className="font-normal">(optional)</span></>} value={t.email} onChange={(e) => upd("email", e.target.value)} error={tenantErrors.email} />
-                    </div>
-                  </div>
-                );
-              })()}
-              {nav(<button type="button" onClick={() => next()} className={primaryBtn}>Continue</button>)}
-            </div>
-          )}
-
-          {/* LAST STEP: BOOK & FINISH */}
-          {step === "finish" && (
-            <div className="flex flex-1 flex-col">
-              {mode === "insp" && (
-                <div>
-                  {!calendarOpen && (
-                    <>
-                      <div className="mb-1.5 mt-2 flex items-center justify-between gap-2">
-                        <h3 className="text-sm font-bold">Choose your inspection day <small className={opt}>(free)</small></h3>
-                        <button type="button" onClick={() => setShowHow((v) => !v)} aria-expanded={showHow} className="inline-flex shrink-0 items-center gap-1 text-[12.5px] font-semibold text-[#2F63CC] hover:underline">
-                          <Info className="h-3.5 w-3.5" aria-hidden="true" /> How it works
-                        </button>
-                      </div>
-                      {showHow && (
-                        <p className="mb-1.5 rounded-xl border-[1.5px] border-[#2F63CC] bg-white px-3 py-2 text-[12.5px] text-slate-700">
-                          Free on-site inspections are available across our service area. Addresses close to our base can be booked on most days; further out we visit one part of Melbourne per day, so you&apos;ll see the days our inspector is already in your area. For properties more than 50 km away, or in coastal areas, our team arranges the time with you directly.
-                        </p>
-                      )}
-                    </>
-                  )}
-                  {avail.status === "loading" && (
-                    <div className="grid grid-cols-6 gap-1.5" role="status" aria-label="Loading available days">
-                      {Array.from({ length: 6 }, (_, i) => <span key={i} className="h-[44px] animate-pulse rounded-[10px] bg-slate-100" />)}
-                    </div>
-                  )}
-                  {avail.status === "error" && (
-                    <div className="rounded-[10px] border border-amber-300 bg-amber-50 px-3 py-2 text-[13px] text-amber-900">
-                      We couldn&apos;t load inspection times just now. Submit your details and we&apos;ll call you to book a time.{" "}
-                      <button type="button" onClick={() => { setAvailFor(""); loadAvailability(data.address); }} className="font-bold underline">Try again</button>
-                    </div>
-                  )}
-                  {avail.status === "outside" && (
-                    <div className="rounded-[10px] border border-amber-300 bg-amber-50 px-3 py-2 text-[13px] text-amber-900">
-                      <b className="block text-sm">{avail.reason === "coastal" ? "Coastal area" : "More than 50 km from our base"}</b>
-                      Online times aren&apos;t offered for this address. Submit your details and our team will arrange your inspection directly.
-                    </div>
-                  )}
-                  {avail.status === "ok" && days.length === 0 && (
-                    <div className="rounded-[10px] border border-amber-300 bg-amber-50 px-3 py-2 text-[13px] text-amber-900">
-                      No online times are open in the next few weeks. Submit your details and we&apos;ll call you to book a time.
-                    </div>
-                  )}
-                  {avail.status === "ok" && days.length > 0 && !calendarOpen && (
-                    <>
-                      {avail.zoneDay && !time && (
-                        <p className="mb-1.5 rounded-lg bg-[#EEF3FF] px-2.5 py-1 text-xs text-[#1A2A8C]">
-                          Our inspector visits {avail.suburb ? `the ${avail.suburb} area` : "your area"} on {avail.zoneDay}.
-                        </p>
-                      )}
-                      <div className="grid grid-cols-6 gap-1.5">
-                        {stripDays.map((d) => {
-                          const dt = parseYmd(d.date);
-                          const sel = d.date === date;
-                          const full = !d.slots.some((s) => !s.booked);
-                          return (
-                            <button key={d.date} type="button" disabled={full} aria-pressed={sel} aria-label={dayLabel(d.date)} onClick={() => pickDay(d.date)}
-                              className={`rounded-[10px] border-[1.5px] px-0.5 py-[3px] text-center transition-colors ${sel ? "border-[#1A2A8C] bg-[#1A2A8C] text-white" : "border-[#DBE3F0] bg-white hover:border-[#2F63CC] disabled:opacity-40"}`}>
-                              <small className={`block text-[10.5px] ${sel ? "text-[#CFE0FF]" : "text-neutral-500"}`}>{WD[dt.getDay()]}</small>
-                              <b className="block text-[15px] leading-tight">{dt.getDate()}</b>
-                            </button>
-                          );
-                        })}
-                        <button type="button" onClick={() => { setCalendarOpen(true); setCalMonth(date ? parseYmd(date) : parseYmd(days[0].date)); }}
-                          className="rounded-[10px] border-[1.5px] border-[#2F63CC] bg-[#EEF3FF] px-0.5 py-[3px] text-center">
-                          <small className="block text-[10.5px] text-neutral-500">More</small>
-                          <CalendarDays className="mx-auto h-[19px] w-[19px] text-[#1A2A8C]" aria-hidden="true" />
-                        </button>
-                      </div>
-                      {time && selectedDay ? (
-                        <div className="mt-1.5 rounded-[10px] border border-[#BFE6D0] bg-[#EFFAF4] px-3 py-1">
-                          <div className="flex items-center justify-between gap-2 text-[13px] leading-snug text-[#0F6B43]">
-                            <span>✓ Preferred time: <b>{dayLabel(selectedDay.date)}, {formatSlotRange(time, avail.durationMinutes)}</b></span>
-                            <button type="button" onClick={() => setTime("")} className="shrink-0 text-xs font-bold text-[#1A2A8C] underline">Change time</button>
-                          </div>
-                          <p className="text-[11px] leading-tight text-[#4B6B5C]">If this time becomes unavailable, our team will contact you to arrange an alternative.</p>
-                        </div>
-                      ) : (
-                        timeSelect(`${P}-time`)
-                      )}
-                    </>
-                  )}
-                  {avail.status === "ok" && days.length > 0 && calendarOpen && (
-                    <div className="mt-1.5">
-                      <h3 className="mb-1 text-sm font-bold">Pick a date <small className={opt}>(free inspection)</small></h3>
-                      {calendar()}
-                      <h3 className="mb-0 mt-2 text-sm font-bold">Choose a time</h3>
-                      {timeSelect(`${P}-cal-time`)}
-                      <button type="button" onClick={() => setCalendarOpen(false)} className="mt-2 h-10 w-full rounded-[10px] bg-[#1A2A8C] text-sm font-bold text-white">
-                        {date && time ? `Confirm ${shortDay(date)}, ${formatSlotRange(time, avail.durationMinutes)}` : "Back to days"}
-                      </button>
-                    </div>
-                  )}
-                  {inspError && <p role="alert" className="mt-1.5 text-[12.5px] font-medium text-red-700">{inspError}</p>}
-                </div>
-              )}
-
-              {!calendarOpen && (
-                <>
-                  <p className="mt-2 text-sm text-neutral-600">{photos.length ? `${photos.length} photo(s) attached from your checklist.` : "You can add photos in section 13 of the job checklist."}</p>
-
-                  {submitError && <p role="alert" className="mt-2 rounded-lg bg-red-50 px-2.5 py-2 text-[13px] text-red-700">{submitError}</p>}
-
-                  {nav(
-                    <button type="button" onClick={() => submit()} disabled={loading} className={primaryBtn}>
-                      {loading ? "Sending…" : submitLabel}
-                    </button>
-                  )}
-                </>
               )}
             </div>
           )}

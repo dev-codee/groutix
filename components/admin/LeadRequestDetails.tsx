@@ -3,14 +3,18 @@
 import { useRef, useState } from "react";
 import { ChevronRight, MessageSquare, Pencil, StickyNote } from "lucide-react";
 import QuoteChecklist, { emptyChecklist } from "@/components/QuoteChecklist";
+import { formatLeadBookingTime } from "@/lib/bookingPresentation";
+import { isPropertyManagerLead } from "@/lib/quoteLeadDetails";
+import { formatApptDate, formatApptTime } from "@/lib/scheduling";
 import type { Lead } from "./types";
 
 const fields = ["notes", "message", "enquiry"] as const;
 const labels = { notes: "Lead Notes", message: "Customer Request Detail", enquiry: "Additional Customer Request Detail" };
 
-export function LeadRequestDetails({ lead, onSave }: {
+export function LeadRequestDetails({ lead, onSave, onOpenPhotos }: {
   lead: Lead;
   onSave: (id: string, changes: Partial<Lead>) => Promise<void | boolean>;
+  onOpenPhotos: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [draft, setDraft] = useState<Pick<Lead, typeof fields[number]> | null>(null);
@@ -60,6 +64,23 @@ export function LeadRequestDetails({ lead, onSave }: {
   };
 
   const photoLabels = Array.isArray(answers?.photoLabels) ? answers.photoLabels : [];
+  const photoCount = lead.photos?.length ?? lead.photosCount ?? photoLabels.length;
+  const propertyManager = isPropertyManagerLead(lead);
+  const requestedInspection = lead.requestedInspectionAt;
+  const bookedInspection = lead.inspectionAt;
+  const requestMode = lead.quoteRequestMode === "quote" ? "Quote only"
+    : lead.quoteRequestMode === "inspection" ? "Free inspection" : undefined;
+  const requestFields = [
+    [propertyManager ? "Property manager" : "Customer", lead.name],
+    ["Phone", lead.phone],
+    ["Email", lead.email],
+    ["Property address", lead.address],
+    ["Agency / company", lead.agency],
+    ["Request type", requestMode],
+    ["Preferred inspection", requestedInspection && `${formatApptDate(requestedInspection)} ${formatApptTime(requestedInspection)}`],
+    ["Booked inspection", bookedInspection && `${formatApptDate(bookedInspection)} ${formatLeadBookingTime(lead, "inspection")}`],
+    ["Inspection status", lead.quoteRequestMode === "inspection" && !bookedInspection ? "To be arranged" : undefined],
+  ].filter(([, value]) => value);
 
   return (
     <div className="space-y-1.5">
@@ -96,6 +117,31 @@ export function LeadRequestDetails({ lead, onSave }: {
         </div>
       ) : expanded && (
         <div className="space-y-1.5">
+          <section className="rounded-lg border border-slate-200 p-2.5 text-xs text-slate-700">
+            <h3 className="mb-2 text-sm font-bold text-slate-900">Submitted details</h3>
+            <dl className="grid grid-cols-1 gap-1.5 @container">
+              {requestFields.map(([label, value]) => (
+                <div key={label} className="min-w-0">
+                  <dt className="font-bold">{label}</dt>
+                  <dd className="break-words">{value}</dd>
+                </div>
+              ))}
+            </dl>
+            {Boolean(lead.tenants?.length) && (
+              <div className="mt-2 border-t border-slate-200 pt-2">
+                <h4 className="mb-1 font-bold">Tenant access details</h4>
+                <ul className="space-y-1.5">
+                  {lead.tenants?.map((tenant, index) => (
+                    <li key={index} className="break-words">
+                      <div className="font-semibold">Tenant {index + 1}{tenant.name && ` · ${tenant.name}`}</div>
+                      {tenant.phone && <div>{tenant.phone}</div>}
+                      {tenant.email && <div>{tenant.email}</div>}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </section>
           {checklist && (
             <section className="rounded-lg border border-blue-100 bg-blue-50/40 p-2.5">
               <h3 className="mb-2 text-sm font-bold text-blue-900">Customer quote checklist</h3>
@@ -103,11 +149,18 @@ export function LeadRequestDetails({ lead, onSave }: {
                 id={`lead-checklist-${lead.id}`}
                 checklist={checklist}
                 leaking={lead.leaking ?? ""}
-                photos={photoLabels.length > 0 ? (
-                  <ul className="space-y-1 text-xs">
-                    {photoLabels.map((photo, index) => <li key={index} className="break-words">{photo}</li>)}
-                  </ul>
-                ) : <p className="text-xs text-neutral-600">No photo categories recorded.</p>}
+                photos={(
+                  <div className="space-y-1 text-xs">
+                    {photoLabels.length > 0 ? (
+                      <ul className="space-y-1">
+                        {photoLabels.map((photo, index) => <li key={index} className="break-words">{photo}</li>)}
+                      </ul>
+                    ) : <p className="text-neutral-600">No photo categories recorded.</p>}
+                    {photoCount > 0 && (
+                      <button type="button" onClick={onOpenPhotos} className="cursor-pointer font-semibold text-blue-700 hover:text-blue-900">View photos ({photoCount})</button>
+                    )}
+                  </div>
+                )}
               />
             </section>
           )}

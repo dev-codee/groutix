@@ -190,6 +190,8 @@ export interface Lead {
   // Regrouting & resealing checklist lifecycle.
   checklist?: import("@/lib/checklist").ChecklistDoc;
   quoteChecklist?: Record<string, string | string[]>;
+  quoteRequestMode?: "quote" | "inspection";
+  requestedInspectionAt?: string;
   checklistSentAt?: string;
   checklistOpenedAt?: string;
   checklistFilledAt?: string;

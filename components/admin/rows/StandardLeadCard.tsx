@@ -258,7 +258,7 @@ export function StandardLeadCard({ l }: { l: Lead }) {
           </div>
 
           {(role === "manager" || role === "super_admin") && (
-            <LeadRequestDetails lead={l} onSave={updateLeadField} />
+            <LeadRequestDetails lead={l} onSave={updateLeadField} onOpenPhotos={() => openPhotosModal(l)} />
           )}
 
           {(l.technicianNotes || l.scopeNotes) && (

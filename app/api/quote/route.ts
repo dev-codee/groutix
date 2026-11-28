@@ -191,6 +191,9 @@ export async function POST(req: NextRequest) {
   const sourcePage = get("sourcePage");
   const inspectionDate = get("inspectionDate");
   const inspectionTime = get("inspectionTime");
+  const requestedMode = get("quoteRequestMode");
+  const quoteRequestMode = inspectionDate && inspectionTime ? "inspection"
+    : requestedMode === "quote" || requestedMode === "inspection" ? requestedMode : undefined;
 
   // Minimal server-side validation mirroring the client.
   if (!firstName || !lastName || !email || !phone) {
@@ -404,6 +407,8 @@ export async function POST(req: NextRequest) {
     leaking,
     message,
     quoteChecklist: checklist,
+    quoteRequestMode,
+    requestedInspectionAt: inspectionDate && inspectionTime ? `${inspectionDate}T${inspectionTime.slice(0, 5).padStart(5, "0")}` : undefined,
     areas,
     heard,
     sourcePage,
@@ -630,7 +635,7 @@ export async function POST(req: NextRequest) {
   await processEmails();
 
   // 3) Return success to the client
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, inspectionBooked: inspectionSelfBooked });
 }
 
 function logSendError(label: string, err: unknown) {
