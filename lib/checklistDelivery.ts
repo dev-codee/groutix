@@ -9,6 +9,7 @@ import { signQuoteToken, siteBaseUrl } from "./quoteToken";
 import { sendEmail, wrapEmailHtml, getEmailLogoUrl } from "./email";
 import { emailActionButton } from "./emailPresentation";
 import { buildJobChecklistUrl } from "./quoteChecklistLink";
+import { hasSubmittedQuoteChecklist } from "./quoteJobChecklist";
 
 const FROM_EMAIL = process.env.SMTP_FROM || process.env.SMTP_USER || "info@groutix.com";
 
@@ -45,9 +46,10 @@ export async function sendChecklistEmail(
 ): Promise<boolean> {
   try {
     const lead = await getSubmission(id);
-    const toEmail = options.toEmail || lead?.email;
+    if (!lead || hasSubmittedQuoteChecklist(lead)) return false;
+    const toEmail = options.toEmail || lead.email;
     if (!toEmail) return false;
-    const name = options.name || lead?.name;
+    const name = options.name || lead.name;
     const firstName = (name || "").trim().split(/\s+/)[0].replace(/[&<>"']/g, "") || "there";
     const logoUrl = await getEmailLogoUrl();
     await sendEmail({
@@ -56,7 +58,7 @@ export async function sendChecklistEmail(
       fromEmail: FROM_EMAIL,
       subject: "Complete your Groutix Smart Quote Request",
       html: wrapEmailHtml(
-        `${checklistInvitationHtml(id, buildJobChecklistUrl(id, lead?.quoteChecklistRevision))}
+        `${checklistInvitationHtml(id, buildJobChecklistUrl(id, lead.quoteChecklistRevision))}
          <p style="margin:12px 0 6px;">Hi ${firstName}, add your details and photos so we can prepare your quote.</p>
          <p style="margin:0;font-size:13px;color:#64748b;">Remote quotes may require verification.</p>`,
         "Add your details and photos for your quote.",

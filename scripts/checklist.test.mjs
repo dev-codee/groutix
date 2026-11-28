@@ -110,6 +110,39 @@ test("checklistHasAnswers ignores id/photos-only pages", () => {
   assert.equal(checklistHasAnswers({ pages: [page({ showerType: "SS" })] }), true);
 });
 
+test("the CRM sends checklist invitations only when submitted answers are missing", async () => {
+  const emails = [];
+  const lead = { id: "lead", name: "Sam", email: "sam@example.test" };
+  const submissions = { getSubmission: async () => lead, updateSubmission: async () => true, appendActivity: async () => {} };
+  const { sendChecklistEmail } = loadTs("lib/checklistDelivery.ts", {
+    "./submissions": submissions,
+    "./email": { sendEmail: async email => { emails.push(email); }, getEmailLogoUrl: async () => "", wrapEmailHtml: html => html },
+  }, { URLSearchParams });
+  const { POST } = loadTs("app/api/admin/checklist/send/route.ts", {
+    "next/server": { NextResponse: { json: (body, options) => ({ body, status: options?.status ?? 200 }) } },
+    "@/lib/adminAuth": { verifyRequestSession: async () => ({ role: "manager" }) },
+    "@/lib/submissions": submissions,
+    "@/lib/email": { isEmailConfigured: () => true },
+    "@/lib/checklistDelivery": { sendChecklistEmail },
+  });
+  const request = { json: async () => ({ id: lead.id }) };
+
+  assert.equal((await POST(request)).status, 200);
+  assert.equal(emails.length, 1);
+  assert.match(emails[0].html, /Complete My Quote Form/);
+
+  // Older website leads may already have all the answers without a completion timestamp.
+  lead.quoteChecklist = { location: "Main bathroom shower", work: "Grout only", showerScope: "Floor only" };
+  lead.leaking = "No";
+  assert.equal((await POST(request)).status, 409);
+  assert.equal(await sendChecklistEmail(lead.id), false);
+
+  delete lead.quoteChecklist;
+  lead.checklistSubmittedAt = "2026-11-28T10:00:00.000Z";
+  assert.equal((await POST(request)).status, 409);
+  assert.equal(emails.length, 1);
+});
+
 test("written checklist includes notes, explicit zero counts and selected photo categories", () => {
   const text = checklistRequestText({
     pages: [page({

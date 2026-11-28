@@ -52,6 +52,23 @@ export function jobChecklistErrors(checklist: Checklist, leaking: string, additi
   return { ...checklistErrors(checklist, leaking, additionalBalconies), ...additionalShowerErrors(additionalShowers) };
 }
 
+export function hasSubmittedQuoteChecklist(lead: {
+  quoteChecklist?: Record<string, string | string[]>;
+  leaking?: string;
+  additionalBalconies?: QuoteBalcony[];
+  additionalShowers?: AdditionalShower[];
+  checklistSubmittedAt?: string;
+  checklist?: { submittedAt?: string };
+}) {
+  if (lead.checklistSubmittedAt || lead.checklist?.submittedAt) return true;
+  if (!lead.quoteChecklist) return false;
+  const checklist = normalizeJobChecklist(lead.quoteChecklist);
+  if (checklist.location === "Balcony" && !checklist.balconyLeakage) {
+    checklist.balconyLeakage = lead.leaking ?? "";
+  }
+  return Object.keys(jobChecklistErrors(checklist, lead.leaking ?? "", lead.additionalBalconies ?? [], lead.additionalShowers)).length === 0;
+}
+
 export function additionalShowerErrors(additionalShowers: AdditionalShower[]) {
   const errors: Record<string, string> = {};
   additionalShowers.forEach((shower, index) => {

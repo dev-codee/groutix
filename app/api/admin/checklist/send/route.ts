@@ -3,12 +3,12 @@ import { verifyRequestSession } from "@/lib/adminAuth";
 import { getSubmission } from "@/lib/submissions";
 import { isEmailConfigured } from "@/lib/email";
 import { sendChecklistEmail } from "@/lib/checklistDelivery";
+import { hasSubmittedQuoteChecklist } from "@/lib/quoteJobChecklist";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// Re-send the regrouting & resealing checklist so staff can email it on demand
-// (for example when the customer asks for the link again after the first email).
+// Staff can email the checklist to customers whose answers are still missing.
 export async function POST(req: NextRequest) {
   const session = await verifyRequestSession(req);
   if (!session) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
@@ -27,6 +27,9 @@ export async function POST(req: NextRequest) {
 
   const lead = await getSubmission(body.id);
   if (!lead) return NextResponse.json({ error: "Lead not found." }, { status: 404 });
+  if (hasSubmittedQuoteChecklist(lead)) {
+    return NextResponse.json({ error: "This customer has already submitted the checklist." }, { status: 409 });
+  }
   if (!lead.email) return NextResponse.json({ error: "This lead has no email address." }, { status: 400 });
 
   const sent = await sendChecklistEmail(body.id, { toEmail: lead.email, name: lead.name });

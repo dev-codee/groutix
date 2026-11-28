@@ -1,6 +1,6 @@
 import { readQuotePhotos } from "@/lib/quotePhotoUpload";
 import { parseAdditionalBalconies, type QuoteBalcony } from "@/lib/quoteBalconies";
-import { additionalShowerErrors, jobChecklistText, parseAdditionalShowers, type AdditionalShower } from "@/lib/quoteJobChecklist";
+import { additionalShowerErrors, hasSubmittedQuoteChecklist, jobChecklistText, parseAdditionalShowers, type AdditionalShower } from "@/lib/quoteJobChecklist";
 import { inspectionConfirmationHtml, inspectionConfirmationSms } from "@/lib/inspectionConfirmation";
 import { isCompletePropertyAddress, PROPERTY_ADDRESS_ERROR } from "@/lib/propertyAddress";
 import { NextRequest, NextResponse } from "next/server";
@@ -293,6 +293,7 @@ export async function POST(req: NextRequest) {
 
   // 1) Save to DB immediately so we never lose a lead.
   const nowIso = new Date().toISOString();
+  const checklistSubmitted = hasSubmittedQuoteChecklist({ quoteChecklist: checklist, leaking, additionalBalconies, additionalShowers });
   const submissionId = await recordSubmission({
     type: "quote",
     customerType,
@@ -310,6 +311,7 @@ export async function POST(req: NextRequest) {
     leaking,
     message,
     quoteChecklist: checklist,
+    ...(checklistSubmitted ? { checklistFilledAt: nowIso, checklistSubmittedAt: nowIso } : {}),
     additionalBalconies: additionalBalconies.length ? additionalBalconies : undefined,
     additionalShowers: additionalShowers.length ? additionalShowers : undefined,
     quoteRequestMode,
@@ -417,9 +419,9 @@ export async function POST(req: NextRequest) {
     const contactPhone = (await getSiteContent().catch(() => null))?.business.phone || DEFAULT_CONTACT_PHONE;
 
     const customerHtml = `
-      <p style="margin:12px 0 8px;">Thanks, ${esc(firstName)}. We’ve received your request.</p>
+      <p style="margin:12px 0 8px;">Thanks, ${esc(firstName)}. We’ve received your request${checklistSubmitted ? " and completed checklist" : ""}.</p>
       ${quoteRequestMode === "inspection" ? inspectionConfirmationHtml(inspectionDate, inspectionTime, inspectionSelfBooked, bookingRules.inspection.slotMinutes) : ""}
-      ${submissionId ? `<p style="margin:0 0 8px;font-size:13px;color:#64748b;">Remote quotes may require verification.</p>` : ""}
+      ${submissionId && !checklistSubmitted ? `<p style="margin:0 0 8px;font-size:13px;color:#64748b;">Remote quotes may require verification.</p>` : ""}
       <p style="margin:0;">Questions? Reply or call <a href="tel:${contactPhone.replace(/[^\d+]/g, "")}">${esc(contactPhone)}</a>.</p>`;
 
     try {

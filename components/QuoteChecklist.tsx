@@ -24,7 +24,6 @@ const optionLabels: Record<string, string> = {
   "Extra large": "Extra Large",
   "Bathroom floor": "Bathroom floor outside shower",
 };
-const ALL_JOINTS = "Both vertical & horizontal – inside & outside";
 const req = <span className="text-red-600" aria-hidden="true">*</span>;
 
 export { emptyChecklist, type Checklist } from "@/lib/quoteJobChecklist";
@@ -259,14 +258,6 @@ export default function QuoteChecklist({ id, checklist, leaking, errors = {}, on
                   horizontalJoints: option === "Both" ? (bothHorizontal ? [] : joints) : (bothHorizontal ? [option] : toggleOption(checklist.horizontalJoints, option)),
                 })}
                 readOnly={readOnly} />
-              <label className="flex min-h-7 items-center gap-1.5 text-[13px]">
-                <input type="checkbox" className="h-4 w-4 shrink-0 accent-[#001F97]" disabled={readOnly}
-                  checked={bothVertical && bothHorizontal} onChange={(event) => {
-                    const selection = event.target.checked ? joints : [];
-                    onChange?.({ verticalJoints: selection, horizontalJoints: selection });
-                  }} />
-                {ALL_JOINTS}
-              </label>
             </>}
             {readOnly && checklist.siliconeJoints && <p className="text-xs">{checklist.siliconeJoints}</p>}
           </Section>

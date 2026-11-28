@@ -38,7 +38,8 @@ for (const booked of [true, false]) {
     }, { process: { env: {} }, console: { ...console, warn: () => {} } });
     const fields = {
       firstName: "Sam", lastName: "Customer", email: "sam@example.test", phone: "0400000000",
-      checklist: JSON.stringify({ location: "Main bathroom shower", work: "Grout only", additional: ["Kitchen"] }),
+      checklist: JSON.stringify({ location: "Main bathroom shower", work: "Grout only", showerScope: "Floor only", additional: ["Kitchen"] }),
+      leaking: "No",
       additionalShowers: JSON.stringify([
         { checklist: { location: "Ensuite shower", work: "Grout and silicone", showerScope: "Floor only", leakNotes: "By the drain" }, leaking: "Yes" },
       ]),
@@ -73,9 +74,12 @@ for (const booked of [true, false]) {
     assert.deepEqual(Array.from(submissions[0][0].quoteChecklist.additional), ["Kitchen"]);
     assert.equal(submissions[0][0].additionalShowers[0].checklist.leakNotes, "By the drain");
     assert.equal(submissions[0][0].additionalShowers[0].leaking, "Yes");
+    assert.ok(submissions[0][0].checklistSubmittedAt);
+    assert.equal(submissions[0][0].checklistSubmittedAt, submissions[0][0].checklistFilledAt);
     const customerEmails = emails.filter(email => email.toEmail === fields.email);
     assert.equal(customerEmails.length, 1);
     const customerEmail = customerEmails[0];
+    assert.match(customerEmail.html, /Thanks, Sam\. We’ve received your request and completed checklist/);
     assert.doesNotMatch(customerEmail.html, /Complete My Quote Form|Fill in My Checklist|Book Free Inspection/i);
     assert.doesNotMatch(customerEmail.html, /\/checklist\/|\/book\//i);
     assert.ok(!updates.some(([, changes]) => changes.checklistSentAt));
@@ -88,14 +92,24 @@ for (const booked of [true, false]) {
     if (booked) assert.match(texts[0].body, /Your inspection is booked/);
     else assert.match(texts[0].body, /has not been confirmed/);
     assert.equal(texts[0].body.includes("https://groutix.com/b"), !booked);
-    const coverage = { ...fields, address: "", city: "Melbourne", enquiryType: "coverage", inspectionDate: "", inspectionTime: "" };
+    const quoteOnly = { ...fields, quoteRequestMode: "quote", inspectionDate: "", inspectionTime: "" };
+    const quote = await POST({
+      headers: { get: () => null },
+      formData: async () => ({ get: key => quoteOnly[key] ?? null, getAll: () => [] }),
+    });
+    assert.equal(quote.status, 200);
+    assert.equal(emails.length, 2);
+    assert.match(emails[1].html, /Thanks, Sam\. We’ve received your request and completed checklist/);
+    assert.doesNotMatch(emails[1].html, /Complete My Quote Form|\/checklist\//i);
+    const coverage = { ...fields, address: "", city: "Melbourne", enquiryType: "coverage", inspectionDate: "", inspectionTime: "", checklist: "", additionalShowers: "" };
     const callback = await POST({
       headers: { get: () => null },
       formData: async () => ({ get: key => coverage[key] ?? null, getAll: () => [] }),
     });
     assert.equal(callback.status, 200);
-    assert.equal(emails.length, 2);
-    assert.equal(emails[1].toEmail, fields.email);
-    assert.doesNotMatch(emails[1].html, /Complete My Quote Form|Book Free Inspection/i);
+    assert.equal(emails.length, 3);
+    assert.equal(emails[2].toEmail, fields.email);
+    assert.doesNotMatch(emails[2].html, /Complete My Quote Form|Book Free Inspection/i);
+    assert.equal(submissions[2][0].checklistSubmittedAt, undefined);
   });
 }

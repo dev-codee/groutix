@@ -4,16 +4,16 @@ import { loadTs } from "./test-ts-loader.mjs";
 const { inspectionConfirmationHtml, inspectionConfirmationSms } = loadTs("lib/inspectionConfirmation.ts");
 test("confirmed inspection email shows the chosen Melbourne date and time without shifting", () => {
   const html = inspectionConfirmationHtml("2026-10-15", "09:30", true, 180);
-  assert.match(html, /Thursday,? 15 October 2026/);
-  assert.match(html, /Arrival time:<\/strong> 9:30 AM – 12:30 PM \(Melbourne time\)/);
-  assert.match(html, /We have booked your inspection/);
-  assert.match(html, /If any adjustment.*our team will contact you/);
+  assert.match(html, /Inspection booked/);
+  assert.match(html, /Thursday,? 15 October 2026, 9:30 AM – 12:30 PM \(Melbourne time\)/);
+  assert.doesNotMatch(html, /confirm your time/);
 });
 test("an unavailable or unsaved slot is shown as requested, with a promise to arrange timing", () => {
   const html = inspectionConfirmationHtml("2026-10-15", "14:00", false, 180);
-  assert.match(html, /Requested arrival time:<\/strong> 2:00 PM – 5:00 PM/);
-  assert.match(html, /has not been confirmed/);
-  assert.equal(html.includes("We have booked"), false);
+  assert.match(html, /Inspection requested/);
+  assert.match(html, /2:00 PM – 5:00 PM \(Melbourne time\)/);
+  assert.match(html, /contact you to confirm your time/);
+  assert.doesNotMatch(html, /Inspection booked/);
 });
 test("arrival windows follow the configured duration and retain start minutes", () => {
   assert.match(inspectionConfirmationHtml("2026-10-15", "09:00", true, 180), /9:00 AM – 12:00 PM/);
