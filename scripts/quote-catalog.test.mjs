@@ -30,6 +30,17 @@ test("grout-only checklist stays custom when catalog scopes also include silicon
   assert.equal(items[0].code, "");
   assert.match(items[0].service, /Grout only/);
 });
+test("older grout-only leads suggest the requested scope and saved tile counts", () => {
+  const items = getMatchedQuoteItemsForLead({
+    service: "Shower Grout only", areas: "Main bathroom shower, Balcony, Kitchen",
+    damagedTiles: "2 wall Replace, 2 floor Replace",
+  });
+  assert.equal(items[0].service, "Shower Grout only");
+  assert.equal(items[0].code, "");
+  assert.match(items[0].scope, /Main bathroom shower/);
+  assert.equal(items[1].qty, 4);
+});
+
 const byCode = code => SERVICE_TEMPLATES.find(item => item.code === code);
 const expectedCodes = `EN-DS-WB-TC-PG
 EN-DS-WB-SH-EG

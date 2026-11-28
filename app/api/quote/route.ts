@@ -2,20 +2,18 @@ import { readQuotePhotos } from "@/lib/quotePhotoUpload";
 import { parseAdditionalBalconies, type QuoteBalcony } from "@/lib/quoteBalconies";
 import { inspectionConfirmationHtml, inspectionConfirmationSms } from "@/lib/inspectionConfirmation";
 import { isCompletePropertyAddress, PROPERTY_ADDRESS_ERROR } from "@/lib/propertyAddress";
-import { emailActionButton } from "@/lib/emailPresentation";
 import { NextRequest, NextResponse } from "next/server";
 import { rateLimit } from "@/lib/rateLimit";
 import { recordSubmission, updateEmailDelivered } from "@/lib/submissions";
 import { getSiteContent } from "@/lib/siteContentServer";
 import { sendEmail, isInternalEmailAlertEnabled, isEmailConfigured, wrapEmailHtml, getEmailLogoUrl } from "@/lib/email";
 import { sendSms } from "@/lib/sms";
-import { buildBookingUrl, buildBookingSmsUrl } from "@/lib/bookingToken";
+import { buildBookingSmsUrl } from "@/lib/bookingToken";
 import { resolveArea, isSlotOffered } from "@/lib/scheduling";
 import { createBooking, isSlotTaken } from "@/lib/bookings";
 import { getBookingRules } from "@/lib/bookingRulesServer";
 import { getZoneRules } from "@/lib/zoneRulesServer";
 import { updateSubmission, appendActivity, getNextJobNo, assignInspectorOnBooking } from "@/lib/submissions";
-import { checklistInvitationHtml, recordChecklistEmailSent } from "@/lib/checklistDelivery";
 
 export const runtime = "nodejs";
 // Give the retry sequence room to finish before the platform kills the
@@ -33,8 +31,6 @@ const CUSTOMER_FROM_NAME = "Groutix";
 // business number; the current value is loaded per-request in the handler so
 // admin edits to the contact number flow through to confirmation emails.
 const DEFAULT_CONTACT_PHONE = "(03) 7023 8094";
-
-const SHOW_INSPECTION_BOOKING = true;
 
 // Anti-spam limits.
 const RATE_LIMIT = 5; // submissions...
@@ -406,12 +402,8 @@ export async function POST(req: NextRequest) {
     }
 
     const contactPhone = (await getSiteContent().catch(() => null))?.business.phone || DEFAULT_CONTACT_PHONE;
-    const bookingUrl = submissionId ? buildBookingUrl(submissionId, "inspection") : "";
-    const showBookingCta = SHOW_INSPECTION_BOOKING && !inspectionSelfBooked && Boolean(bookingUrl);
 
     const customerHtml = `
-      ${showBookingCta ? emailActionButton(bookingUrl, "Book Free Inspection") : ""}
-      ${submissionId ? checklistInvitationHtml(submissionId) : ""}
       <p style="margin:12px 0 8px;">Thanks, ${esc(firstName)}. We’ve received your request.</p>
       ${quoteRequestMode === "inspection" ? inspectionConfirmationHtml(inspectionDate, inspectionTime, inspectionSelfBooked, bookingRules.inspection.slotMinutes) : ""}
       ${submissionId ? `<p style="margin:0 0 8px;font-size:13px;color:#64748b;">Remote quotes may require verification.</p>` : ""}
@@ -426,13 +418,6 @@ export async function POST(req: NextRequest) {
         subject: "We've received your request | Groutix",
         html: wrapEmailHtml(customerHtml, "Your Groutix request and next steps.", logoUrl, { compact: true }),
       });
-      if (submissionId) {
-        try {
-          await recordChecklistEmailSent(submissionId, email);
-        } catch (err) {
-          console.error("checklist delivery tracking failed (non-fatal):", err);
-        }
-      }
     } catch (err) {
       logSendError("customer confirmation", err);
     }
@@ -441,7 +426,7 @@ export async function POST(req: NextRequest) {
     if (phone) {
       // Short self-booking link so the customer can pick (or change) their
       // inspection slot straight from the text.
-      const smsBookingUrl = showBookingCta && submissionId
+      const smsBookingUrl = !inspectionSelfBooked && submissionId
         ? buildBookingSmsUrl(submissionId, "inspection")
         : "";
       const bookingLine = smsBookingUrl

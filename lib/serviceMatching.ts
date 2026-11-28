@@ -303,7 +303,8 @@ export function getMatchedQuoteItemsForLead(lead: {
 }): MatchedQuoteItem[] {
   const checklist = lead.quoteChecklist;
   const answer = (key: string) => typeof checklist?.[key] === "string" ? checklist[key] as string : "";
-  const work = answer("work").toLowerCase();
+  const limitedService = !checklist && /^(Shower|Balcony) (Grout only|Silicone only)$/i.exec(lead.service || lead.enquiry || "");
+  const work = (answer("work") || (limitedService ? limitedService[2] : "")).toLowerCase();
   const isShower = Boolean(checklist && answer("location") !== "Balcony");
   const groutWork = work === "grout and silicone";
   const showerTemplate = isShower && groutWork ? jobShowerTemplate(answer) : null;
@@ -315,7 +316,7 @@ export function getMatchedQuoteItemsForLead(lead: {
     })
     : [];
   const matchingService = showerTemplate?.code || (checklist && !isShower && groutWork ? "BALCONY" : lead.service || lead.enquiry || "");
-  const useCustomScope = Boolean(checklist && (!groutWork || (isShower && !showerTemplate)));
+  const useCustomScope = Boolean(limitedService || (checklist && (!groutWork || (isShower && !showerTemplate))));
   const customerServices = useCustomScope ? siliconeItems : parseCustomerServices(matchingService);
   const areas = lead.areas || "";
   const items: MatchedQuoteItem[] = [];
@@ -354,8 +355,10 @@ export function getMatchedQuoteItemsForLead(lead: {
     items.push({
       templateNo: "",
       code: "",
-      service: `${answer("location") || "Shower"} — ${answer("work") || "Assessment"}`,
-      scope: [answer("showerType"), answer("wallHeight"), answer("showerScope"), answer("workDetails"), answer("siliconeJoints"), answer("notes")].filter(Boolean).join(" · "),
+      service: limitedService ? limitedService[0] : `${answer("location") || "Shower"} — ${answer("work") || "Assessment"}`,
+      scope: limitedService
+        ? lead.areas || lead.message || lead.notes || ""
+        : [answer("showerType"), answer("wallHeight"), answer("showerScope"), answer("workDetails"), answer("siliconeJoints"), answer("notes")].filter(Boolean).join(" · "),
       price: 0,
       qty: 1,
       matchedFrom: "Customer checklist",
@@ -386,7 +389,10 @@ export function getMatchedQuoteItemsForLead(lead: {
 
   // If customer reported cracked/loose tiles and not yet in quote, suggest cracked tile repair
   const damaged = (lead.damagedTiles || "").toLowerCase();
-  const tileCounts = [answer("wallTiles"), answer("floorTiles")];
+  const tileCounts = [
+    answer("wallTiles") || /(?:^|,\s*)(\d+\+?) wall\b/.exec(damaged)?.[1] || "",
+    answer("floorTiles") || /(?:^|,\s*)(\d+\+?) floor\b/.exec(damaged)?.[1] || "",
+  ];
   const exactTileCount = tileCounts.reduce((total, count) => total + (/^\d+$/.test(count) ? Number(count) : 0), 0);
   const tileCount = exactTileCount > 0 || tileCounts.includes("4+");
   if (

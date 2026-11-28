@@ -26,7 +26,7 @@ for (const booked of [true, false]) {
         wrapEmailHtml: html => html, sendEmail: async email => { emails.push(email); },
       },
       "@/lib/sms": { sendSms: async sms => { texts.push(sms); return { ok: true }; } },
-      "@/lib/bookingToken": { buildBookingUrl: () => "https://groutix.com/book", buildBookingSmsUrl: () => "https://groutix.com/b" },
+      "@/lib/bookingToken": { buildBookingSmsUrl: () => "https://groutix.com/b" },
       "@/lib/bookings": {
         listUpcomingBookings: async () => [], isSlotTaken: async () => false,
         createBooking: async () => ({ ok: booked, conflict: !booked }),
@@ -38,6 +38,7 @@ for (const booked of [true, false]) {
     }, { process: { env: {} }, console: { ...console, warn: () => {} } });
     const fields = {
       firstName: "Sam", lastName: "Customer", email: "sam@example.test", phone: "0400000000",
+      checklist: JSON.stringify({ location: "Main bathroom shower", work: "Grout only", additional: ["Kitchen"] }),
       address: "12 Smith Street, Gowanbrae VIC 3043", areas: "Ensuite Bathroom, Main Bathroom, Other", inspectionDate: "2026-10-22", inspectionTime: "09:00",
     };
     for (const address of ["", "Melbourne", "Richmond VIC 3121", "3000 Melbourne", "12 Smith Street"]) {
@@ -57,15 +58,16 @@ for (const booked of [true, false]) {
       formData: async () => ({ get: key => fields[key] ?? null, getAll: () => [] }),
     });
     assert.equal(response.status, 200);
-    assert.ok(JSON.stringify(submissions).includes(fields.areas));
+    assert.equal(submissions[0][0].areas, fields.areas);
+    assert.equal(submissions[0][0].quoteChecklist.work, "Grout only");
+    assert.deepEqual(Array.from(submissions[0][0].quoteChecklist.additional), ["Kitchen"]);
     const customerEmails = emails.filter(email => email.toEmail === fields.email);
     assert.equal(customerEmails.length, 1);
     const customerEmail = customerEmails[0];
-    assert.match(customerEmail.html, /Fill in My Checklist/);
-    assert.match(customerEmail.html, /\/checklist\/lead\?token=/);
-    assert.match(customerEmail.html, /\/api\/track\/checklist\/lead\?token=/);
-    assert.ok(updates.some(([, changes]) => changes.checklistSentAt));
-    assert.ok(activities.some(([, entry]) => entry.action === "Checklist emailed"));
+    assert.doesNotMatch(customerEmail.html, /Complete My Quote Form|Fill in My Checklist|Book Free Inspection/i);
+    assert.doesNotMatch(customerEmail.html, /\/checklist\/|\/book\//i);
+    assert.ok(!updates.some(([, changes]) => changes.checklistSentAt));
+    assert.ok(!activities.some(([, entry]) => entry.action === "Checklist emailed"));
     assert.ok(customerEmail.html.includes("9:00 AM – 12:00 PM"));
     assert.equal(texts.length, 1);
     assert.ok(texts[0].body.includes("9:00 AM – 12:00 PM"));
@@ -73,12 +75,15 @@ for (const booked of [true, false]) {
     assert.ok(!texts[0].body.includes("9:30 AM"));
     if (booked) assert.match(texts[0].body, /Your inspection is booked/);
     else assert.match(texts[0].body, /has not been confirmed/);
+    assert.equal(texts[0].body.includes("https://groutix.com/b"), !booked);
     const coverage = { ...fields, address: "", city: "Melbourne", enquiryType: "coverage", inspectionDate: "", inspectionTime: "" };
     const callback = await POST({
       headers: { get: () => null },
       formData: async () => ({ get: key => coverage[key] ?? null, getAll: () => [] }),
     });
     assert.equal(callback.status, 200);
-    assert.equal(emails.filter(email => email.toEmail === fields.email).length, 2);
+    assert.equal(emails.length, 2);
+    assert.equal(emails[1].toEmail, fields.email);
+    assert.doesNotMatch(emails[1].html, /Complete My Quote Form|Book Free Inspection/i);
   });
 }

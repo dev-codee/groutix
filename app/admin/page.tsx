@@ -135,7 +135,6 @@ import {
 } from "@/lib/serviceTemplates";
 import {
   parseCustomerServices,
-  findBestTemplateForService,
   getMatchedQuoteItemsForLead
 } from "@/lib/serviceMatching";
 import { checklistRequestText } from "@/lib/checklistOptions";
@@ -506,7 +505,16 @@ export default function CrmDashboardPage() {
   const [quoteFullscreen, setQuoteFullscreen] = useState(true);
   const [quoteViewTab, setQuoteViewTab] = useState<"split" | "form" | "preview">("form");
   const [activeQuoteLead, setActiveQuoteLead] = useState<Lead | null>(null);
-  const [checklistSending, setChecklistSending] = useState(false);
+  const suggestedQuoteItems = useMemo(
+    () => activeQuoteLead ? getMatchedQuoteItemsForLead(activeQuoteLead) : [],
+    [activeQuoteLead],
+  );
+  const writtenQuoteChecklist = activeQuoteLead && jobChecklistText(
+    activeQuoteLead.quoteChecklist, activeQuoteLead.leaking, activeQuoteLead.additionalBalconies,
+  );
+  const detailedQuoteChecklist = activeQuoteLead?.checklist?.answers?.pages?.length
+    ? checklistRequestText(activeQuoteLead.checklist.answers)
+    : "";
   const [customerQuotes, setCustomerQuotes] = useState<CustomerQuote[]>([]);
   const [activeCustomerQuote, setActiveCustomerQuote] = useState<CustomerQuote | null>(null);
   const [customerQuoteTitle, setCustomerQuoteTitle] = useState("");
@@ -2359,33 +2367,6 @@ export default function CrmDashboardPage() {
       void loadData({ silent: true });
     } catch {
       alert("Network error while sending the quote.");
-    }
-  }
-
-  // Re-send the regrouting & resealing checklist email to the customer on demand.
-  async function handleSendChecklist() {
-    if (!activeQuoteLead || checklistSending) return;
-    if (!activeQuoteLead.email) return alert("No email address saved for this customer.");
-    setChecklistSending(true);
-    try {
-      const res = await fetch("/api/admin/checklist/send", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: activeQuoteLead.id }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) return alert(data.error || "Could not send the quote request.");
-      if (data.item) {
-        ++leadReadVersion.current;
-        setLeads(current => current.map(item => item.id === data.item.id ? { ...item, ...data.item } : item));
-        setActiveQuoteLead(current => current && current.id === data.item.id ? { ...current, ...data.item } : current);
-        publishCrmChange(data.item);
-      }
-      alert(`Smart Quote Request emailed to ${activeQuoteLead.email}.`);
-    } catch {
-      alert("Network error while sending the quote request.");
-    } finally {
-      setChecklistSending(false);
     }
   }
 
@@ -5181,10 +5162,8 @@ export default function CrmDashboardPage() {
                         </div>
                         <button
                           type="button"
-                          onClick={() => {
-                            const matched = getMatchedQuoteItemsForLead(activeQuoteLead);
-                            setQuoteItems(matched);
-                          }}
+                          onClick={() => setQuoteItems(suggestedQuoteItems)}
+                          disabled={suggestedQuoteItems.length === 0}
                           className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-600 text-white font-bold text-[11px] hover:bg-blue-700 transition-colors shadow-2xs cursor-pointer"
                           title="Re-populate quote items using the best matching standard templates"
                         >
@@ -5192,31 +5171,56 @@ export default function CrmDashboardPage() {
                         </button>
                       </div>
 
-                      {/* Selected Services Badges */}
-                      <div className="space-y-1.5">
-                        <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                          Selected Service(s):
-                        </div>
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          {parseCustomerServices(activeQuoteLead.service || activeQuoteLead.enquiry).map((svc, sIdx) => {
-                            const matchedTemplate = findBestTemplateForService(svc, activeQuoteLead.areas);
-                            return (
-                              <div
-                                key={sIdx}
-                                className="flex items-center gap-1.5 px-2.5 py-1 bg-white border border-blue-200 rounded-lg shadow-2xs text-xs font-semibold text-slate-800"
-                              >
-                                <span className="w-1.5 h-1.5 rounded-full bg-blue-600"></span>
-                                <span>{svc}</span>
-                                {matchedTemplate && (
-                                  <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-800 font-bold">
-                                    {matchedTemplate.code}
-                                  </span>
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
+                      <section className="space-y-2 rounded-lg border border-blue-200 bg-white p-3 text-xs text-slate-700">
+                        <h4 className="font-bold text-slate-900">Customer checklist</h4>
+                        {writtenQuoteChecklist || detailedQuoteChecklist ? (
+                          <>
+                            {writtenQuoteChecklist && <p className="whitespace-pre-wrap break-words leading-relaxed">{writtenQuoteChecklist}</p>}
+                            {detailedQuoteChecklist && <p className="whitespace-pre-wrap break-words leading-relaxed">{detailedQuoteChecklist}</p>}
+                          </>
+                        ) : (
+                          <>
+                            <p className="text-slate-600">Detailed checklist answers are unavailable for this request.</p>
+                            <dl className="space-y-1">
+                              {([
+                                ["Work requested", parseCustomerServices(activeQuoteLead.service || activeQuoteLead.enquiry).join(", ")],
+                                ["Areas", activeQuoteLead.areas],
+                                ["Leaking", activeQuoteLead.leaking],
+                                ["Damaged tiles", activeQuoteLead.damagedTiles],
+                              ] as const).filter(([, value]) => value).map(([label, value]) => (
+                                <div key={label} className="flex flex-wrap gap-x-2">
+                                  <dt className="font-semibold">{label}</dt>
+                                  <dd>{value}</dd>
+                                </div>
+                              ))}
+                            </dl>
+                          </>
+                        )}
+                      </section>
+
+                      {suggestedQuoteItems.length > 0 && (
+                        <section className="space-y-2 rounded-lg border border-blue-200 bg-white p-3 text-xs text-slate-700">
+                          <h4 className="font-bold text-slate-900">Suggested quote items</h4>
+                          <ul className="divide-y divide-slate-100">
+                            {suggestedQuoteItems.map((item, index) => (
+                              <li key={index} className="flex flex-wrap items-start justify-between gap-2 py-2">
+                                <div className="min-w-0 flex-1 space-y-1">
+                                  <p className="font-semibold text-slate-900">{item.service}</p>
+                                  <p className="text-[11px] text-slate-600">
+                                    {[item.code, item.qty > 1 ? `Quantity: ${item.qty}` : "", item.price === 0 ? "Price to confirm" : ""].filter(Boolean).join(" · ")}
+                                  </p>
+                                  {item.scope && <p className="whitespace-pre-wrap break-words">{item.scope}</p>}
+                                </div>
+                                <button type="button" aria-label={`Add ${item.service} to quote`}
+                                  onClick={() => setQuoteItems(items => [...items, { ...item }])}
+                                  className="inline-flex items-center gap-1 rounded-md border border-blue-200 px-2 py-1 font-semibold text-blue-700 hover:bg-blue-50">
+                                  <Plus className="h-3 w-3" /> Add
+                                </button>
+                              </li>
+                            ))}
+                          </ul>
+                        </section>
+                      )}
 
                       {/* Field Inspection Report Summary */}
                       <div className="flex items-center justify-between p-2 rounded-lg bg-white border border-teal-200 text-xs">
@@ -5282,90 +5286,6 @@ export default function CrmDashboardPage() {
                         </div>
                       </div>
 
-                      {/* Additional Property & Condition Details */}
-                      {(activeQuoteLead.areas || activeQuoteLead.leaking || activeQuoteLead.damagedTiles) && (
-                        <div className="flex flex-wrap items-center gap-1.5 pt-1.5 border-t border-slate-200/70 text-[11px]">
-                          {activeQuoteLead.areas && (
-                            <div className="flex items-center gap-1 px-2 py-0.5 bg-slate-100 border border-slate-200 rounded-md text-slate-700">
-                              <span className="text-slate-400 font-medium">Areas:</span>
-                              <b>{activeQuoteLead.areas}</b>
-                            </div>
-                          )}
-                          {activeQuoteLead.leaking && (
-                            <div
-                              className={`flex items-center gap-1 px-2 py-0.5 rounded-md border ${activeQuoteLead.leaking.toLowerCase() === "yes"
-                                ? "bg-rose-50 border-rose-200 text-rose-800 font-bold"
-                                : "bg-slate-100 border-slate-200 text-slate-700 font-medium"
-                                }`}
-                            >
-                              <span>Leaking:</span>
-                              <b>{activeQuoteLead.leaking}</b>
-                            </div>
-                          )}
-                          {activeQuoteLead.damagedTiles && (
-                            <div className="flex items-center gap-1 px-2 py-0.5 bg-amber-50 border border-amber-200 rounded-md text-amber-900">
-                              <span className="text-amber-600 font-medium">Tiles:</span>
-                              <b>{activeQuoteLead.damagedTiles}</b>
-                            </div>
-                          )}
-                        </div>
-                      )}
-
-                      {/* Regrouting & Resealing Checklist lifecycle + answers */}
-                      {(activeQuoteLead.email || activeQuoteLead.checklistSentAt || activeQuoteLead.checklistOpenedAt || activeQuoteLead.checklistFilledAt || activeQuoteLead.checklistSubmittedAt || activeQuoteLead.checklist || activeQuoteLead.quoteChecklist) && (
-                        <div className="p-2.5 rounded-lg bg-white border border-indigo-200 space-y-1.5">
-                          <div className="flex items-center justify-between gap-2">
-                            <div className="text-[10px] font-bold text-indigo-700 uppercase tracking-wider">
-                              Smart Quote Request
-                            </div>
-                            <button
-                              type="button"
-                              onClick={handleSendChecklist}
-                              disabled={checklistSending || !activeQuoteLead.email}
-                              title={activeQuoteLead.email ? "Email the Smart Quote Request to the customer" : "No email address saved"}
-                              className="flex items-center gap-1 px-2 py-1 rounded-md border border-indigo-300 bg-indigo-50 text-indigo-700 text-[10px] font-bold hover:bg-indigo-100 disabled:opacity-50 cursor-pointer shrink-0"
-                            >
-                              {checklistSending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
-                              {checklistSending ? "Sending…" : activeQuoteLead.checklistSentAt ? "Resend Request" : "Send Quote Request"}
-                            </button>
-                          </div>
-                          <div className="space-y-1 text-[10px] text-slate-600">
-                            {([
-                              ["Emailed", activeQuoteLead.checklistSentAt],
-                              ["Opened", activeQuoteLead.checklistOpenedAt],
-                              ["Started filling", activeQuoteLead.checklistFilledAt],
-                              ["Submitted", activeQuoteLead.checklistSubmittedAt],
-                            ] as const).map(([stage, time]) => (
-                              <div key={stage} className="flex items-center gap-1.5">
-                                <span className={`w-1.5 h-1.5 rounded-full ${time ? "bg-emerald-500" : "bg-slate-300"}`} />
-                                <span className="font-semibold text-slate-700">{stage}:</span>
-                                <span>
-                                  {time
-                                    ? new Date(time).toLocaleString("en-AU", { timeZone: "Australia/Sydney", day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })
-                                    : "Pending"}
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                          {activeQuoteLead.quoteChecklist && (
-                            <div>
-                              <h4 className="mb-1 text-xs font-bold text-slate-700">Job checklist answers</h4>
-                              <pre className="max-h-64 overflow-auto rounded bg-slate-50 p-2 text-xs leading-relaxed whitespace-pre-wrap break-words text-slate-700 font-sans">
-                                {jobChecklistText(activeQuoteLead.quoteChecklist, activeQuoteLead.leaking, activeQuoteLead.additionalBalconies)}
-                              </pre>
-                            </div>
-                          )}
-                          {activeQuoteLead.checklist?.answers?.pages?.length ? (
-                            <details open={!activeQuoteLead.quoteChecklist}>
-                              <summary className="cursor-pointer text-xs font-semibold text-slate-700">Detailed checklist answers</summary>
-                              <pre className="max-h-40 overflow-auto rounded bg-slate-50 p-2 text-xs leading-relaxed whitespace-pre-wrap break-words text-slate-700 font-sans">
-                                {checklistRequestText(activeQuoteLead.checklist.answers)}
-                              </pre>
-                            </details>
-                          ) : null}
-                        </div>
-                      )}
-
                       {/* Customer Enquiry / Message */}
                       {(activeQuoteLead.message || activeQuoteLead.notes) && (
                         <div className="p-2 rounded-lg bg-white/90 border border-slate-200/80 text-[11px] text-slate-700 space-y-0.5">
@@ -5376,54 +5296,6 @@ export default function CrmDashboardPage() {
                         </div>
                       )}
 
-                      {/* Quick Click-to-Add Individual Services */}
-                      <div className="space-y-1 pt-1.5 border-t border-slate-200/60">
-                        <div className="text-[10px] font-bold text-slate-400">
-                          Click to append matching item to quote:
-                        </div>
-                        <div className="flex flex-wrap items-center gap-1">
-                          {parseCustomerServices(activeQuoteLead.service || activeQuoteLead.enquiry).map((svc, sIdx) => {
-                            const matchedTemplate = findBestTemplateForService(svc, activeQuoteLead.areas);
-                            return (
-                              <button
-                                key={sIdx}
-                                type="button"
-                                onClick={() => {
-                                  if (matchedTemplate) {
-                                    setQuoteItems([
-                                      ...quoteItems,
-                                      {
-                                        templateNo: matchedTemplate.no,
-                                        code: matchedTemplate.code,
-                                        service: matchedTemplate.service,
-                                        scope: matchedTemplate.scope,
-                                        price: Number(matchedTemplate.price) || 0,
-                                        qty: 1
-                                      }
-                                    ]);
-                                  } else {
-                                    setQuoteItems([
-                                      ...quoteItems,
-                                      {
-                                        templateNo: "",
-                                        code: "",
-                                        service: svc,
-                                        scope: activeQuoteLead.message || activeQuoteLead.notes || "",
-                                        price: 0,
-                                        qty: 1
-                                      }
-                                    ]);
-                                  }
-                                }}
-                                className="flex items-center gap-1 px-2 py-1 rounded-md bg-white border border-blue-200 text-blue-600 text-[11px] font-semibold hover:bg-blue-50 shadow-2xs transition-colors cursor-pointer"
-                              >
-                                <Plus className="w-3 h-3" />
-                                <span>Add &ldquo;{svc}&rdquo;</span>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
                     </div>
 
                     <QuoteLeadDetailsForm lead={activeQuoteLead} onChange={setActiveQuoteLead} />

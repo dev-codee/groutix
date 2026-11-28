@@ -1,8 +1,7 @@
 // Checklist email delivery + lifecycle tracking.
 //
-// The website quote confirmation includes the checklist invitation. Staff can
-// also resend the checklist on its own. The invitation carries a tracking pixel
-// so the CRM can show when it was opened.
+// Staff can email the checklist on its own. The invitation carries a tracking
+// pixel so the CRM can show when it was opened.
 
 import { getSubmission, updateSubmission, appendActivity } from "./submissions";
 import { buildChecklistUrl, checklistTrackingPixel, type ChecklistAnswers } from "./checklist";
