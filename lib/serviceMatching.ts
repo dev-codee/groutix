@@ -279,6 +279,17 @@ export function findBestTemplateForService(
 /**
  * Generate intelligent initial quote items for a lead based on customer choices
  */
+function jobShowerTemplate(answer: (key: string) => string): ServiceTemplate | null {
+  const room = answer("location") === "Ensuite shower" ? "EN" : answer("location") === "Main bathroom shower" ? "MB" : "";
+  const size = answer("showerType") === "Single" ? "SS" : answer("showerType") === "Double" ? "DS" : "";
+  const scope = answer("showerScope");
+  if (!room || !size) return null;
+  if (scope === "Floor only") return uniqueTemplateForCode(`${room}-${size}-FO-EG`);
+  const surface = scope === "Walls and floor" ? "WF" : scope === "Walls only" ? "WO" : "";
+  const height = answer("wallHeight") === "To ceiling" ? "TC" : answer("wallHeight") === "To screen (~2.1 m)" ? "SH" : "";
+  return surface && height ? uniqueTemplateForCode(`${room}-${size}-${surface}-${height}-EG`) : null;
+}
+
 export function getMatchedQuoteItemsForLead(lead: {
   service?: string;
   enquiry?: string;
@@ -295,15 +306,17 @@ export function getMatchedQuoteItemsForLead(lead: {
   const work = answer("work").toLowerCase();
   const isShower = Boolean(checklist && answer("location") !== "Balcony");
   const groutWork = work === "grout and silicone";
-  const scope = answer("showerScope");
-  const matchingService = checklist && groutWork
-    ? isShower
-      ? `${answer("location")} ${answer("showerType")} shower ${scope} ${answer("wallHeight") === "To ceiling" ? "to ceiling" : ""} regrouting and resealing`
-      : "Balcony regrouting"
-    : lead.service || lead.enquiry || "";
-  // The catalog covers standard regrouting and resealing scopes.
-  const useCustomScope = checklist && (!groutWork || scope === "Selected areas");
-  const customerServices = useCustomScope ? [] : parseCustomerServices(matchingService);
+  const showerTemplate = isShower && groutWork ? jobShowerTemplate(answer) : null;
+  const siliconeItems = isShower && work === "silicone only"
+    ? (["verticalJoints", "horizontalJoints"] as const).flatMap((key) => {
+      const joint = key === "verticalJoints" ? "V" : "H";
+      const sides = checklist?.[key];
+      return Array.isArray(sides) ? sides.flatMap((side) => side === "Inside" ? [`C-${joint}-I`] : side === "Outside" ? [`C-${joint}-O`] : []) : [];
+    })
+    : [];
+  const matchingService = showerTemplate?.code || (checklist && !isShower && groutWork ? "BALCONY" : lead.service || lead.enquiry || "");
+  const useCustomScope = Boolean(checklist && (!groutWork || (isShower && !showerTemplate)));
+  const customerServices = useCustomScope ? siliconeItems : parseCustomerServices(matchingService);
   const areas = lead.areas || "";
   const items: MatchedQuoteItem[] = [];
   const usedTemplateCodes = new Set<string>();
@@ -337,12 +350,12 @@ export function getMatchedQuoteItemsForLead(lead: {
     }
   }
 
-  if (useCustomScope) {
+  if (useCustomScope && siliconeItems.length === 0) {
     items.push({
       templateNo: "",
       code: "",
       service: `${answer("location") || "Shower"} — ${answer("work") || "Assessment"}`,
-      scope: [answer("showerScope"), answer("workDetails"), answer("siliconeJoints"), answer("notes")].filter(Boolean).join(" · "),
+      scope: [answer("showerType"), answer("wallHeight"), answer("showerScope"), answer("workDetails"), answer("siliconeJoints"), answer("notes")].filter(Boolean).join(" · "),
       price: 0,
       qty: 1,
       matchedFrom: "Customer checklist",

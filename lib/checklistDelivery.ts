@@ -8,11 +8,12 @@ import { getSubmission, updateSubmission, appendActivity } from "./submissions";
 import { buildChecklistUrl, checklistTrackingPixel, type ChecklistAnswers } from "./checklist";
 import { sendEmail, wrapEmailHtml, getEmailLogoUrl } from "./email";
 import { emailActionButton } from "./emailPresentation";
+import { buildJobChecklistUrl } from "./quoteChecklistLink";
 
 const FROM_EMAIL = process.env.SMTP_FROM || process.env.SMTP_USER || "info@groutix.com";
 
-export function checklistInvitationHtml(id: string): string {
-  return `${emailActionButton(buildChecklistUrl(id), "Complete My Quote Form")}${checklistTrackingPixel(id)}`;
+export function checklistInvitationHtml(id: string, url = buildChecklistUrl(id)): string {
+  return `${emailActionButton(url, "Complete My Quote Form")}${checklistTrackingPixel(id)}`;
 }
 
 /** Record a successful email containing the checklist invitation. */
@@ -45,7 +46,7 @@ export async function sendChecklistEmail(
       fromEmail: FROM_EMAIL,
       subject: "Complete your Groutix Smart Quote Request",
       html: wrapEmailHtml(
-        `${checklistInvitationHtml(id)}
+        `${checklistInvitationHtml(id, buildJobChecklistUrl(id, lead?.quoteChecklistRevision))}
          <p style="margin:12px 0 6px;">Hi ${firstName}, add your details and photos so we can prepare your quote.</p>
          <p style="margin:0;font-size:13px;color:#64748b;">Remote quotes may require verification.</p>`,
         "Add your details and photos for your quote.",

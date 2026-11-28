@@ -2,9 +2,10 @@
 
 import { ITEM_CODE_GROUPS, skipsItemHeight, selectItemCodeOption, type ItemCodeSelection } from "@/lib/itemCodeChecklist";
 
-export function ItemCodeChecklist({ selection, onChange }: {
+export function ItemCodeChecklist({ selection, onChange, otherCodes }: {
   selection: ItemCodeSelection;
   onChange: (selection: ItemCodeSelection) => void;
+  otherCodes: [string, string][];
 }) {
   const skipHeight = skipsItemHeight(selection);
   return (
@@ -30,6 +31,17 @@ export function ItemCodeChecklist({ selection, onChange }: {
         ))}
       </div>
       {skipHeight && <p className="text-xs text-amber-800">FO / WO: height selection is not required. For walls only, check the saved item’s scope for its height before selecting.</p>}
+      {otherCodes.length > 0 && (
+        <label className="block text-xs font-semibold text-slate-700">
+          Other item codes
+          <select value={selection.standalone ?? ""}
+            onChange={event => onChange(event.target.value ? { standalone: event.target.value } : {})}
+            className="mt-1 block w-full rounded-lg border border-slate-200 bg-white p-2 text-xs font-normal text-slate-800">
+            <option value="">Choose an item code</option>
+            {otherCodes.map(([code, name]) => <option key={code} value={code}>{code} — {name}</option>)}
+          </select>
+        </label>
+      )}
     </section>
   );
 }

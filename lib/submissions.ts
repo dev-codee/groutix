@@ -4,6 +4,10 @@ import { isPrimaryBooking, canonicalLeadBookings } from "./leadBookings";
 import { withBookingCalendarLock } from "./bookingCalendarLock";
 import { acceptedQuoteFields, changesAcceptedQuote } from "./quoteIntegrity";
 import { bookingReminderCandidates } from "./bookingReminders";
+import { randomUUID } from "node:crypto";
+import { initialChecklistRevision } from "./quoteChecklistLink";
+import type { describeJobChecklist } from "./quoteJobChecklist";
+import type { QuoteBalcony } from "./quoteBalconies";
 // Data-access layer for form submissions (quotes + support tickets).
 //
 // Everything the admin panel reads and everything the public forms write goes
@@ -152,6 +156,7 @@ export interface SubmissionDoc {
   leaking?: string;
   message?: string;
   quoteChecklist?: Record<string, string | string[]>;
+  quoteChecklistRevision?: string;
   additionalBalconies?: import("@/lib/quoteBalconies").QuoteBalcony[];
   quoteRequestMode?: "quote" | "inspection";
   requestedInspectionAt?: string;
@@ -942,6 +947,49 @@ export async function appendSubmissionPhotos(id: string, photos: SubmissionPhoto
     { $set: { photosCount: { $size: "$photos" } } },
   ], { returnDocument: "after", projection: { photos: 1 } });
   return updated?.photos || null;
+}
+
+/** A revision can submit once. Save the answers, photos and receipt together. */
+export async function saveResentJobChecklist(
+  id: string,
+  revision: string,
+  job: ReturnType<typeof describeJobChecklist>,
+  additionalBalconies: QuoteBalcony[],
+  photos: SubmissionPhoto[],
+): Promise<boolean> {
+  if (!ObjectId.isValid(id)) return false;
+  const col = await collection(false);
+  const time = new Date().toISOString();
+  const activity = { time, actor: "customer", action: "Checklist submitted", detail: "Job checklist received" };
+  const saved = await col.updateOne({
+    _id: new ObjectId(id),
+    quoteChecklistRevision: revision === initialChecklistRevision ? { $exists: false } : revision,
+  }, [
+    { $set: {
+      photos: { $concatArrays: [{ $ifNull: ["$photos", []] }, { $literal: photos }] },
+      activity: { $concatArrays: [{ $ifNull: ["$activity", []] }, { $literal: [activity] }] },
+      additionalBalconies: { $literal: additionalBalconies },
+      areas: { $literal: job.areas },
+      service: { $literal: job.service },
+      leaking: { $literal: job.leaking },
+      damagedTiles: { $literal: job.damagedTiles },
+      ...(job.message ? { message: { $literal: job.message } } : {}),
+      checklistFilledAt: { $ifNull: ["$checklistFilledAt", time] },
+      checklistSubmittedAt: time,
+      quoteChecklistRevision: randomUUID(),
+    } },
+    { $set: {
+      photosCount: { $size: "$photos" },
+      quoteChecklist: { $mergeObjects: [
+        { $literal: job.quoteChecklist },
+        { photoLabels: { $map: {
+          input: "$photos", as: "photo",
+          in: { $cond: ["$$photo.category", { $concat: ["$$photo.category", " — ", "$$photo.name"] }, "$$photo.name"] },
+        } } },
+      ] },
+    } },
+  ]);
+  return saved.matchedCount === 1;
 }
 
 export async function updateSubmission(

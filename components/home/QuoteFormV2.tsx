@@ -16,6 +16,7 @@ import { useContact } from "@/components/SiteContentProvider";
 import QuoteChecklist, { emptyChecklist, type Checklist } from "@/components/QuoteChecklist";
 import { QUOTE_PHOTO_CATEGORIES } from "@/lib/quotePhotoCategories";
 import type { QuoteBalcony } from "@/lib/quoteBalconies";
+import { describeJobChecklist, jobChecklistErrors } from "@/lib/quoteJobChecklist";
 import { isCompletePropertyAddress, PROPERTY_ADDRESS_ERROR } from "@/lib/propertyAddress";
 
 const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
@@ -85,11 +86,22 @@ function FieldError({ msg }: { msg?: string }) {
   );
 }
 
+type ChecklistRequest = {
+  leadId: string;
+  token: string;
+  revision: string;
+  checklist: Checklist;
+  leaking: string;
+  additionalBalconies: QuoteBalcony[];
+  photoCount: number;
+};
+
 export default function QuoteFormV2({
   defaultService = "",
   idPrefix = "qf2",
   variant = "hero",
-}: { defaultService?: string; idPrefix?: string; variant?: "hero" | "modal" } = {}) {
+  checklistRequest,
+}: { defaultService?: string; idPrefix?: string; variant?: "hero" | "modal"; checklistRequest?: ChecklistRequest } = {}) {
   // Unique element ids, so the hero form and the pop-up form can sit on the same page.
   const P = idPrefix;
   const { phone: phoneDisplay, tel } = useContact();
@@ -97,11 +109,11 @@ export default function QuoteFormV2({
 
   const [mode, setMode] = useState<Mode>("quote");
   const [isPM, setIsPM] = useState(false);
-  const [step, setStep] = useState<StepId>("details");
-  const [checklist, setChecklist] = useState<Checklist>(emptyChecklist);
-  const [additionalBalconies, setAdditionalBalconies] = useState<QuoteBalcony[]>([]);
+  const [step, setStep] = useState<StepId>(checklistRequest ? "job" : "details");
+  const [checklist, setChecklist] = useState<Checklist>(checklistRequest?.checklist ?? emptyChecklist);
+  const [additionalBalconies, setAdditionalBalconies] = useState<QuoteBalcony[]>(checklistRequest?.additionalBalconies ?? []);
 
-  const [leaking, setLeaking] = useState("");
+  const [leaking, setLeaking] = useState(checklistRequest?.leaking ?? "");
   const [jobErrors, setJobErrors] = useState<Record<string, string>>({});
 
   const [data, setData] = useState({ firstName: "", lastName: "", agency: "", phone: "", email: "", address: "" });
@@ -248,30 +260,10 @@ export default function QuoteFormV2({
   };
 
   /* ---------- validation ---------- */
-  const hasBalcony = Boolean(checklist.balconyLeakage || checklist.balconyArea || checklist.balconyTileSizes.length || additionalBalconies.length);
-  const hasShower = Boolean(checklist.location || leaking || checklist.leakAreas.length || checklist.showerScope || checklist.showerType);
-  const balconyOnly = hasBalcony && !hasShower;
-
   const validateJob = () => {
-    const e: Record<string, string> = {};
-    if (!checklist.work) e.work = "Choose the work required";
-    if (!balconyOnly) {
-      if (!leaking) e.leaking = "Choose yes or no";
-      if (!checklist.location && !checklist.leakAreas.length) e.location = "Choose the shower area";
-      if (!checklist.showerScope) e.showerScope = "Choose the area to work on";
-    }
-    if (hasBalcony) {
-      if (!checklist.balconyLeakage) e.balconyLeakage = "Choose yes or no";
-      const area = Number(checklist.balconyArea);
-      if (!Number.isFinite(area) || area <= 0) e.balconyArea = "Enter a balcony area greater than zero";
-    }
-    additionalBalconies.forEach((balcony, index) => {
-      if (!balcony.leakage) e[`balcony-${index}-leakage`] = "Choose yes or no";
-      const area = Number(balcony.area);
-      if (!Number.isFinite(area) || area <= 0) e[`balcony-${index}-area`] = "Enter a balcony area greater than zero";
-    });
-    setJobErrors(e);
-    return Object.keys(e).length === 0;
+    const errors = jobChecklistErrors(checklist, leaking, additionalBalconies);
+    setJobErrors(errors);
+    return Object.keys(errors).length === 0;
   };
   const validateDetails = () => {
     const e: Record<string, string> = {};
@@ -316,7 +308,7 @@ export default function QuoteFormV2({
       requestAnimationFrame(() => rootRef.current?.querySelector<HTMLInputElement>('input[aria-invalid="true"]')?.focus());
       return;
     }
-    if (!photos.length && !photoAsk) {
+    if (!photos.length && !checklistRequest?.photoCount && !photoAsk) {
       setPhotoAsk(true);
       return;
     }
@@ -403,7 +395,7 @@ export default function QuoteFormV2({
 
   /* ---------- submit ---------- */
   const canBook = mode === "insp" && avail.status === "ok" && avail.days.some((day) => day.slots.some((slot) => !slot.booked));
-  const submitLabel = mode === "quote" ? "Get My Free Quote" : canBook ? "Book My Free Inspection" : "Submit Details";
+  const submitLabel = checklistRequest ? "Submit Checklist" : mode === "quote" ? "Get My Free Quote" : canBook ? "Book My Free Inspection" : "Submit Details";
 
   const validateInspection = () => {
     setInspError("");
@@ -421,8 +413,8 @@ export default function QuoteFormV2({
 
   const submit = async () => {
     setSubmitError("");
-    if (!validateDetails() || (isPM && !validateTenants()) || !validateInspection()) { back(); return; }
-    if (TURNSTILE_SITE_KEY && !captchaToken) {
+    if (!checklistRequest && (!validateDetails() || (isPM && !validateTenants()) || !validateInspection())) { back(); return; }
+    if (!checklistRequest && TURNSTILE_SITE_KEY && !captchaToken) {
       setSubmitError("Just a moment, we're checking you're not a robot. Please try again in a few seconds.");
       return;
     }
@@ -464,48 +456,49 @@ export default function QuoteFormV2({
       }
 
       const payload = new FormData();
-      if (isPM) {
-        payload.append("customerType", "Property Manager");
-        if (data.agency.trim()) payload.append("agency", data.agency.trim());
-        const valid = tenants.filter((t) => t.name.trim() || t.phone.trim());
-        if (valid.length) payload.append("tenants", JSON.stringify(valid));
+      if (checklistRequest) {
+        payload.append("token", checklistRequest.token);
+        payload.append("revision", checklistRequest.revision);
+      } else {
+        if (isPM) {
+          payload.append("customerType", "Property Manager");
+          if (data.agency.trim()) payload.append("agency", data.agency.trim());
+          const valid = tenants.filter(t => t.name.trim() || t.phone.trim());
+          if (valid.length) payload.append("tenants", JSON.stringify(valid));
+        }
+        payload.append("firstName", data.firstName.trim());
+        payload.append("lastName", data.lastName.trim());
+        payload.append("email", data.email.trim());
+        payload.append("phone", data.phone.trim());
+        payload.append("address", data.address.trim());
+        payload.append("quoteRequestMode", mode === "insp" ? "inspection" : "quote");
+        payload.append("sourcePage", window.location.pathname);
+        if (captchaToken) payload.append("cf-turnstile-response", captchaToken);
+        if (canBook && date && time) {
+          payload.append("inspectionDate", date);
+          payload.append("inspectionTime", time);
+        }
       }
-      payload.append("firstName", data.firstName.trim());
-      payload.append("lastName", data.lastName.trim());
-      payload.append("email", data.email.trim());
-      payload.append("phone", data.phone.trim());
-      payload.append("address", data.address.trim());
-      payload.append("quoteRequestMode", mode === "insp" ? "inspection" : "quote");
-      const location = balconyOnly ? "Balcony" : checklist.location || "Other shower";
-      const notes = [checklist.leakNotes, checklist.workDetails, checklist.notes, checklist.summaryNotes];
-      payload.append("message", notes.map((note) => note.trim()).filter(Boolean).join("\n"));
-      payload.append("areas", [location, hasBalcony && !balconyOnly ? "Balcony" : "", ...checklist.additional].filter(Boolean).join(", "));
-      const quotedService = `${balconyOnly ? "Balcony" : "Shower"} ${checklist.work}`;
-      payload.append("service", quotedService);
-      payload.append("enquiry", quotedService);
-      const damagedTiles = [
-        [checklist.wallTiles && `${checklist.wallTiles} wall`, ...checklist.wallTileActions].filter(Boolean).join(" "),
-        [checklist.floorTiles && `${checklist.floorTiles} floor`, ...checklist.floorTileActions].filter(Boolean).join(" "),
-      ];
-      payload.append("damagedTiles", damagedTiles.filter(Boolean).join(", "));
-      payload.append("leaking", balconyOnly ? checklist.balconyLeakage : leaking);
-      payload.append("checklist", JSON.stringify({ ...checklist, location: balconyOnly ? "Balcony" : checklist.location }));
+      const job = describeJobChecklist(checklist, leaking, additionalBalconies);
+      payload.append("message", job.message);
+      payload.append("areas", job.areas);
+      payload.append("service", job.service);
+      payload.append("enquiry", job.service);
+      payload.append("damagedTiles", job.damagedTiles);
+      payload.append("leaking", job.leaking);
+      payload.append("checklist", JSON.stringify(job.quoteChecklist));
       if (additionalBalconies.length) payload.append("additionalBalconies", JSON.stringify(additionalBalconies));
-      payload.append("sourcePage", typeof window !== "undefined" ? window.location.pathname : "");
-      if (captchaToken) payload.append("cf-turnstile-response", captchaToken);
-      if (canBook && date && time) {
-        payload.append("inspectionDate", date);
-        payload.append("inspectionTime", time);
-      }
       if (uploaded.length) payload.append("uploadedPhotos", JSON.stringify(uploaded));
       else photos.forEach(({ file, category }) => {
         payload.append("photos", file);
         payload.append("photoCategory", category);
       });
 
-      const res = await fetch("/api/quote", { method: "POST", body: payload });
+      const endpoint = checklistRequest ? `/api/checklist/${encodeURIComponent(checklistRequest.leadId)}/job` : "/api/quote";
+      const res = await fetch(endpoint, { method: "POST", body: payload });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
+        if (checklistRequest && body.errors) setJobErrors(body.errors);
         // Slot taken between loading and submitting: reload live times and let them re-pick.
         if (body.slotConflict) {
           setTime("");
@@ -523,7 +516,7 @@ export default function QuoteFormV2({
         mode,
         booked: result.inspectionBooked && date && time && avail.status === "ok" ? `${dayLabel(date)}, ${formatSlotRange(time, avail.durationMinutes)}` : null,
       });
-      trackEvent("quote_submit", { form: "quote_form_v2", mode });
+      if (!checklistRequest) trackEvent("quote_submit", { form: "quote_form_v2", mode });
       requestAnimationFrame(scrollTop);
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
@@ -655,7 +648,7 @@ export default function QuoteFormV2({
 
   const nav = (cta: React.ReactNode) => (
     <div className="mt-auto flex gap-2 pt-3">
-      {stepIndex > 0 && (
+      {stepIndex > 0 && !checklistRequest && (
         <button type="button" onClick={back} disabled={loading} className={backBtn}>← Back</button>
       )}
       <div className="min-w-0 flex-1">{cta}</div>
@@ -701,56 +694,60 @@ export default function QuoteFormV2({
           <a href={tel} className="mt-2 inline-block rounded-xl border-[1.5px] border-[#1A2A8C] px-5 py-2.5 text-[17px] font-bold text-[#1A2A8C] hover:bg-[#EEF3FF]">
             Call {phoneDisplay}
           </a>
-          <button type="button" onClick={reset} className="mx-auto mt-4 block text-[15px] text-neutral-500 underline">
+          {!checklistRequest && <button type="button" onClick={reset} className="mx-auto mt-4 block text-[15px] text-neutral-500 underline">
             Submit another request
-          </button>
+          </button>}
         </div>
       ) : (
         <>
-          <h2 className="text-[20px] font-bold leading-tight text-[#001F97]">Request a Quote</h2>
+          <h2 className="text-[20px] font-bold leading-tight text-[#001F97]">{checklistRequest ? "Job Checklist" : "Request a Quote"}</h2>
 
-          <div className="mb-2.5 mt-3.5 grid grid-cols-2 gap-2.5">
-            {([
-              ["quote", "Just get a quote", "Send details or photos"],
-              ["insp", "Book free inspection", "Pick a day, we come to you"],
-            ] as const).map(([m, t, s]) => (
-              <button
-                key={m}
-                type="button"
-                aria-pressed={mode === m}
-                disabled={loading}
-                onClick={() => {
-                  setMode(m);
-                  setInspError("");
-                  setCalendarOpen(false);
-                  if (m === "insp" && m !== mode && step === "job") back();
-                  if (!startedRef.current) {
-                    startedRef.current = true;
-                    trackEvent("form_start", { form: "quote_form_v2", mode: m });
-                  }
-                }}
-                className={`relative rounded-xl border-[1.5px] px-3 py-1.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[#2F63CC]/40 ${
-                  mode === m ? "border-[#001F97] bg-[#EEF3FF] shadow-[0_0_0_3px_rgba(47,99,204,0.15)]" : "border-[#DBE3F0] bg-white hover:border-[#2F63CC]"
-                }`}
-              >
-                {m === "quote" && (
-                  <span className="absolute -top-2.5 right-2.5 rounded-[10px] bg-[#001F97] px-2 py-0.5 text-[10.5px] font-bold leading-tight text-white">Recommended</span>
-                )}
-                <strong className="block text-sm leading-snug">{t}</strong>
-                <span className="block text-xs leading-snug text-neutral-500">{s}</span>
-              </button>
-            ))}
-          </div>
+          {!checklistRequest && (
+            <>
+              <div className="mb-2.5 mt-3.5 grid grid-cols-2 gap-2.5">
+                {([
+                  ["quote", "Just get a quote", "Send details or photos"],
+                  ["insp", "Book free inspection", "Pick a day, we come to you"],
+                ] as const).map(([m, t, s]) => (
+                  <button
+                    key={m}
+                    type="button"
+                    aria-pressed={mode === m}
+                    disabled={loading}
+                    onClick={() => {
+                      setMode(m);
+                      setInspError("");
+                      setCalendarOpen(false);
+                      if (m === "insp" && m !== mode && step === "job") back();
+                      if (!startedRef.current) {
+                        startedRef.current = true;
+                        trackEvent("form_start", { form: "quote_form_v2", mode: m });
+                      }
+                    }}
+                    className={`relative rounded-xl border-[1.5px] px-3 py-1.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[#2F63CC]/40 ${
+                      mode === m ? "border-[#001F97] bg-[#EEF3FF] shadow-[0_0_0_3px_rgba(47,99,204,0.15)]" : "border-[#DBE3F0] bg-white hover:border-[#2F63CC]"
+                    }`}
+                  >
+                    {m === "quote" && (
+                      <span className="absolute -top-2.5 right-2.5 rounded-[10px] bg-[#001F97] px-2 py-0.5 text-[10.5px] font-bold leading-tight text-white">Recommended</span>
+                    )}
+                    <strong className="block text-sm leading-snug">{t}</strong>
+                    <span className="block text-xs leading-snug text-neutral-500">{s}</span>
+                  </button>
+                ))}
+              </div>
 
-          <div className="mb-1.5 flex gap-1.5" aria-hidden="true">
-            {steps.map((s, i) => (
-              <i key={s} className={`h-[5px] flex-1 rounded-sm transition-colors ${i <= stepIndex ? "bg-[#2F63CC]" : "bg-slate-200"}`} />
-            ))}
-          </div>
-          <div className="mb-1 flex justify-between text-xs text-neutral-500" aria-live="polite">
-            <span>Step {stepIndex + 1} of {steps.length} · {stepLabels[step]}</span>
-            <span>Just a few details</span>
-          </div>
+              <div className="mb-1.5 flex gap-1.5" aria-hidden="true">
+                {steps.map((s, i) => (
+                  <i key={s} className={`h-[5px] flex-1 rounded-sm transition-colors ${i <= stepIndex ? "bg-[#2F63CC]" : "bg-slate-200"}`} />
+                ))}
+              </div>
+              <div className="mb-1 flex justify-between text-xs text-neutral-500" aria-live="polite">
+                <span>Step {stepIndex + 1} of {steps.length} · {stepLabels[step]}</span>
+                <span>Just a few details</span>
+              </div>
+            </>
+          )}
 
           {/* STEP 1: DETAILS */}
           {step === "details" && (
@@ -991,6 +988,7 @@ export default function QuoteFormV2({
                       }} />
                     </div>
                     <FieldError msg={photoError} />
+                    {Boolean(checklistRequest?.photoCount) && <p className="text-xs text-neutral-600">{checklistRequest?.photoCount} existing photo(s) on your request.</p>}
                     {photos.length > 0 && <>
                       <ul className="space-y-1" aria-label="Added photos">
                         {photos.map(({ file, category }, index) => (

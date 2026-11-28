@@ -30,7 +30,7 @@ import {
 } from "@/lib/serviceMatching";
 import type { QuoteTemplateJSON } from "@/lib/quoteTemplates";
 import { ItemCodeChecklist } from "@/components/admin/ItemCodeChecklist";
-import { matchesItemCodeChecklist, type ItemCodeSelection } from "@/lib/itemCodeChecklist";
+import { matchesItemCodeChecklist, standaloneItemCodes, type ItemCodeSelection } from "@/lib/itemCodeChecklist";
 
 interface TemplatePickerProps {
   selectedTemplateNo?: string | number;
@@ -203,6 +203,7 @@ export function TemplatePicker({
   const customTemplatesCount = useMemo(() => {
     return allTemplates.filter((t) => t.isCustom).length;
   }, [allTemplates]);
+  const otherItemCodes = useMemo(() => standaloneItemCodes(allTemplates), [allTemplates]);
 
   // Filter templates
   const filteredTemplates = useMemo(() => {
@@ -435,7 +436,13 @@ export function TemplatePicker({
 
             {/* Search Controls */}
             <div className="p-4 space-y-3 border-b border-slate-100 bg-white">
-              <ItemCodeChecklist selection={itemCodeSelection} onChange={setItemCodeSelection} />
+              <ItemCodeChecklist selection={itemCodeSelection} otherCodes={otherItemCodes} onChange={(selection) => {
+                setItemCodeSelection(selection);
+                if (selection.standalone) {
+                  setSearchQuery("");
+                  setSelectedCategory("All");
+                }
+              }} />
               <div className="relative">
                 <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                 <input

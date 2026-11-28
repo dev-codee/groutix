@@ -1,4 +1,4 @@
-import { quotePhotoCategory } from "@/lib/quotePhotoCategories";
+import { readQuotePhotos } from "@/lib/quotePhotoUpload";
 import { parseAdditionalBalconies, type QuoteBalcony } from "@/lib/quoteBalconies";
 import { inspectionConfirmationHtml, inspectionConfirmationSms } from "@/lib/inspectionConfirmation";
 import { isCompletePropertyAddress, PROPERTY_ADDRESS_ERROR } from "@/lib/propertyAddress";
@@ -7,7 +7,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { rateLimit } from "@/lib/rateLimit";
 import { recordSubmission, updateEmailDelivered } from "@/lib/submissions";
 import { getSiteContent } from "@/lib/siteContentServer";
-import { sendEmail, isInternalEmailAlertEnabled, isEmailConfigured, wrapEmailHtml, getEmailLogoUrl, type EmailAttachment } from "@/lib/email";
+import { sendEmail, isInternalEmailAlertEnabled, isEmailConfigured, wrapEmailHtml, getEmailLogoUrl } from "@/lib/email";
 import { sendSms } from "@/lib/sms";
 import { buildBookingUrl, buildBookingSmsUrl } from "@/lib/bookingToken";
 import { resolveArea, isSlotOffered } from "@/lib/scheduling";
@@ -15,7 +15,6 @@ import { createBooking, isSlotTaken } from "@/lib/bookings";
 import { getBookingRules } from "@/lib/bookingRulesServer";
 import { getZoneRules } from "@/lib/zoneRulesServer";
 import { updateSubmission, appendActivity, getNextJobNo, assignInspectorOnBooking } from "@/lib/submissions";
-import { isCloudinaryConfigured, uploadBufferToCloudinary } from "@/lib/cloudinary";
 import { checklistInvitationHtml, recordChecklistEmailSent } from "@/lib/checklistDelivery";
 
 export const runtime = "nodejs";
@@ -69,10 +68,6 @@ async function verifyTurnstile(token: string, ip: string): Promise<boolean> {
     return false;
   }
 }
-
-// Max total attachment size. Brevo caps the whole message near 10MB for the
-// transactional API; stay under it.
-const MAX_ATTACHMENT_BYTES = 9 * 1024 * 1024;
 
 function esc(value: string) {
   return value
@@ -232,114 +227,11 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Collect optional photo attachments (Brevo wants base64-encoded content).
-  const photos = form.getAll("photos").filter((f): f is File => f instanceof File && f.size > 0);
-
-  let totalBytes = 0;
-  for (const file of photos) {
-    totalBytes += file.size;
+  const uploaded = await readQuotePhotos(form);
+  if (!uploaded) {
+    return NextResponse.json({ error: "Total attachments exceed the maximum size limit. Please upload smaller images." }, { status: 400 });
   }
-  if (totalBytes > MAX_ATTACHMENT_BYTES) {
-    return NextResponse.json(
-      { error: "Total attachments exceed the maximum size limit. Please upload smaller images." },
-      { status: 400 }
-    );
-  }
-
-  const attachments: EmailAttachment[] = [];
-  const submissionPhotos: import("@/lib/submissions").SubmissionPhoto[] = [];
-
-  // 1) Check for pre-uploaded photos from direct browser Cloudinary upload
-  const uploadedPhotosRaw = form.get("uploadedPhotos");
-  if (typeof uploadedPhotosRaw === "string" && uploadedPhotosRaw.trim()) {
-    try {
-      const parsed = JSON.parse(uploadedPhotosRaw);
-      if (Array.isArray(parsed)) {
-        for (const p of parsed) {
-          if (p && (p.url || p.secureUrl)) {
-            submissionPhotos.push({
-              name: p.name || "photo",
-              category: quotePhotoCategory(p.category),
-              contentType: p.contentType,
-              url: p.secureUrl || p.url,
-              secureUrl: p.secureUrl || p.url,
-              publicId: p.publicId,
-              width: p.width,
-              height: p.height,
-              size: p.size,
-              added: p.added || new Date().toISOString(),
-            });
-          }
-        }
-      }
-    } catch (err) {
-      console.error("Failed to parse uploadedPhotos:", err);
-    }
-  }
-
-  // 2) Fallback: Process direct multipart file uploads (if direct upload was bypassed)
-  const photoCategories = form.getAll("photoCategory");
-  for (const [index, file] of photos.entries()) {
-    const category = quotePhotoCategory(photoCategories[index]);
-    const buffer = Buffer.from(await file.arrayBuffer());
-    const ext = (file.name.split(".").pop() || "").toLowerCase();
-    let mime = file.type;
-    if (!mime) {
-      if (ext === "pdf") mime = "application/pdf";
-      else if (ext === "png") mime = "image/png";
-      else if (ext === "webp") mime = "image/webp";
-      else if (ext === "jpg" || ext === "jpeg") mime = "image/jpeg";
-      else mime = "application/octet-stream";
-    }
-
-    // Prepare Brevo email attachment
-    attachments.push({
-      name: file.name || "photo",
-      content: buffer.toString("base64"),
-      contentType: mime,
-    });
-
-    // Upload to Cloudinary if configured
-    if (isCloudinaryConfigured()) {
-      try {
-        const cldRes = await uploadBufferToCloudinary(buffer, {
-          folder: "groutix/quotes",
-          filename: file.name,
-          tags: ["quote_submission"],
-        });
-        submissionPhotos.push({
-          name: file.name || "photo",
-          category,
-          contentType: mime,
-          url: cldRes.secureUrl,
-          secureUrl: cldRes.secureUrl,
-          publicId: cldRes.publicId,
-          width: cldRes.width,
-          height: cldRes.height,
-          size: cldRes.bytes,
-          added: new Date().toISOString(),
-        });
-      } catch (uploadErr) {
-        console.error("Cloudinary upload failed (falling back to dataUrl):", uploadErr);
-        submissionPhotos.push({
-          name: file.name || "photo",
-          category,
-          contentType: mime,
-          dataUrl: `data:${mime};base64,${buffer.toString("base64")}`,
-          added: new Date().toISOString(),
-        });
-      }
-    } else {
-      submissionPhotos.push({
-        name: file.name || "photo",
-        category,
-        contentType: mime,
-        dataUrl: `data:${mime};base64,${buffer.toString("base64")}`,
-        added: new Date().toISOString(),
-      });
-    }
-  }
-
+  const { attachments, submissionPhotos } = uploaded;
   if (checklist) {
     checklist.photoLabels = submissionPhotos.map((photo) => photo.category ? `${photo.category} — ${photo.name}` : photo.name);
   }

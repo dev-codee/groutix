@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import type { Checklist } from "@/lib/quoteJobChecklist";
 import { QUOTE_TILE_SIZES, type QuoteBalcony } from "@/lib/quoteBalconies";
 
 const YES_NO = ["Yes", "No"];
@@ -26,17 +27,7 @@ const optionLabels: Record<string, string> = {
 const ALL_JOINTS = "Both vertical & horizontal – inside & outside";
 const req = <span className="text-red-600" aria-hidden="true">*</span>;
 
-export type Checklist = {
-  location: string; showerType: string; wallHeight: string; work: string; showerScope: string;
-  wallCount: string; tileSize: string; mosaic: string; screen: string; siliconeJoints: string;
-  wallTiles: string; floorTiles: string; tileAction: string; balconyArea: string;
-  balconyTileSize: string; additional: string[]; notes: string;
-  leakAreas: string[]; tileSizes: string[]; balconyTileSizes: string[];
-  verticalJoints: string[]; horizontalJoints: string[]; tileActions: string[];
-  leakNotes: string; balconyLeakage: string;
-  workDetails: string; summaryNotes: string; wallTileActions: string[]; floorTileActions: string[];
-};
-export const emptyChecklist: Checklist = { location: "", showerType: "", wallHeight: "", work: "", showerScope: "", wallCount: "", tileSize: "", mosaic: "", screen: "", siliconeJoints: "", wallTiles: "", floorTiles: "", tileAction: "", balconyArea: "", balconyTileSize: "", additional: [], notes: "", leakAreas: [], tileSizes: [], balconyTileSizes: [], verticalJoints: [], horizontalJoints: [], tileActions: [], leakNotes: "", balconyLeakage: "", workDetails: "", summaryNotes: "", wallTileActions: [], floorTileActions: [] };
+export { emptyChecklist, type Checklist } from "@/lib/quoteJobChecklist";
 
 const checklistGrid = "grid grid-cols-1 gap-x-4 gap-y-2 @min-[440px]:grid-cols-2";
 const checklistColumn = "flex min-w-0 flex-col gap-2 @min-[440px]:[&>section]:flex @min-[440px]:[&>section]:grow @min-[440px]:[&>section]:flex-col @min-[440px]:[&>section]:justify-center";
