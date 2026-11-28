@@ -5165,7 +5165,7 @@ export default function CrmDashboardPage() {
                           onClick={() => setQuoteItems(suggestedQuoteItems)}
                           disabled={suggestedQuoteItems.length === 0}
                           className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-600 text-white font-bold text-[11px] hover:bg-blue-700 transition-colors shadow-2xs cursor-pointer"
-                          title="Re-populate quote items using the best matching standard templates"
+                          title="Replace the current quote items with all suggestions"
                         >
                           Auto-Match All Items
                         </button>

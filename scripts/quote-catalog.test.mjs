@@ -38,7 +38,9 @@ test("older grout-only leads suggest the requested scope and saved tile counts",
   assert.equal(items[0].service, "Shower Grout only");
   assert.equal(items[0].code, "");
   assert.match(items[0].scope, /Main bathroom shower/);
-  assert.equal(items[1].qty, 4);
+  assert.equal(items[1].service, "Balcony — additional work");
+  assert.equal(items[2].service, "Kitchen — additional work");
+  assert.equal(items[3].qty, 4);
 });
 
 const byCode = code => SERVICE_TEMPLATES.find(item => item.code === code);

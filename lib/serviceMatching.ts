@@ -304,7 +304,8 @@ export function getMatchedQuoteItemsForLead(lead: {
   const checklist = lead.quoteChecklist;
   const answer = (key: string) => typeof checklist?.[key] === "string" ? checklist[key] as string : "";
   const limitedService = !checklist && /^(Shower|Balcony) (Grout only|Silicone only)$/i.exec(lead.service || lead.enquiry || "");
-  const work = (answer("work") || (limitedService ? limitedService[2] : "")).toLowerCase();
+  const savedAreas = limitedService ? lead.areas?.split(",").map(area => area.trim()).filter(Boolean) ?? [] : [];
+  const work = answer("work").toLowerCase();
   const isShower = Boolean(checklist && answer("location") !== "Balcony");
   const groutWork = work === "grout and silicone";
   const showerTemplate = isShower && groutWork ? jobShowerTemplate(answer) : null;
@@ -357,7 +358,7 @@ export function getMatchedQuoteItemsForLead(lead: {
       code: "",
       service: limitedService ? limitedService[0] : `${answer("location") || "Shower"} — ${answer("work") || "Assessment"}`,
       scope: limitedService
-        ? lead.areas || lead.message || lead.notes || ""
+        ? savedAreas[0] || lead.message || lead.notes || ""
         : [answer("showerType"), answer("wallHeight"), answer("showerScope"), answer("workDetails"), answer("siliconeJoints"), answer("notes")].filter(Boolean).join(" · "),
       price: 0,
       qty: 1,
@@ -381,10 +382,9 @@ export function getMatchedQuoteItemsForLead(lead: {
     });
   });
 
-  if (checklist && Array.isArray(checklist.additional)) {
-    for (const area of checklist.additional) {
-      items.push({ templateNo: "", code: "", service: `${area} — additional work`, scope: "Confirm work and price from customer photos or inspection.", price: 0, qty: 1, matchedFrom: "Customer checklist" });
-    }
+  const additionalAreas = Array.isArray(checklist?.additional) ? checklist.additional : savedAreas.slice(1);
+  for (const area of additionalAreas) {
+    items.push({ templateNo: "", code: "", service: `${area} — additional work`, scope: "Confirm work and price from customer photos or inspection.", price: 0, qty: 1, matchedFrom: "Customer checklist" });
   }
 
   // If customer reported cracked/loose tiles and not yet in quote, suggest cracked tile repair
