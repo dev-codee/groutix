@@ -74,6 +74,7 @@ export function checklistRequestText(answers: ChecklistAnswers): string {
     const isBalcony = page.service === "Balcony" || Boolean(page.balconyLeakage || page.balconyArea || page.balconyTileSize);
     const heading = `${page.service || (isBalcony && !page.showerType ? "Balcony" : "Shower")} ${index + 1}${page.areaName ? ` — ${page.areaName}` : ""}`;
     const pageLines: string[] = [];
+    if (page.areaDescription) pageLines.push(`Area description: ${page.areaDescription}`);
     if (page.issues?.length) pageLines.push(`Reported problems: ${page.issues.join(", ")}`);
     if (page.dimensionsLength || page.dimensionsWidth) pageLines.push(`Dimensions: ${page.dimensionsLength || "?"} × ${page.dimensionsWidth || "?"} ${page.service === "Shower" ? "mm" : "m"}`);
     if (page.measurementsUnknown) pageLines.push("Measurements: not sure");
@@ -99,7 +100,7 @@ export function checklistRequestText(answers: ChecklistAnswers): string {
     if (page.wallHeight) pageLines.push(`Wall height: ${optionLabel(page.wallHeight, CHECKLIST_OPTIONS.wallHeight)}`);
     if (page.workRequired) pageLines.push(`Work required: ${optionLabel(page.workRequired, CHECKLIST_OPTIONS.workRequired)}`);
     if (page.selectiveAreas?.trim()) pageLines.push(`Selective areas: ${page.selectiveAreas.trim()}`);
-    if (page.numberOfWalls) pageLines.push(`Tiled walls: ${page.numberOfWalls}`);
+    if (page.numberOfWalls) pageLines.push(`Tiled walls: ${page.numberOfWalls === "Not s" ? "Not sure" : page.numberOfWalls}`);
     if (page.tileSize) pageLines.push(`Tile size: ${page.tileSize}`);
     if (page.mosaic) pageLines.push(`Mosaic tiles: ${page.mosaic}`);
     if (page.showerScreen) pageLines.push(`Shower screen: ${page.showerScreen}`);

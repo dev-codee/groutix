@@ -53,6 +53,7 @@ function sanitizeAnswers(raw: unknown): ChecklistAnswers {
           return [[id, { label: str(answer.label, 160), value: Array.isArray(answer.value) ? strList(answer.value) : str(answer.value) }]];
         })) : {},
       areaName: str(page.areaName, 120),
+      areaDescription: str(page.areaDescription),
       issues: strList(page.issues),
       dimensionsLength: str(page.dimensionsLength, 20),
       dimensionsWidth: str(page.dimensionsWidth, 20),

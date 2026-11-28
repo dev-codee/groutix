@@ -1,5 +1,6 @@
 import { SERVICE_TEMPLATES, uniqueTemplateForCode, type ServiceTemplate } from "@/lib/serviceTemplates";
 import type { QuoteBalcony } from "@/lib/quoteBalconies";
+import { checklistToQuoteItems, type ChecklistDoc } from "@/lib/checklist";
 
 export interface MatchedQuoteItem {
   templateNo: string;
@@ -298,13 +299,21 @@ export function getMatchedQuoteItemsForLead(lead: {
   areas?: string;
   damagedTiles?: string;
   leaking?: string;
+  checklist?: ChecklistDoc;
+  checklistSubmittedAt?: string;
   quoteChecklist?: Record<string, string | string[]>;
   additionalBalconies?: QuoteBalcony[];
 }): MatchedQuoteItem[] {
+  const detailed = lead.checklist;
+  const newerJobChecklist = lead.quoteChecklist && detailed?.submittedAt && lead.checklistSubmittedAt
+    && lead.checklistSubmittedAt > detailed.submittedAt;
+  const detailedItems = detailed?.answers && !newerJobChecklist ? checklistToQuoteItems(detailed.answers, lead) : [];
+  if (detailedItems?.length) return detailedItems;
+
   const checklist = lead.quoteChecklist;
   const answer = (key: string) => typeof checklist?.[key] === "string" ? checklist[key] as string : "";
-  const limitedService = !checklist && /^(Shower|Balcony) (Grout only|Silicone only)$/i.exec(lead.service || lead.enquiry || "");
-  const savedAreas = limitedService ? lead.areas?.split(",").map(area => area.trim()).filter(Boolean) ?? [] : [];
+  const unscopedRequest = !checklist && /^(Shower|Balcony) (Grout only|Silicone only|Grout and silicone)$/i.exec(lead.service || lead.enquiry || "");
+  const savedAreas = unscopedRequest ? lead.areas?.split(",").map(area => area.trim()).filter(Boolean) ?? [] : [];
   const work = answer("work").toLowerCase();
   const isShower = Boolean(checklist && answer("location") !== "Balcony");
   const groutWork = work === "grout and silicone";
@@ -317,7 +326,7 @@ export function getMatchedQuoteItemsForLead(lead: {
     })
     : [];
   const matchingService = showerTemplate?.code || (checklist && !isShower && groutWork ? "BALCONY" : lead.service || lead.enquiry || "");
-  const useCustomScope = Boolean(limitedService || (checklist && (!groutWork || (isShower && !showerTemplate))));
+  const useCustomScope = Boolean(unscopedRequest || (checklist && (!groutWork || (isShower && !showerTemplate))));
   const customerServices = useCustomScope ? siliconeItems : parseCustomerServices(matchingService);
   const areas = lead.areas || "";
   const items: MatchedQuoteItem[] = [];
@@ -356,9 +365,9 @@ export function getMatchedQuoteItemsForLead(lead: {
     items.push({
       templateNo: "",
       code: "",
-      service: limitedService ? limitedService[0] : `${answer("location") || "Shower"} — ${answer("work") || "Assessment"}`,
-      scope: limitedService
-        ? savedAreas[0] || lead.message || lead.notes || ""
+      service: unscopedRequest ? unscopedRequest[0] : `${answer("location") || "Shower"} — ${answer("work") || "Assessment"}`,
+      scope: unscopedRequest
+        ? [savedAreas[0], lead.message || lead.notes, "Confirm work and pricing."].filter(Boolean).join(" · ")
         : [answer("showerType"), answer("wallHeight"), answer("showerScope"), answer("workDetails"), answer("siliconeJoints"), answer("notes")].filter(Boolean).join(" · "),
       price: 0,
       qty: 1,
@@ -388,29 +397,48 @@ export function getMatchedQuoteItemsForLead(lead: {
   }
 
   // If customer reported cracked/loose tiles and not yet in quote, suggest cracked tile repair
-  const damaged = (lead.damagedTiles || "").toLowerCase();
-  const tileCounts = [
-    answer("wallTiles") || /(?:^|,\s*)(\d+\+?) wall\b/.exec(damaged)?.[1] || "",
-    answer("floorTiles") || /(?:^|,\s*)(\d+\+?) floor\b/.exec(damaged)?.[1] || "",
-  ];
-  const exactTileCount = tileCounts.reduce((total, count) => total + (/^\d+$/.test(count) ? Number(count) : 0), 0);
-  const tileCount = exactTileCount > 0 || tileCounts.includes("4+");
-  if (
-    (tileCount || damaged.includes("cracked") || damaged.includes("loose") || damaged.includes("drummy")) &&
-    !usedTemplateCodes.has("CT - GROUTIX TO SUPPLY & INSTALL") &&
-    !usedTemplateCodes.has("TILE REPAIR") &&
-    !usedTemplateCodes.has("CT - (CLIENT TO SOURCE)")
-  ) {
-    const ctTemplate = uniqueTemplateForCode(/loose|drummy/.test(damaged) ? "TILE REPAIR" : "CT - GROUTIX TO SUPPLY & INSTALL");
-    if (ctTemplate) {
+  const damagedTiles = lead.damagedTiles || "";
+  const damaged = damagedTiles.toLowerCase();
+  if (!["CT - GROUTIX TO SUPPLY & INSTALL", "TILE REPAIR", "CT - (CLIENT TO SOURCE)"].some(code => usedTemplateCodes.has(code))) {
+    const legacyCondition = /loose|drummy/.test(damaged) ? "Repair" : "Replace";
+    const generalActions = checklist?.tileActions?.length ? checklist.tileActions : answer("tileAction");
+    const tileGroups = new Map<string, { qty: number; details: string[] }>();
+    for (const area of ["wall", "floor"] as const) {
+      const saved = new RegExp(`(?:^|,\\s*)(\\d+\\+?) ${area}\\b([^,]*)`).exec(damaged);
+      const count = answer(`${area}Tiles`) || saved?.[1] || "";
+      if (!/^[1-9]\d*\+?$/.test(count)) continue;
+
+      const areaActions = checklist?.[`${area}TileActions`];
+      const selected = Array.isArray(areaActions) && areaActions.length
+        ? areaActions
+        : saved?.[2].match(/repair|replace/g) || generalActions;
+      const actions = Array.isArray(selected) ? selected : selected ? [selected] : [legacyCondition];
+      const distinctActions = [...new Set(actions.map(value => value.toLowerCase()))];
+      let code = "";
+      if (distinctActions.length === 1 && !count.endsWith("+")) {
+        if (distinctActions[0] === "repair") code = "TILE REPAIR";
+        if (distinctActions[0] === "replace") code = "CT - GROUTIX TO SUPPLY & INSTALL";
+      }
+      const group = tileGroups.get(code) ?? { qty: 0, details: [] };
+      group.qty += Number.parseInt(count, 10);
+      group.details.push(`${count} ${area} tiles (${actions.join(", ")})`);
+      tileGroups.set(code, group);
+    }
+
+    if (tileGroups.size === 0 && /cracked|loose|drummy/.test(damaged)) {
+      tileGroups.set(legacyCondition === "Repair" ? "TILE REPAIR" : "CT - GROUTIX TO SUPPLY & INSTALL", { qty: 1, details: [damagedTiles] });
+    }
+    for (const [code, { qty, details }] of tileGroups) {
+      const template = code && uniqueTemplateForCode(code);
+      const detail = details.join(" · ");
       items.push({
-        templateNo: ctTemplate.no,
-        code: ctTemplate.code,
-        service: ctTemplate.service,
-        scope: ctTemplate.scope,
-        price: Number(ctTemplate.price) || 0,
-        qty: exactTileCount > 0 && !tileCounts.includes("4+") ? exactTileCount : 1,
-        matchedFrom: `Customer condition: ${lead.damagedTiles || `${answer("wallTiles")} wall, ${answer("floorTiles")} floor tiles`}`,
+        templateNo: template ? template.no : "",
+        code: template ? template.code : "",
+        service: template ? template.service : "Tile work — confirm scope and quantity",
+        scope: template ? template.scope : detail,
+        price: template ? Number(template.price) || 0 : 0,
+        qty: template ? qty : 1,
+        matchedFrom: `Customer condition: ${detail}`,
       });
     }
   }

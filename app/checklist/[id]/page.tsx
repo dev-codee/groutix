@@ -30,6 +30,7 @@ type PageState = {
   photoCategory: string;
   customAnswers: Record<string, { label: string; value: string | string[] }>;
   areaName: string;
+  areaDescription: string;
   issues: string[];
   dimensionsLength: string;
   dimensionsWidth: string;
@@ -82,6 +83,7 @@ function blankPage(): PageState {
     photoCategory: "",
     customAnswers: {},
     areaName: "",
+    areaDescription: "",
     issues: [],
     dimensionsLength: "",
     dimensionsWidth: "",
@@ -122,7 +124,7 @@ function blankPage(): PageState {
 }
 
 const PAGE_KEYS: (keyof PageState)[] = [
-  "service", "photoCategory", "areaName", "issues", "dimensionsLength", "dimensionsWidth", "floorTileSize",
+  "service", "photoCategory", "areaName", "areaDescription", "issues", "dimensionsLength", "dimensionsWidth", "floorTileSize",
   "damagedTiles", "spareTiles", "groutPreference", "balconyLevel", "balconyBelow",
   "balconySkirting", "balconyWork", "previousRepairs", "previousRepairNotes", "areaWork",
   "showerLeakage", "leakageNotes", "showerType", "wallHeight", "workRequired", "selectiveAreas",
@@ -418,7 +420,7 @@ export default function ChecklistPage({ params }: { params: Promise<{ id: string
       {question("What area requires attention?", <div className="grid grid-cols-2 gap-2">{form.serviceChoices.map(service => <button key={service} type="button" aria-pressed={page.service === service} onClick={() => { if (page.service !== service) updatePage(index, { ...blankPage(), id: page.id, service }); }} className={`rounded-xl border-2 min-h-16 p-3 text-left font-bold text-sm ${page.service === service ? "border-[#001f97] bg-blue-50 text-[#001f97]" : "border-slate-200 text-slate-700"}`}>{form.serviceLabels?.[service] || service}</button>)}</div>)}
       {page.service && <>
         {question("Select Photo Category", <Chips options={(form.photoCategories || []).map((name, i) => [String(i + 1), `${i + 1}. ${name}`] as const)} value={page.photoCategory} onChange={v => updatePage(index, { photoCategory: v })}/>, "Choose the category that matches the photos you will add. Change it before adding another set.")}
-        {question(page.service === "Shower" ? "Which shower requires attention?" : "What should we call this area?", <><Chips options={(page.service === "Shower" ? ["Main bathroom", "Ensuite", "Guest bathroom", "Other"] : page.service === "Balcony" ? ["Front balcony", "Rear balcony", "Other"] : ["Main bathroom", "Ensuite", "Laundry", "Kitchen", "Other"]).map(v => [v, v] as const)} value={page.areaName} onChange={v => updatePage(index, { areaName: v })}/>{page.areaName === "Other" && textField(index, "additionalNotes", "Describe this area")}</>)}
+        {question(page.service === "Shower" ? "Which shower requires attention?" : "What should we call this area?", <><Chips options={(page.service === "Shower" ? ["Main bathroom", "Ensuite", "Guest bathroom", "Other"] : page.service === "Balcony" ? ["Front balcony", "Rear balcony", "Other"] : ["Main bathroom", "Ensuite", "Laundry", "Kitchen", "Other"]).map(v => [v, v] as const)} value={page.areaName} onChange={v => updatePage(index, { areaName: v })}/>{page.areaName === "Other" && textField(index, "areaDescription", "Describe this area")}</>)}
         {question("What problems are you experiencing?", multi(page.service === "Shower" ? showerIssues : page.service === "Balcony" ? balconyIssues : otherWork, page.issues, v => updatePage(index, { issues: v })), "Select all that apply.")}
         {page.issues.some(issue => /water|leak/i.test(issue)) && question("Where do you notice water or moisture?", textField(index, "leakageNotes", "For example, outside the shower or ceiling downstairs"))}
         {page.service === "Shower" && <>

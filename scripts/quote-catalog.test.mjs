@@ -9,6 +9,36 @@ import { loadTs } from "./test-ts-loader.mjs";
 
 const { SERVICE_TEMPLATES, bestTemplateForTask } = loadTs("lib/serviceTemplates.ts");
 const { findBestTemplateForService, getMatchedQuoteItemsForLead, parseCustomerServices } = loadTs("lib/serviceMatching.ts");
+const { customerQuoteLead } = loadTs("lib/customerQuoteSelection.ts");
+
+test("selecting a quote version keeps saved answers and matches repair and replacement separately", () => {
+  const quoteChecklist = {
+    location: "Ensuite shower", work: "Grout and silicone", showerType: "Single", showerScope: "Floor only",
+    wallTiles: "1", wallTileActions: ["Replace"], floorTiles: "2", floorTileActions: ["Repair"],
+  };
+  const selected = customerQuoteLead({ id: "lead-1", quoteChecklist }, { values: {} });
+  assert.equal(selected.quoteChecklist, quoteChecklist);
+  for (const lead of [selected, { service: "Shower Grout and silicone", damagedTiles: "1 wall Replace, 2 floor Repair" }]) {
+    const byCode = new Map(getMatchedQuoteItemsForLead(lead).map(item => [item.code, item.qty]));
+    assert.equal(byCode.get("CT - GROUTIX TO SUPPLY & INSTALL"), 1);
+    assert.equal(byCode.get("TILE REPAIR"), 2);
+  }
+  const older = getMatchedQuoteItemsForLead({ service: "Shower Grout and silicone", areas: "Ensuite shower" });
+  assert.equal(older[0].code, "");
+  assert.match(older[0].scope, /Ensuite shower.*Confirm work/);
+});
+
+test("auto-match uses submitted detailed pages and keeps a partial balcony scope for review", () => {
+  const items = getMatchedQuoteItemsForLead({
+    service: "Shower Grout and silicone",
+    checklist: { answers: { pages: [
+      { id: "shower", service: "Shower", areaName: "Ensuite", showerType: "SS", workRequired: "FO", groutPreference: "EG" },
+      { id: "balcony", service: "Balcony", areaName: "Rear balcony", balconyWork: ["Perimeter resealing only"] },
+    ] } },
+  });
+  assert.deepEqual(Array.from(items, item => item.code), ["EN-SS-FO-EG", ""]);
+  assert.match(items[1].scope, /Perimeter resealing only/);
+});
 
 test("website checklist suggests the matching shower scope and separate extra work", () => {
   const items = getMatchedQuoteItemsForLead({ service: "Shower Grout and silicone", areas: "Ensuite shower", quoteChecklist: { location: "Ensuite shower", work: "Grout and silicone", showerType: "Double", showerScope: "Walls and floor", wallHeight: "To ceiling", wallTiles: "2", floorTiles: "None", additional: ["Vanity"] } });

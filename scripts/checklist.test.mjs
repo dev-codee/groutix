@@ -109,3 +109,21 @@ test("checklistHasAnswers ignores id/photos-only pages", () => {
   assert.equal(checklistHasAnswers({ pages: [page({ photos: [{ name: "a" }] })] }), false);
   assert.equal(checklistHasAnswers({ pages: [page({ showerType: "SS" })] }), true);
 });
+
+test("written checklist includes notes, explicit zero counts and selected photo categories", () => {
+  const text = checklistRequestText({
+    pages: [page({
+      service: "Shower", areaName: "Other", areaDescription: "Upstairs shower",
+      leakageNotes: "Water in the hallway", showerType: "Not sure", numberOfWalls: "Not s",
+      crackedWallTiles: "0", crackedFloorTiles: "2", additionalNotes: "Include vanity",
+      photoCategory: "2", photoCategoryLabel: "Outside the shower",
+      customAnswers: { empty: { label: "Unanswered", value: [] }, timing: { label: "Availability", value: ["Monday", "Friday"] } },
+    })],
+  });
+  for (const line of [
+    "Area description: Upstairs shower", "Leakage notes: Water in the hallway", "Shower type: Not sure",
+    "Tiled walls: Not sure", "Cracked or loose wall tiles: 0", "Cracked or loose floor tiles: 2",
+    "Additional notes: Include vanity", "Selected photo category: Outside the shower", "Availability: Monday, Friday",
+  ]) assert.ok(text.includes(line), line);
+  assert.doesNotMatch(text, /Unanswered/);
+});
