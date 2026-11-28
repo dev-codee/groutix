@@ -193,7 +193,7 @@ import { CompletedView } from "@/components/admin/views/CompletedView";
 import { RecycleBinView } from "@/components/admin/views/RecycleBinView";
 import type { Stats } from "@/components/admin/views/AnalyticsView";
 import { GpsModal } from "@/components/admin/modals/GpsModal";
-import { PhotoLightbox } from "@/components/admin/modals/PhotoLightbox";
+import { PhotoLightbox, type PreviewPhoto } from "@/components/admin/modals/PhotoLightbox";
 import { PhotosModal } from "@/components/admin/modals/PhotosModal";
 import { TeamChatModal } from "@/components/admin/modals/TeamChatModal";
 import { JobCardModal } from "@/components/admin/modals/JobCardModal";
@@ -540,7 +540,7 @@ export default function CrmDashboardPage() {
   const [loadingPhotos, setLoadingPhotos] = useState(false);
   const [uploadingPhotos, setUploadingPhotos] = useState(false);
   const [deletingPhotoIndex, setDeletingPhotoIndex] = useState<number | null>(null);
-  const [previewPhoto, setPreviewPhoto] = useState<{ photos: { url: string; name: string }[]; index: number } | null>(null);
+  const [previewPhoto, setPreviewPhoto] = useState<{ photos: PreviewPhoto[]; index: number } | null>(null);
   const photoInputRef = useRef<HTMLInputElement | null>(null);
   const cameraInputRef = useRef<HTMLInputElement | null>(null);
 

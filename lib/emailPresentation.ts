@@ -11,3 +11,12 @@ export function formatEmailPresentation(html: string): string {
       .replace(/\(03\)(?:\s|&nbsp;)+7023(?:\s|&nbsp;)+8094/g, "(03)\u00a07023\u00a08094");
   });
 }
+
+export function emailActionButton(url: string, label: string): string {
+  const href = url.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  return `<table role="presentation" width="250" border="0" cellpadding="0" cellspacing="0" style="width:100%;max-width:250px;margin:0 0 8px;">
+    <tr><td align="center" bgcolor="#001f97" style="border-radius:8px;">
+      <a href="${href}" style="display:block;padding:11px 14px;color:#ffffff;text-decoration:none;font-size:15px;line-height:20px;font-weight:700;">${label}</a>
+    </td></tr>
+  </table>`;
+}

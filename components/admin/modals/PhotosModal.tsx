@@ -6,6 +6,7 @@ import { useRef } from "react";
 import { X, Camera, Upload, Loader2, ZoomIn, Download, ExternalLink, Trash2 } from "lucide-react";
 import { Image as ImageIcon } from "lucide-react";
 import type { Lead } from "@/components/admin/types";
+import type { PreviewPhoto } from "./PhotoLightbox";
 
 interface Props {
   lead: Lead;
@@ -15,7 +16,7 @@ interface Props {
   onClose: () => void;
   onAddPhotos: (files: File[]) => void;
   onDeletePhoto: (index: number) => void;
-  onPreviewPhoto: (photos: { name: string; url: string }[], index: number) => void;
+  onPreviewPhoto: (photos: PreviewPhoto[], index: number) => void;
 }
 
 export function PhotosModal({
@@ -30,6 +31,11 @@ export function PhotosModal({
 }: Props) {
   const cameraRef = useRef<HTMLInputElement | null>(null);
   const galleryRef = useRef<HTMLInputElement | null>(null);
+  const photos = lead.photos ?? [];
+  const previewPhotos = photos.flatMap((photo, index) => {
+    const url = photo.secureUrl || photo.url || photo.dataUrl;
+    return url ? [{ name: photo.name, category: photo.category?.trim(), url, originalIndex: index }] : [];
+  });
 
   return (
     <div className="fixed inset-0 z-[60] bg-slate-900/50 backdrop-blur-xs flex items-start justify-center p-3 sm:p-4 sm:pt-10 overflow-y-auto">
@@ -96,13 +102,10 @@ export function PhotosModal({
           </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3.5 max-h-[55vh] overflow-y-auto p-1">
-            {(lead.photos || []).map((photo, i) => {
+            {photos.map((photo, i) => {
               const imgSrc = photo.secureUrl || photo.url || photo.dataUrl || "";
               const previewSrc = photoPreviewUrl(photo);
               const isDeleting = deletingPhotoIndex === i;
-              const allPhotoList = (lead.photos || [])
-                .map((p) => ({ name: p.name, url: p.secureUrl || p.url || p.dataUrl || "" }))
-                .filter((p) => p.url);
               return (
                 <div
                   key={i}
@@ -110,7 +113,7 @@ export function PhotosModal({
                 >
                   <div
                     className="relative w-full h-36 bg-slate-200 rounded-lg overflow-hidden cursor-pointer"
-                    onClick={() => imgSrc && onPreviewPhoto(allPhotoList, allPhotoList.findIndex((p) => p.url === imgSrc))}
+                    onClick={() => imgSrc && onPreviewPhoto(previewPhotos, previewPhotos.findIndex((p) => p.originalIndex === i))}
                   >
                     {imgSrc ? (
                       // eslint-disable-next-line @next/next/no-img-element
@@ -137,6 +140,9 @@ export function PhotosModal({
                     )}
                   </div>
 
+                  <p className="rounded-md bg-blue-50 px-2 py-1 text-[11px] font-semibold text-blue-800 [overflow-wrap:anywhere]">
+                    {photo.category?.trim() || "No category recorded"}
+                  </p>
                   {photo.uploadedBy && (
                     <div className="text-[10px] text-slate-400 font-medium truncate">
                       by {photo.uploadedBy}
@@ -188,7 +194,7 @@ export function PhotosModal({
                 </div>
               );
             })}
-            {(!lead.photos || lead.photos.length === 0) && (
+            {photos.length === 0 && (
               <div className="col-span-full py-12 text-center text-xs text-slate-400 flex flex-col items-center justify-center gap-2">
                 <ImageIcon className="w-8 h-8 text-slate-300" />
                 <span>No photos uploaded for this customer yet.</span>

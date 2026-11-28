@@ -1,4 +1,5 @@
 import { SERVICE_TEMPLATES, uniqueTemplateForCode, type ServiceTemplate } from "@/lib/serviceTemplates";
+import type { QuoteBalcony } from "@/lib/quoteBalconies";
 
 export interface MatchedQuoteItem {
   templateNo: string;
@@ -287,6 +288,7 @@ export function getMatchedQuoteItemsForLead(lead: {
   damagedTiles?: string;
   leaking?: string;
   quoteChecklist?: Record<string, string | string[]>;
+  additionalBalconies?: QuoteBalcony[];
 }): MatchedQuoteItem[] {
   const checklist = lead.quoteChecklist;
   const answer = (key: string) => typeof checklist?.[key] === "string" ? checklist[key] as string : "";
@@ -354,6 +356,14 @@ export function getMatchedQuoteItemsForLead(lead: {
       price: 0, qty: 1, matchedFrom: "Customer checklist",
     });
   }
+
+  lead.additionalBalconies?.forEach((balcony, index) => {
+    items.push({
+      templateNo: "", code: "", service: `Balcony ${index + 2} — additional work`,
+      scope: [`${balcony.area} m²`, `Leaking: ${balcony.leakage}`, balcony.tileSizes.length ? `Tile sizes: ${balcony.tileSizes.join(", ")}` : ""].filter(Boolean).join(" · "),
+      price: 0, qty: 1, matchedFrom: "Customer checklist",
+    });
+  });
 
   if (checklist && Array.isArray(checklist.additional)) {
     for (const area of checklist.additional) {

@@ -15,6 +15,7 @@ import { formatSlotRange } from "@/lib/scheduling";
 import { useContact } from "@/components/SiteContentProvider";
 import QuoteChecklist, { emptyChecklist, type Checklist } from "@/components/QuoteChecklist";
 import { QUOTE_PHOTO_CATEGORIES } from "@/lib/quotePhotoCategories";
+import type { QuoteBalcony } from "@/lib/quoteBalconies";
 import { isCompletePropertyAddress, PROPERTY_ADDRESS_ERROR } from "@/lib/propertyAddress";
 
 const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
@@ -98,6 +99,7 @@ export default function QuoteFormV2({
   const [isPM, setIsPM] = useState(false);
   const [step, setStep] = useState<StepId>("details");
   const [checklist, setChecklist] = useState<Checklist>(emptyChecklist);
+  const [additionalBalconies, setAdditionalBalconies] = useState<QuoteBalcony[]>([]);
 
   const [leaking, setLeaking] = useState("");
   const [jobErrors, setJobErrors] = useState<Record<string, string>>({});
@@ -246,7 +248,7 @@ export default function QuoteFormV2({
   };
 
   /* ---------- validation ---------- */
-  const hasBalcony = Boolean(checklist.balconyLeakage || checklist.balconyArea || checklist.balconyTileSizes.length);
+  const hasBalcony = Boolean(checklist.balconyLeakage || checklist.balconyArea || checklist.balconyTileSizes.length || additionalBalconies.length);
   const hasShower = Boolean(checklist.location || leaking || checklist.leakAreas.length || checklist.showerScope || checklist.showerType);
   const balconyOnly = hasBalcony && !hasShower;
 
@@ -263,6 +265,11 @@ export default function QuoteFormV2({
       const area = Number(checklist.balconyArea);
       if (!Number.isFinite(area) || area <= 0) e.balconyArea = "Enter a balcony area greater than zero";
     }
+    additionalBalconies.forEach((balcony, index) => {
+      if (!balcony.leakage) e[`balcony-${index}-leakage`] = "Choose yes or no";
+      const area = Number(balcony.area);
+      if (!Number.isFinite(area) || area <= 0) e[`balcony-${index}-area`] = "Enter a balcony area greater than zero";
+    });
     setJobErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -483,6 +490,7 @@ export default function QuoteFormV2({
       payload.append("damagedTiles", damagedTiles.filter(Boolean).join(", "));
       payload.append("leaking", balconyOnly ? checklist.balconyLeakage : leaking);
       payload.append("checklist", JSON.stringify({ ...checklist, location: balconyOnly ? "Balcony" : checklist.location }));
+      if (additionalBalconies.length) payload.append("additionalBalconies", JSON.stringify(additionalBalconies));
       payload.append("sourcePage", typeof window !== "undefined" ? window.location.pathname : "");
       if (captchaToken) payload.append("cf-turnstile-response", captchaToken);
       if (canBook && date && time) {
@@ -530,6 +538,7 @@ export default function QuoteFormV2({
     setDone(null);
     setStep("details");
     setChecklist(emptyChecklist);
+    setAdditionalBalconies([]);
     setIsPM(false);
     setLeaking("");
     setJobErrors({});
@@ -948,6 +957,11 @@ export default function QuoteFormV2({
                 id={P}
                 checklist={checklist}
                 leaking={leaking}
+                additionalBalconies={additionalBalconies}
+                onBalconiesChange={(balconies) => {
+                  setAdditionalBalconies(balconies);
+                  setJobErrors((current) => Object.fromEntries(Object.entries(current).filter(([key]) => !key.startsWith("balcony-"))));
+                }}
                 photos={
                   <div className="space-y-2"
                     onDragOver={(event) => event.preventDefault()}

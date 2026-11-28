@@ -1,7 +1,8 @@
 import { quotePhotoCategory } from "@/lib/quotePhotoCategories";
+import { parseAdditionalBalconies, type QuoteBalcony } from "@/lib/quoteBalconies";
 import { inspectionConfirmationHtml, inspectionConfirmationSms } from "@/lib/inspectionConfirmation";
 import { isCompletePropertyAddress, PROPERTY_ADDRESS_ERROR } from "@/lib/propertyAddress";
-import { applyBookingCapacity } from "@/lib/bookingAvailabilityDays";
+import { emailActionButton } from "@/lib/emailPresentation";
 import { NextRequest, NextResponse } from "next/server";
 import { rateLimit } from "@/lib/rateLimit";
 import { recordSubmission, updateEmailDelivered } from "@/lib/submissions";
@@ -9,11 +10,10 @@ import { getSiteContent } from "@/lib/siteContentServer";
 import { sendEmail, isInternalEmailAlertEnabled, isEmailConfigured, wrapEmailHtml, getEmailLogoUrl, type EmailAttachment } from "@/lib/email";
 import { sendSms } from "@/lib/sms";
 import { buildBookingUrl, buildBookingSmsUrl } from "@/lib/bookingToken";
-import { resolveArea, getAvailableDaysSummary, computeAvailability, shortlistDays, isSlotOffered, inspectionDaysText } from "@/lib/scheduling";
-import { listUpcomingBookings, createBooking, isSlotTaken } from "@/lib/bookings";
+import { resolveArea, isSlotOffered } from "@/lib/scheduling";
+import { createBooking, isSlotTaken } from "@/lib/bookings";
 import { getBookingRules } from "@/lib/bookingRulesServer";
 import { getZoneRules } from "@/lib/zoneRulesServer";
-import { formatHHmm, hoursEnvelope, fromMinutes } from "@/lib/bookingRules";
 import { updateSubmission, appendActivity, getNextJobNo, assignInspectorOnBooking } from "@/lib/submissions";
 import { isCloudinaryConfigured, uploadBufferToCloudinary } from "@/lib/cloudinary";
 import { checklistInvitationHtml, recordChecklistEmailSent } from "@/lib/checklistDelivery";
@@ -35,10 +35,6 @@ const CUSTOMER_FROM_NAME = "Groutix";
 // admin edits to the contact number flow through to confirmation emails.
 const DEFAULT_CONTACT_PHONE = "(03) 7023 8094";
 
-// TEMPORARY: the customer self-service inspection booking button is disabled in
-// the confirmation email/SMS for now. Flip this back to `true` to re-enable the
-// "Book your free inspection" button + available-days list (all logic is kept
-// below, only its rendering is gated by this flag).
 const SHOW_INSPECTION_BOOKING = true;
 
 // Anti-spam limits.
@@ -84,14 +80,6 @@ function esc(value: string) {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
-}
-
-// 24h "HH:mm" → friendly "9:00 AM" for the availability list.
-function timeLabel(t: string): string {
-  const [h, m] = t.split(":").map(Number);
-  const ampm = h >= 12 ? "PM" : "AM";
-  const hr = h % 12 === 0 ? 12 : h % 12;
-  return `${hr}:${String(m).padStart(2, "0")} ${ampm}`;
 }
 
 function row(label: string, value: string) {
@@ -149,15 +137,19 @@ export async function POST(req: NextRequest) {
   let tenants: { name: string; phone: string; email?: string }[] = [];
   if (tenantsRaw) {
     try {
-      const parsed = JSON.parse(tenantsRaw);
+      const parsed: unknown = JSON.parse(tenantsRaw);
       if (Array.isArray(parsed)) {
         tenants = parsed
-          .map((t: any) => ({
-            name: String(t.name || "").trim(),
-            phone: String(t.phone || "").trim(),
-            email: String(t.email || "").trim() || undefined,
-          }))
-          .filter((t) => t.name || t.phone);
+          .flatMap((tenant: unknown) => {
+            if (!tenant || typeof tenant !== "object") return [];
+            const { name, phone, email } = tenant as Record<string, unknown>;
+            const details = {
+              name: typeof name === "string" ? name.trim() : "",
+              phone: typeof phone === "string" ? phone.trim() : "",
+              email: typeof email === "string" ? email.trim() || undefined : undefined,
+            };
+            return details.name || details.phone ? [details] : [];
+          });
       }
     } catch {
       tenants = [];
@@ -186,11 +178,21 @@ export async function POST(req: NextRequest) {
       }
     }
   } catch { /* Older forms do not send a checklist. */ }
+  let additionalBalconies: QuoteBalcony[] = [];
+  const balconiesRaw = get("additionalBalconies");
+  if (balconiesRaw) {
+    try {
+      additionalBalconies = parseAdditionalBalconies(balconiesRaw);
+    } catch {
+      return NextResponse.json({ error: "Check the leakage, area and tile sizes for each additional balcony." }, { status: 400 });
+    }
+  }
   const areas = get("areas");
   const heard = get("heard");
   const sourcePage = get("sourcePage");
   const inspectionDate = get("inspectionDate");
   const inspectionTime = get("inspectionTime");
+  const requestedInspectionAt = inspectionDate && inspectionTime ? `${inspectionDate}T${inspectionTime.slice(0, 5).padStart(5, "0")}` : undefined;
   const requestedMode = get("quoteRequestMode");
   const quoteRequestMode = inspectionDate && inspectionTime ? "inspection"
     : requestedMode === "quote" || requestedMode === "inspection" ? requestedMode : undefined;
@@ -381,6 +383,7 @@ export async function POST(req: NextRequest) {
       ${row("Damaged tiles", damagedTiles)}
       ${row("Is area leaking", leaking)}
       ${checklist ? Object.entries(checklist).filter(([, value]) => Array.isArray(value) ? value.length : String(value || "").trim()).map(([key, value]) => row(key.replace(/([A-Z])/g, " $1").replace(/^./, c => c.toUpperCase()), Array.isArray(value) ? value.join(", ") : String(value))).join("") : ""}
+      ${additionalBalconies.map((balcony, index) => row(`Balcony ${index + 2}`, [`${balcony.area} m²`, `Leaking: ${balcony.leakage}`, balcony.tileSizes.length ? `Tile sizes: ${balcony.tileSizes.join(", ")}` : ""].filter(Boolean).join(" · "))).join("")}
       ${row("Message", message)}
       ${row("Heard about us", heard)}
       ${row("Photos attached", submissionPhotos.length ? `${submissionPhotos.length} attached${photoLinksHtml ? ` (${photoLinksHtml})` : ""}` : "")}
@@ -407,8 +410,9 @@ export async function POST(req: NextRequest) {
     leaking,
     message,
     quoteChecklist: checklist,
+    additionalBalconies: additionalBalconies.length ? additionalBalconies : undefined,
     quoteRequestMode,
-    requestedInspectionAt: inspectionDate && inspectionTime ? `${inspectionDate}T${inspectionTime.slice(0, 5).padStart(5, "0")}` : undefined,
+    requestedInspectionAt,
     areas,
     heard,
     sourcePage,
@@ -424,6 +428,9 @@ export async function POST(req: NextRequest) {
     userAgent: req.headers.get("user-agent") || undefined,
     emailDelivered: false,
   });
+  if (!submissionId && quoteRequestMode) {
+    return NextResponse.json({ error: "We couldn’t save your request. Please try again." }, { status: 503 });
+  }
 
   // 1b) If customer selected an inspection slot, book it immediately (only if within 50km service area)
   // Tracks whether that actually succeeded: a slot can be requested but not
@@ -506,92 +513,17 @@ export async function POST(req: NextRequest) {
       await updateEmailDelivered(submissionId, true);
     }
 
-    const CONTACT_PHONE =
-      (await getSiteContent().catch(() => null))?.business.phone || DEFAULT_CONTACT_PHONE;
-
-    const area = resolveArea(address || city, zoneRules);
-    const daysSummary = getAvailableDaysSummary(area, bookingRules, zoneRules);
+    const contactPhone = (await getSiteContent().catch(() => null))?.business.phone || DEFAULT_CONTACT_PHONE;
     const bookingUrl = submissionId ? buildBookingUrl(submissionId, "inspection") : "";
-
-    // Compute the customer's real bookable days/times using the SAME scheduling
-    // logic the booking page/API use, so the email and the booking button always
-    // agree (inner Tullamarine radius = every day; otherwise the suburb's zone day).
-    let availableDays: { label: string; times: string[] }[] = [];
-    try {
-      const bookings = await listUpcomingBookings({ strict: true });
-      const sameZoneDates = new Set<string>();
-      for (const b of bookings) {
-        if (b.zone === area.zone || area.inner) sameZoneDates.add(b.date);
-      }
-      // Email teaser: a few soon dates, with the booking link for the rest.
-      availableDays = shortlistDays(
-        applyBookingCapacity(computeAvailability(area, new Map(), sameZoneDates, "inspection", bookingRules, zoneRules), bookings, { leadId: "", type: "inspection" }, bookingRules, []),
-        { maxOptions: 5, maxDaysAhead: 28 }
-      ).map((d) => ({ label: d.label, times: d.times }));
-    } catch (err) {
-      console.error("availability computation for confirmation email failed:", err);
-    }
-
-    const inspEnvelope = hoursEnvelope(bookingRules, ["inspection"]);
-    const inspectionHoursText = `${formatHHmm(fromMinutes(inspEnvelope.start))} to ${formatHHmm(fromMinutes(inspEnvelope.end))}`;
-    const availableDaysHtml = availableDays.length
-      ? `<div style="margin-top:6px;">
-           ${availableDays
-             .map(
-               (d) => `<div style="font-size:13px;color:#334155;padding:6px 0;border-top:1px solid #e2e8f0;">
-                   <span style="font-weight:700;color:#0f172a;">${esc(d.label)}</span>
-                   <span style="color:#64748b;"> — ${d.times.map((t) => esc(timeLabel(t))).join(", ")}</span>
-                 </div>`
-             )
-             .join("")}
-         </div>`
-      : `<div style="font-size:13px;color:#64748b;margin-top:6px;">Inspections run ${esc(inspectionDaysText(bookingRules))}, ${esc(inspectionHoursText)} — pick a slot on the booking page.</div>`;
-
-    // Inspection self-booking card. Shown only when SHOW_INSPECTION_BOOKING is on
-    // AND the form did not already secure a slot — there is no point asking a
-    // customer to book an inspection they have just booked.
     const showBookingCta = SHOW_INSPECTION_BOOKING && !inspectionSelfBooked && Boolean(bookingUrl);
-    const inspectionBookingHtml = !showBookingCta ? "" : `
-      <div style="margin:24px 0;padding:20px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;">
-        <h3 style="margin:0 0 14px;color:#001f97;font-size:17px;font-weight:700;">Book your free Inspection</h3>
-        <table cellpadding="0" cellspacing="0">
-          <tr>
-            <td>
-              <a href="${bookingUrl}" style="display:inline-block;background:#001f97;color:#ffffff;text-decoration:none;font-weight:800;font-size:15px;padding:14px 28px;border-radius:10px;text-align:center;box-shadow:0 2px 4px rgba(0,31,151,0.2);">
-                Book Your Free Inspection
-              </a>
-            </td>
-          </tr>
-        </table>
-        ${availableDaysHtml}
-      </div>`;
 
     const customerHtml = `
-      <h2 style="margin:0 0 14px;color:#001f97;font-size:24px;">Thanks, ${esc(firstName)}!</h2>
-      <p style="margin:0 0 14px;font-size:15px;line-height:1.5;color:#1e293b;">
-        We've received your request and our team will review your details shortly.
-      </p>
-      ${inspectionConfirmationHtml(inspectionDate, inspectionTime, inspectionSelfBooked, bookingRules.inspection.slotMinutes)}
-      <p style="margin:0 0 20px;font-size:15px;line-height:1.5;color:#1e293b;">
-        If you have any questions, simply reply to this email or call us on <a href="tel:+61370238094" style="color:#001f97;font-weight:700;text-decoration:none;">${esc(CONTACT_PHONE)}</a>.
-      </p>
-
-      ${
-        message
-          ? `<div style="margin:20px 0;padding:16px;background:#ffffff;border:1px solid #e2e8f0;border-left:4px solid #001f97;border-radius:6px;color:#475569;font-size:14px;">
-               <strong style="color:#0f172a;display:block;margin-bottom:6px;">Your request:</strong>
-               ${esc(message).replace(/\n/g, "<br/>")}
-             </div>`
-          : ""
-      }
-
-      ${inspectionBookingHtml}
-
+      ${showBookingCta ? emailActionButton(bookingUrl, "Book Free Inspection") : ""}
       ${submissionId ? checklistInvitationHtml(submissionId) : ""}
-
-      <p style="margin:28px 0 0;font-size:16px;font-weight:700;color:#001f97;">
-        Stay Sealed. Stay Smiling.
-      </p>`;
+      <p style="margin:12px 0 8px;">Thanks, ${esc(firstName)}. We’ve received your request.</p>
+      ${quoteRequestMode === "inspection" ? inspectionConfirmationHtml(inspectionDate, inspectionTime, inspectionSelfBooked, bookingRules.inspection.slotMinutes) : ""}
+      ${submissionId ? `<p style="margin:0 0 8px;font-size:13px;color:#64748b;">Remote quotes may require verification.</p>` : ""}
+      <p style="margin:0;">Questions? Reply or call <a href="tel:${contactPhone.replace(/[^\d+]/g, "")}">${esc(contactPhone)}</a>.</p>`;
 
     try {
       await sendEmail({
@@ -600,7 +532,7 @@ export async function POST(req: NextRequest) {
         fromEmail: FROM_EMAIL,
         replyTo: TO_EMAIL,
         subject: "We've received your request | Groutix",
-        html: wrapEmailHtml(customerHtml, "We've received your quote request and a Groutix specialist will be in touch shortly.", logoUrl),
+        html: wrapEmailHtml(customerHtml, "Your Groutix request and next steps.", logoUrl, { compact: true }),
       });
       if (submissionId) {
         try {

@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { QUOTE_TILE_SIZES, type QuoteBalcony } from "@/lib/quoteBalconies";
 
 const YES_NO = ["Yes", "No"];
 const optionLabels: Record<string, string> = {
@@ -88,26 +89,65 @@ function ChecklistChoices({ id, title, options, selected, onToggle, multiple = f
   return sectionNumber ? <section className={sectionStyle}>{choices}{children}</section> : choices;
 }
 
-function Section({ number, title, children }: { number: number; title: string; children?: ReactNode }) {
+function Section({ number, title, children, required = false }: { number: number; title: string; children?: ReactNode; required?: boolean }) {
   return (
     <section className={sectionStyle}>
-      <h3 className="mb-1 text-[13px] font-bold text-[#001F97]">{number}. {title}</h3>
+      <h3 className="mb-1 text-[13px] font-bold text-[#001F97]">{number}. {title}{required && <> {req}</>}</h3>
       {children || <p className="text-xs text-neutral-500">Not applicable</p>}
     </section>
   );
+}
+
+function BalconyFields({ id, number, title, balcony, errors, onChange, onRemove }: {
+  id: string;
+  number: number;
+  title: string;
+  balcony: QuoteBalcony;
+  errors?: { leakage?: string; area?: string };
+  onChange?: (patch: Partial<QuoteBalcony>) => void;
+  onRemove?: () => void;
+}) {
+  const readOnly = !onChange;
+  return (
+    <ChecklistChoices id={`${id}-leakage`} title={title} sectionNumber={number}
+      options={readOnly && balcony.leakage === "Not sure" ? [...YES_NO, "Not sure"] : YES_NO}
+      selected={[balcony.leakage]} readOnly={readOnly} error={errors?.leakage}
+      onToggle={(option) => onChange?.({ leakage: balcony.leakage === option ? "" : option })}>
+      <label className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-semibold">
+        <span>Balcony Area (sq. m)</span>
+        <input id={`${id}-area`} type="number" min="0.1" step="any" aria-invalid={!!errors?.area} value={balcony.area}
+          aria-describedby={errors?.area ? `${id}-area-error` : undefined}
+          placeholder={readOnly ? undefined : "e.g. 6.5"}
+          onChange={(event) => onChange?.({ area: event.target.value })} readOnly={readOnly}
+          className="h-8 w-28 rounded-lg border border-[#DBE3F0] px-2 text-[13px] placeholder:text-neutral-500" />
+      </label>
+      {errors?.area && <p id={`${id}-area-error`} role="alert" className="text-xs text-red-700">{errors.area}</p>}
+      <ChecklistChoices id={`${id}-tile-sizes`} title="Balcony Tile Size"
+        options={readOnly ? [...new Set([...QUOTE_TILE_SIZES, ...balcony.tileSizes])] : QUOTE_TILE_SIZES}
+        selected={balcony.tileSizes} readOnly={readOnly} multiple
+        onToggle={(option) => onChange?.({ tileSizes: toggleOption(balcony.tileSizes, option) })} />
+      {onRemove && (
+        <button type="button" onClick={onRemove} className="mt-1 self-start text-xs font-semibold text-red-700 underline">Remove balcony {number - 12}</button>
+      )}
+    </ChecklistChoices>
+  );
+}
+
+function toggleOption(options: string[], option: string) {
+  return options.includes(option) ? options.filter((value) => value !== option) : [...options, option];
 }
 
 function Count({ title, value, onChange, compact = false }: { title: string; value: string; onChange?: (value: string) => void; compact?: boolean }) {
   const count = Number(value) || 0;
   const buttonWidth = compact ? "w-6" : "w-8";
   return (
-    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+    <div className={`flex flex-wrap items-center gap-y-1 ${compact ? "gap-x-1" : "gap-x-2"}`}>
       <p className="text-xs font-semibold">{title}</p>
       {onChange ? (
         <div className="inline-flex overflow-hidden rounded-lg border border-[#DBE3F0]">
           <button type="button" aria-label={`Decrease ${title.toLowerCase()}`} disabled={count <= 0}
             onClick={() => onChange(String(count - 1))} className={`h-8 ${buttonWidth} bg-[#EEF3FF] font-bold disabled:opacity-40`}>−</button>
-          <output aria-live="polite" aria-label={title} className={`${compact ? "min-w-6" : "min-w-9"} px-1 text-center text-sm leading-8`}>{count}</output>
+          <output aria-live="polite" aria-label={title} className={`${compact ? "min-w-5" : "min-w-9"} px-1 text-center text-sm leading-8`}>{count}</output>
           <button type="button" aria-label={`Increase ${title.toLowerCase()}`}
             onClick={() => onChange(String(count + 1))} className={`h-8 ${buttonWidth} bg-[#EEF3FF] font-bold`}>+</button>
         </div>
@@ -116,7 +156,7 @@ function Count({ title, value, onChange, compact = false }: { title: string; val
   );
 }
 
-export default function QuoteChecklist({ id, checklist, leaking, errors = {}, onChange, onLeakChange, photos }: {
+export default function QuoteChecklist({ id, checklist, leaking, errors = {}, onChange, onLeakChange, photos, additionalBalconies = [], onBalconiesChange }: {
   id: string;
   checklist: Checklist;
   leaking: string;
@@ -124,28 +164,27 @@ export default function QuoteChecklist({ id, checklist, leaking, errors = {}, on
   onChange?: (patch: Partial<Checklist>) => void;
   onLeakChange?: (value: string) => void;
   photos?: ReactNode;
+  additionalBalconies?: QuoteBalcony[];
+  onBalconiesChange?: (balconies: QuoteBalcony[]) => void;
 }) {
   const readOnly = !onChange;
   const balconyOnly = checklist.location === "Balcony";
   const showShower = !balconyOnly;
-  const tileSizes = ["Small", "Medium", "Large", "Extra large"];
   const joints = ["Inside", "Outside"];
   const bothVertical = joints.every((joint) => checklist.verticalJoints.includes(joint));
   const bothHorizontal = joints.every((joint) => checklist.horizontalJoints.includes(joint));
-  const toggle = (options: string[], option: string) => options.includes(option)
-    ? options.filter((value) => value !== option)
-    : [...options, option];
 
-  function single(key: { [K in keyof Checklist]: Checklist[K] extends string ? K : never }[keyof Checklist], title: string, options: string[], { required = false, sectionNumber, compact }: { required?: boolean; sectionNumber?: number; compact?: boolean } = {}) {
+  function single(key: { [K in keyof Checklist]: Checklist[K] extends string ? K : never }[keyof Checklist], title: string, options: string[], { required = false, sectionNumber, hideTitle }: { required?: boolean; sectionNumber?: number; hideTitle?: boolean } = {}) {
     return <ChecklistChoices id={`${id}-${key}`} title={title} options={readOnly && checklist[key] ? [...new Set([...options, checklist[key]])] : options} selected={[checklist[key]]}
       onToggle={(option) => onChange?.({ [key]: checklist[key] === option ? "" : option })}
-      readOnly={readOnly} required={required} error={errors[key]} sectionNumber={sectionNumber} compact={compact} />;
+      readOnly={readOnly} required={required} error={errors[key]} sectionNumber={sectionNumber} hideTitle={hideTitle} />;
   }
 
-  function multiple(key: { [K in keyof Checklist]: Checklist[K] extends string[] ? K : never }[keyof Checklist], title: string, options: string[], { legacy = [], sectionNumber, hideTitle }: { legacy?: string[]; sectionNumber?: number; hideTitle?: boolean } = {}) {
+  function multiple(key: { [K in keyof Checklist]: Checklist[K] extends string[] ? K : never }[keyof Checklist], title: string, options: string[], { legacy = [], sectionNumber, hideTitle, compact }: { legacy?: string[]; sectionNumber?: number; hideTitle?: boolean; compact?: boolean } = {}) {
     const selected = checklist[key].length ? checklist[key] : legacy;
     return <ChecklistChoices id={`${id}-${key}`} title={title} options={readOnly ? [...new Set([...options, ...selected])] : options} selected={selected}
-      onToggle={(option) => onChange?.({ [key]: toggle(selected, option) })} readOnly={readOnly} multiple sectionNumber={sectionNumber} hideTitle={hideTitle} />;
+      onToggle={(option) => onChange?.({ [key]: toggleOption(selected, option) })}
+      readOnly={readOnly} multiple sectionNumber={sectionNumber} hideTitle={hideTitle} compact={compact} />;
   }
 
   function note(key: "notes" | "leakNotes" | "workDetails" | "summaryNotes", title: string, placeholder: string) {
@@ -176,7 +215,7 @@ export default function QuoteChecklist({ id, checklist, leaking, errors = {}, on
                 selected={[checklist.location, ...checklist.leakAreas]}
                 onToggle={(option) => {
                   if (option === "Inside shower" || option === "Outside shower") {
-                    onChange?.({ leakAreas: toggle(checklist.leakAreas, option) });
+                    onChange?.({ leakAreas: toggleOption(checklist.leakAreas, option) });
                   } else {
                     onChange?.({ location: checklist.location === option ? "" : option });
                   }
@@ -194,8 +233,8 @@ export default function QuoteChecklist({ id, checklist, leaking, errors = {}, on
           {showShower ? single("wallHeight", "Wall Height", ["To screen (~2.1 m)", "To ceiling", "Above screen"], { sectionNumber: 3 }) : (
             <Section number={3} title="Wall Height" />
           )}
-          <Section number={4} title="Work Required">
-            {single("work", "Work", ["Silicone only", "Grout only", "Grout and silicone"], { required: true, compact: true })}
+          <Section number={4} title="Work Required" required>
+            {single("work", "Work", ["Silicone only", "Grout only", "Grout and silicone"], { required: true, hideTitle: true })}
             {showShower && single("showerScope", "Shower areas", ["Walls and floor", "Floor only", "Walls only"])}
             {showShower && note("workDetails", "Additional work details", "e.g. Replace silicone along the shower base")}
           </Section>
@@ -204,7 +243,7 @@ export default function QuoteChecklist({ id, checklist, leaking, errors = {}, on
           </Section>
         </div>
         <div className={checklistColumn}>
-          {showShower ? multiple("tileSizes", "Select Tile Size", tileSizes, { legacy: checklist.tileSize ? [checklist.tileSize] : [], sectionNumber: 6 }) : (
+          {showShower ? multiple("tileSizes", "Select Tile Size", QUOTE_TILE_SIZES, { legacy: checklist.tileSize ? [checklist.tileSize] : [], sectionNumber: 6 }) : (
             <Section number={6} title="Select Tile Size" />
           )}
           {showShower ? single("mosaic", "Mosaic Tiles", YES_NO, { sectionNumber: 7 }) : (
@@ -218,13 +257,13 @@ export default function QuoteChecklist({ id, checklist, leaking, errors = {}, on
               <ChecklistChoices id={`${id}-vertical-joints`} title="Vertical Joints" options={[...joints, "Both"]}
                 selected={bothVertical ? ["Both"] : checklist.verticalJoints}
                 onToggle={(option) => onChange?.({
-                  verticalJoints: option === "Both" ? (bothVertical ? [] : joints) : (bothVertical ? [option] : toggle(checklist.verticalJoints, option)),
+                  verticalJoints: option === "Both" ? (bothVertical ? [] : joints) : (bothVertical ? [option] : toggleOption(checklist.verticalJoints, option)),
                 })}
                 readOnly={readOnly} />
               <ChecklistChoices id={`${id}-horizontal-joints`} title="Horizontal Joints" options={[...joints, "Both"]}
                 selected={bothHorizontal ? ["Both"] : checklist.horizontalJoints}
                 onToggle={(option) => onChange?.({
-                  horizontalJoints: option === "Both" ? (bothHorizontal ? [] : joints) : (bothHorizontal ? [option] : toggle(checklist.horizontalJoints, option)),
+                  horizontalJoints: option === "Both" ? (bothHorizontal ? [] : joints) : (bothHorizontal ? [option] : toggleOption(checklist.horizontalJoints, option)),
                 })}
                 readOnly={readOnly} />
               <label className="flex min-h-7 items-center gap-1.5 text-[13px]">
@@ -239,13 +278,13 @@ export default function QuoteChecklist({ id, checklist, leaking, errors = {}, on
             {readOnly && checklist.siliconeJoints && <p className="text-xs">{checklist.siliconeJoints}</p>}
           </Section>
           <Section number={10} title="Number of Cracked / Loose / Drummy / Lifted Tiles">
-            <div className="flex flex-wrap items-center gap-x-2">
+            <div className="flex flex-wrap items-center gap-x-1">
               <Count title="Wall Tiles" value={checklist.wallTiles} onChange={onChange && ((wallTiles) => onChange({ wallTiles }))} compact />
-              {multiple("wallTileActions", "Wall tile work", ["Repair", "Replace"], { hideTitle: true })}
+              {multiple("wallTileActions", "Wall tile work", ["Repair", "Replace"], { hideTitle: true, compact: true })}
             </div>
-            <div className="mt-1 flex flex-wrap items-center gap-x-2">
+            <div className="mt-1 flex flex-wrap items-center gap-x-1">
               <Count title="Floor Tiles" value={checklist.floorTiles} onChange={onChange && ((floorTiles) => onChange({ floorTiles }))} compact />
-              {multiple("floorTileActions", "Floor tile work", ["Repair", "Replace"], { hideTitle: true })}
+              {multiple("floorTileActions", "Floor tile work", ["Repair", "Replace"], { hideTitle: true, compact: true })}
             </div>
             {readOnly && (checklist.tileActions.length > 0 || checklist.tileAction) && (
               <p className="text-xs">Tile work: {[...new Set([...checklist.tileActions, checklist.tileAction].filter(Boolean))].join(", ")}</p>
@@ -255,30 +294,40 @@ export default function QuoteChecklist({ id, checklist, leaking, errors = {}, on
             {multiple("additional", "Also quote", ["Kitchen", "Vanity", "Bathtub", "Niche", "Bathroom floor"])}
             {note("notes", "Write Any Additional Information", "e.g. Reseal around the kitchen sink")}
           </Section>
-          <ChecklistChoices id={`${id}-balcony-leakage`} title="Balcony Leakage" sectionNumber={12}
-            options={readOnly && (checklist.balconyLeakage || leaking) === "Not sure" ? [...YES_NO, "Not sure"] : YES_NO}
-            selected={[checklist.balconyLeakage || (balconyOnly && readOnly ? leaking : "")]}
-            onToggle={(option) => onChange?.({ balconyLeakage: checklist.balconyLeakage === option ? "" : option })}
-            readOnly={readOnly} error={errors.balconyLeakage}>
-            <label className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-semibold">
-              <span>Balcony Area (sq. m)</span>
-              <input type="number" min="0.1" step="any" aria-invalid={!!errors.balconyArea} value={checklist.balconyArea}
-                placeholder={readOnly ? undefined : "e.g. 6.5"}
-                onChange={(event) => onChange?.({ balconyArea: event.target.value })} readOnly={readOnly}
-                className="h-8 w-28 rounded-lg border border-[#DBE3F0] px-2 text-[13px] placeholder:text-neutral-500" />
-            </label>
-            {errors.balconyArea && <p role="alert" className="text-xs text-red-700">{errors.balconyArea}</p>}
-            {multiple("balconyTileSizes", "Balcony Tile Size", tileSizes, { legacy: checklist.balconyTileSize ? [checklist.balconyTileSize] : [] })}
-          </ChecklistChoices>
+          <BalconyFields id={`${id}-balcony`} number={12} title="Balcony Leakage"
+            balcony={{
+              leakage: checklist.balconyLeakage || (balconyOnly && readOnly ? leaking : ""),
+              area: checklist.balconyArea,
+              tileSizes: checklist.balconyTileSizes.length ? checklist.balconyTileSizes : checklist.balconyTileSize ? [checklist.balconyTileSize] : [],
+            }}
+            errors={{ leakage: errors.balconyLeakage, area: errors.balconyArea }}
+            onChange={onChange && (({ leakage, area, tileSizes }) => {
+              if (leakage !== undefined) onChange({ balconyLeakage: leakage });
+              if (area !== undefined) onChange({ balconyArea: area });
+              if (tileSizes !== undefined) onChange({ balconyTileSizes: tileSizes });
+            })}
+          />
         </div>
       </div>
-      <div className="mt-2">
+      <div className="mt-2 space-y-2">
         <Section number={13} title="Select Photo Category">
           {photos}
         </Section>
-        <div className={`mt-2 ${sectionStyle}`}>
+        {additionalBalconies.map((balcony, index) => (
+          <BalconyFields key={index} id={`${id}-balcony-${index + 2}`} number={index + 14} title={`Balcony ${index + 2} Leakage`}
+            balcony={balcony} errors={{ leakage: errors[`balcony-${index}-leakage`], area: errors[`balcony-${index}-area`] }}
+            onChange={onBalconiesChange && ((patch) => onBalconiesChange(additionalBalconies.map((item, i) => i === index ? { ...item, ...patch } : item)))}
+            onRemove={onBalconiesChange && (() => onBalconiesChange(additionalBalconies.filter((_, i) => i !== index)))} />
+        ))}
+        <div className={sectionStyle}>
           {note("summaryNotes", "Any Additional Notes", "e.g. Access instructions or preferred timing")}
         </div>
+        {onBalconiesChange && (
+          <button type="button" onClick={() => onBalconiesChange([...additionalBalconies, { leakage: "", area: "", tileSizes: [] }])}
+            className="min-h-10 w-full cursor-pointer rounded-lg border border-[#2F63CC] bg-[#EEF3FF] px-3 text-[13px] font-semibold text-[#001F97] hover:bg-[#DCE8FF]">
+            + Add another balcony
+          </button>
+        )}
       </div>
     </div>
   );

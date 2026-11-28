@@ -315,7 +315,9 @@ export async function getEmailLogoUrl(): Promise<string> {
  * Wraps raw email HTML in a beautiful, modern branded container for clients.
  * Pass logoUrl from getEmailLogoUrl() for dynamic logo support; omit to use default.
  */
-export function wrapEmailHtml(contentHtml: string, preheaderText?: string, logoUrl?: string): string {
+export function wrapEmailHtml(
+  contentHtml: string, preheaderText?: string, logoUrl?: string, { compact = false }: { compact?: boolean } = {}
+): string {
   const resolvedLogoUrl = logoUrl || `${process.env.NEXT_PUBLIC_SITE_URL || "https://www.groutix.com"}/new_logo.jpeg`;
 
   return formatEmailPresentation(`<!DOCTYPE html>
@@ -330,7 +332,7 @@ export function wrapEmailHtml(contentHtml: string, preheaderText?: string, logoU
       ? `<div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">${preheaderText}</div>`
       : ""
     }
-  <table width="100%" border="0" cellpadding="0" cellspacing="0" style="background-color:#f1f5f9;padding:32px 16px;">
+  <table width="100%" border="0" cellpadding="0" cellspacing="0" style="background-color:#f1f5f9;padding:${compact ? "8px 8px" : "32px 16px"};">
     <tr>
       <td align="center">
         <!-- Main Container -->
@@ -338,25 +340,25 @@ export function wrapEmailHtml(contentHtml: string, preheaderText?: string, logoU
           
           <!-- Header -->
           <tr>
-            <td align="center" style="padding:40px 32px 32px;background-color:#ffffff;border-bottom:2px solid #f1f5f9;">
+            <td align="center" style="padding:${compact ? "12px 16px" : "40px 32px 32px"};background-color:#ffffff;border-bottom:2px solid #f1f5f9;">
               <a href="https://groutix.com" target="_blank" style="text-decoration:none;display:inline-block;">
-                <img src="${resolvedLogoUrl}" alt="Groutix" width="200" style="display:block;max-width:100%;height:auto;border:0;">
+                <img src="${resolvedLogoUrl}" alt="Groutix" width="${compact ? 120 : 200}" style="display:block;max-width:100%;height:auto;border:0;">
               </a>
             </td>
           </tr>
 
           <!-- Body -->
           <tr>
-            <td style="padding:40px 32px;font-size:16px;line-height:1.6;color:#334155;">
+            <td style="padding:${compact ? "12px 16px 16px" : "40px 32px"};font-size:16px;line-height:1.6;color:#334155;">
               ${contentHtml}
             </td>
           </tr>
 
           <!-- Footer -->
           <tr>
-            <td style="padding:32px;background-color:#f8fafc;border-top:1px solid #e2e8f0;text-align:center;">
-              <p style="margin:0 0 12px;font-size:14px;color:#001f97;font-weight:700;">Stay Sealed. Stay Smiling.</p>
-              <p style="margin:0 0 16px;font-size:13px;color:#64748b;line-height:1.5;">
+            <td style="padding:${compact ? "12px 16px" : "32px"};background-color:#f8fafc;border-top:1px solid #e2e8f0;text-align:center;">
+              <p style="margin:0 0 ${compact ? "0" : "12px"};font-size:14px;color:#001f97;font-weight:700;">Stay Sealed. Stay Smiling.</p>
+              ${compact ? "" : `              <p style="margin:0 0 16px;font-size:13px;color:#64748b;line-height:1.5;">
                 You are receiving this email because you contacted Groutix.<br/>
                 If you have any questions, simply reply to this email or call us.
               </p>
@@ -364,7 +366,7 @@ export function wrapEmailHtml(contentHtml: string, preheaderText?: string, logoU
                 <div>📞 <a href="tel:+61370238094" style="color:#001f97;text-decoration:none;font-weight:700;">(03) 7023 8094</a></div>
                 <div>✉️ <a href="mailto:info@groutix.com" style="color:#001f97;text-decoration:none;font-weight:600;">info@groutix.com</a></div>
                 <div>🌐 <a href="https://groutix.com" target="_blank" style="color:#001f97;text-decoration:underline;font-weight:700;">groutix.com</a></div>
-              </div>
+              </div>`}
             </td>
           </tr>
 

@@ -7,26 +7,12 @@
 import { getSubmission, updateSubmission, appendActivity } from "./submissions";
 import { buildChecklistUrl, checklistTrackingPixel, type ChecklistAnswers } from "./checklist";
 import { sendEmail, wrapEmailHtml, getEmailLogoUrl } from "./email";
+import { emailActionButton } from "./emailPresentation";
 
 const FROM_EMAIL = process.env.SMTP_FROM || process.env.SMTP_USER || "info@groutix.com";
 
 export function checklistInvitationHtml(id: string): string {
-  const url = buildChecklistUrl(id);
-  return `
-    <h3 style="margin:24px 0 14px;color:#001f97;font-size:19px;">Let's get your quote started!</h3>
-    <p style="margin:0 0 14px;font-size:15px;line-height:1.5;color:#1e293b;">
-      Complete our <strong>Groutix Smart Quote Request</strong> and upload a few photos of the areas requiring attention. This helps our team recommend suitable restoration options and prepare your quote sooner.
-    </p>
-    <p style="margin:0 0 20px;font-size:15px;line-height:1.5;color:#1e293b;">
-      Unsure about an answer? Select “Not sure” and our team will help. You can add multiple showers, bathrooms, balconies or other tiled areas in the same request.
-    </p>
-    <div style="margin:24px 0;padding:20px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;text-align:center;">
-      <a href="${url}" style="display:inline-block;background:#001f97;color:#ffffff;text-decoration:none;font-weight:800;font-size:15px;padding:14px 28px;border-radius:10px;box-shadow:0 2px 4px rgba(0,31,151,0.2);">
-        Complete My Quote Request
-      </a>
-      <p style="margin:14px 0 0;font-size:13px;color:#64748b;">Remote quotes are preliminary and may require verification.</p>
-    </div>
-    ${checklistTrackingPixel(id)}`;
+  return `${emailActionButton(buildChecklistUrl(id), "Complete My Quote Form")}${checklistTrackingPixel(id)}`;
 }
 
 /** Record a successful email containing the checklist invitation. */
@@ -59,13 +45,12 @@ export async function sendChecklistEmail(
       fromEmail: FROM_EMAIL,
       subject: "Complete your Groutix Smart Quote Request",
       html: wrapEmailHtml(
-        `<h2 style="margin:0 0 14px;color:#001f97;font-size:24px;">Hi ${firstName},</h2>
-         <p>Thanks for your enquiry.</p>
-         ${checklistInvitationHtml(id)}
-         <p>If you have any questions, simply reply to this email or call us.</p>
-         <p style="margin:20px 0 0;font-size:16px;font-weight:700;color:#001f97;">Stay Sealed. Stay Smiling.</p>`,
-        "Tell us about your space and upload a few photos so we can prepare your quote.",
-        logoUrl
+        `${checklistInvitationHtml(id)}
+         <p style="margin:12px 0 6px;">Hi ${firstName}, add your details and photos so we can prepare your quote.</p>
+         <p style="margin:0;font-size:13px;color:#64748b;">Remote quotes may require verification.</p>`,
+        "Add your details and photos for your quote.",
+        logoUrl,
+        { compact: true }
       ),
     });
     await recordChecklistEmailSent(id, toEmail);

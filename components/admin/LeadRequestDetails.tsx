@@ -80,6 +80,12 @@ export function LeadRequestDetails({ lead, onSave, onOpenPhotos }: {
     ["Preferred inspection", requestedInspection && `${formatApptDate(requestedInspection)} ${formatApptTime(requestedInspection)}`],
     ["Booked inspection", bookedInspection && `${formatApptDate(bookedInspection)} ${formatLeadBookingTime(lead, "inspection")}`],
     ["Inspection status", lead.quoteRequestMode === "inspection" && !bookedInspection ? "To be arranged" : undefined],
+    ...(!checklist ? [
+      ["Service requested", lead.service],
+      ["Areas to service", lead.areas],
+      ["Leakage", lead.leaking],
+      ["Damaged tiles", lead.damagedTiles],
+    ] : []),
   ].filter(([, value]) => value);
 
   return (
@@ -97,7 +103,7 @@ export function LeadRequestDetails({ lead, onSave, onOpenPhotos }: {
           <Pencil className="w-3 h-3" /> Edit
         </button>}
       </div>
-      {draft ? (
+      {draft && (
         <div className="space-y-2 rounded-lg border border-slate-200 bg-white p-2">
           <fieldset disabled={saving} className="space-y-2">
             {fields.map(field => (
@@ -115,11 +121,12 @@ export function LeadRequestDetails({ lead, onSave, onOpenPhotos }: {
           </fieldset>
           {error && <p role="alert" className="text-xs text-red-600">{error}</p>}
         </div>
-      ) : expanded && (
+      )}
+      {expanded && (
         <div className="space-y-1.5">
           <section className="rounded-lg border border-slate-200 p-2.5 text-xs text-slate-700">
             <h3 className="mb-2 text-sm font-bold text-slate-900">Submitted details</h3>
-            <dl className="grid grid-cols-1 gap-1.5 @container">
+            <dl className="space-y-1.5">
               {requestFields.map(([label, value]) => (
                 <div key={label} className="min-w-0">
                   <dt className="font-bold">{label}</dt>
@@ -141,6 +148,9 @@ export function LeadRequestDetails({ lead, onSave, onOpenPhotos }: {
                 </ul>
               </div>
             )}
+            {!checklist && photoCount > 0 && (
+              <button type="button" onClick={onOpenPhotos} className="mt-2 cursor-pointer font-semibold text-blue-700 hover:text-blue-900">View photos ({photoCount})</button>
+            )}
           </section>
           {checklist && (
             <section className="rounded-lg border border-blue-100 bg-blue-50/40 p-2.5">
@@ -149,6 +159,7 @@ export function LeadRequestDetails({ lead, onSave, onOpenPhotos }: {
                 id={`lead-checklist-${lead.id}`}
                 checklist={checklist}
                 leaking={lead.leaking ?? ""}
+                additionalBalconies={lead.additionalBalconies}
                 photos={(
                   <div className="space-y-1 text-xs">
                     {photoLabels.length > 0 ? (
@@ -164,13 +175,17 @@ export function LeadRequestDetails({ lead, onSave, onOpenPhotos }: {
               />
             </section>
           )}
-          {fields.filter(field => lead[field]?.trim() && !(field === "enquiry" && lead.enquiry === lead.message)).map(field => (
-            <div key={field} className="flex items-start gap-1.5 text-xs text-slate-700 min-w-0">
-              {field === "notes" ? <StickyNote className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" /> : <MessageSquare className="w-3.5 h-3.5 text-blue-600 shrink-0 mt-0.5" />}
-              <p className="min-w-0 whitespace-pre-wrap break-words"><span className="font-bold">{field === "notes" ? "Lead Notes" : "Customer Request Detail"}:</span> {lead[field]}</p>
-            </div>
-          ))}
-          {!fields.some(field => lead[field]?.trim()) && <p className="text-xs text-slate-500">No lead notes or customer request details yet.</p>}
+          {!draft && (
+            <>
+              {fields.filter(field => lead[field]?.trim() && !(field === "enquiry" && lead.enquiry === lead.message)).map(field => (
+                <div key={field} className="flex items-start gap-1.5 text-xs text-slate-700 min-w-0">
+                  {field === "notes" ? <StickyNote className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" /> : <MessageSquare className="w-3.5 h-3.5 text-blue-600 shrink-0 mt-0.5" />}
+                  <p className="min-w-0 whitespace-pre-wrap break-words"><span className="font-bold">{labels[field]}:</span> {lead[field]}</p>
+                </div>
+              ))}
+              {!fields.some(field => lead[field]?.trim()) && <p className="text-xs text-slate-500">No lead notes or customer request details yet.</p>}
+            </>
+          )}
         </div>
       )}
     </div>

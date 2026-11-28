@@ -5,13 +5,14 @@ import { downloadAttachment } from "@/lib/downloadAttachment";
 import { useEffect, useCallback } from "react";
 import { X, Download, ExternalLink, ChevronLeft, ChevronRight } from "lucide-react";
 
-interface Photo {
+export interface PreviewPhoto {
   name: string;
   url: string;
+  category?: string;
 }
 
 interface Props {
-  photos: Photo[];
+  photos: PreviewPhoto[];
   index: number;
   onClose: () => void;
   onNavigate: (index: number) => void;
@@ -50,31 +51,36 @@ export function PhotoLightbox({ photos, index, onClose, onNavigate }: Props) {
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 bg-slate-900/90 border-b border-slate-800 text-white">
           <div className="flex items-center gap-2 min-w-0">
-            <span className="text-xs font-semibold truncate max-w-xs">{photo.name}</span>
+            <div className="min-w-0 text-xs">
+              {photo.category && <div className="break-words font-semibold text-blue-200">{photo.category}</div>}
+              <div className="truncate font-medium" title={photo.name}>{photo.name}</div>
+            </div>
             {total > 1 && (
               <span className="text-[10px] font-bold text-slate-400 shrink-0">
                 {index + 1} / {total}
               </span>
             )}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2">
             <a
               href={`/api/admin/download-photo?url=${encodeURIComponent(photo.url)}&name=${encodeURIComponent(photo.name)}`}
               download
               onClick={(event) => { event.preventDefault(); void downloadAttachment(photo.url, photo.name); }}
+              aria-label="Download photo"
               className="flex items-center gap-1 text-xs px-2.5 py-1 bg-emerald-700 hover:bg-emerald-600 rounded-lg text-white transition-colors"
             >
               <Download className="w-3.5 h-3.5" />
-              Download
+              <span className="hidden sm:inline">Download</span>
             </a>
             <a
               href={photo.url}
               target="_blank"
               rel="noopener noreferrer"
+              aria-label="Open original photo"
               className="flex items-center gap-1 text-xs px-2.5 py-1 bg-slate-800 hover:bg-slate-700 rounded-lg text-slate-200 transition-colors"
             >
               <ExternalLink className="w-3.5 h-3.5" />
-              Original
+              <span className="hidden sm:inline">Original</span>
             </a>
             <button
               type="button"
