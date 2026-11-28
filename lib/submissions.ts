@@ -6,7 +6,7 @@ import { acceptedQuoteFields, changesAcceptedQuote } from "./quoteIntegrity";
 import { bookingReminderCandidates } from "./bookingReminders";
 import { randomUUID } from "node:crypto";
 import { initialChecklistRevision } from "./quoteChecklistLink";
-import type { describeJobChecklist } from "./quoteJobChecklist";
+import type { AdditionalShower, describeJobChecklist } from "./quoteJobChecklist";
 import type { QuoteBalcony } from "./quoteBalconies";
 // Data-access layer for form submissions (quotes + support tickets).
 //
@@ -158,6 +158,7 @@ export interface SubmissionDoc {
   quoteChecklist?: Record<string, string | string[]>;
   quoteChecklistRevision?: string;
   additionalBalconies?: import("@/lib/quoteBalconies").QuoteBalcony[];
+  additionalShowers?: AdditionalShower[];
   quoteRequestMode?: "quote" | "inspection";
   requestedInspectionAt?: string;
   areas?: string;
@@ -956,6 +957,7 @@ export async function saveResentJobChecklist(
   job: ReturnType<typeof describeJobChecklist>,
   additionalBalconies: QuoteBalcony[],
   photos: SubmissionPhoto[],
+  additionalShowers: AdditionalShower[] = [],
 ): Promise<boolean> {
   if (!ObjectId.isValid(id)) return false;
   const col = await collection(false);
@@ -969,6 +971,7 @@ export async function saveResentJobChecklist(
       photos: { $concatArrays: [{ $ifNull: ["$photos", []] }, { $literal: photos }] },
       activity: { $concatArrays: [{ $ifNull: ["$activity", []] }, { $literal: [activity] }] },
       additionalBalconies: { $literal: additionalBalconies },
+      additionalShowers: { $literal: additionalShowers },
       areas: { $literal: job.areas },
       service: { $literal: job.service },
       leaking: { $literal: job.leaking },

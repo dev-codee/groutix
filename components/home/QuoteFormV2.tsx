@@ -16,12 +16,13 @@ import { useContact } from "@/components/SiteContentProvider";
 import QuoteChecklist, { emptyChecklist, type Checklist } from "@/components/QuoteChecklist";
 import { QUOTE_PHOTO_CATEGORIES } from "@/lib/quotePhotoCategories";
 import type { QuoteBalcony } from "@/lib/quoteBalconies";
-import { describeJobChecklist, jobChecklistErrors } from "@/lib/quoteJobChecklist";
+import { describeJobChecklist, includesJobBalcony, jobChecklistErrors, type AdditionalShower } from "@/lib/quoteJobChecklist";
 import { isCompletePropertyAddress, PROPERTY_ADDRESS_ERROR } from "@/lib/propertyAddress";
 
 const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 
 type Mode = "insp" | "quote";
+const DEFAULT_MODE: Mode = "insp";
 const steps = ["details", "job"] as const;
 type StepId = (typeof steps)[number];
 type Tenant = { name: string; phone: string; email: string };
@@ -93,6 +94,7 @@ type ChecklistRequest = {
   checklist: Checklist;
   leaking: string;
   additionalBalconies: QuoteBalcony[];
+  additionalShowers?: AdditionalShower[];
   photoCount: number;
 };
 
@@ -107,11 +109,16 @@ export default function QuoteFormV2({
   const { phone: phoneDisplay, tel } = useContact();
   const rootRef = useRef<HTMLDivElement>(null);
 
-  const [mode, setMode] = useState<Mode>("quote");
+  const [mode, setMode] = useState<Mode>(checklistRequest ? "quote" : DEFAULT_MODE);
   const [isPM, setIsPM] = useState(false);
   const [step, setStep] = useState<StepId>(checklistRequest ? "job" : "details");
   const [checklist, setChecklist] = useState<Checklist>(checklistRequest?.checklist ?? emptyChecklist);
   const [additionalBalconies, setAdditionalBalconies] = useState<QuoteBalcony[]>(checklistRequest?.additionalBalconies ?? []);
+  const [additionalShowers, setAdditionalShowers] = useState(() =>
+    (checklistRequest?.additionalShowers ?? []).map((shower, index) => ({ ...shower, id: index })),
+  );
+  const nextShowerId = useRef(additionalShowers.length);
+  const [showAddArea, setShowAddArea] = useState(false);
 
   const [leaking, setLeaking] = useState(checklistRequest?.leaking ?? "");
   const [jobErrors, setJobErrors] = useState<Record<string, string>>({});
@@ -261,7 +268,7 @@ export default function QuoteFormV2({
 
   /* ---------- validation ---------- */
   const validateJob = () => {
-    const errors = jobChecklistErrors(checklist, leaking, additionalBalconies);
+    const errors = jobChecklistErrors(checklist, leaking, additionalBalconies, additionalShowers);
     setJobErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -488,6 +495,9 @@ export default function QuoteFormV2({
       payload.append("leaking", job.leaking);
       payload.append("checklist", JSON.stringify(job.quoteChecklist));
       if (additionalBalconies.length) payload.append("additionalBalconies", JSON.stringify(additionalBalconies));
+      if (additionalShowers.length) {
+        payload.append("additionalShowers", JSON.stringify(additionalShowers.map(({ checklist, leaking }) => ({ checklist, leaking }))));
+      }
       if (uploaded.length) payload.append("uploadedPhotos", JSON.stringify(uploaded));
       else photos.forEach(({ file, category }) => {
         payload.append("photos", file);
@@ -498,7 +508,7 @@ export default function QuoteFormV2({
       const res = await fetch(endpoint, { method: "POST", body: payload });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        if (checklistRequest && body.errors) setJobErrors(body.errors);
+        if (body.errors) setJobErrors(body.errors);
         // Slot taken between loading and submitting: reload live times and let them re-pick.
         if (body.slotConflict) {
           setTime("");
@@ -529,9 +539,12 @@ export default function QuoteFormV2({
 
   const reset = () => {
     setDone(null);
+    setMode(DEFAULT_MODE);
     setStep("details");
     setChecklist(emptyChecklist);
     setAdditionalBalconies([]);
+    setAdditionalShowers([]);
+    setShowAddArea(false);
     setIsPM(false);
     setLeaking("");
     setJobErrors({});
@@ -554,6 +567,40 @@ export default function QuoteFormV2({
     availabilityRequest.current++;
     setAvail({ status: "idle" });
     setAvailFor("");
+  };
+
+  const clearJobErrors = (fields: string[], prefix = "") => {
+    setJobErrors(current => {
+      const next = { ...current };
+      for (const field of fields) delete next[`${prefix}${field}`];
+      return next;
+    });
+  };
+
+  const focusJobField = (fieldId: string) => {
+    requestAnimationFrame(() => {
+      const field = document.getElementById(fieldId);
+      field?.focus({ preventScroll: true });
+      field?.scrollIntoView({ block: "center" });
+    });
+  };
+
+  const addShower = () => {
+    const id = nextShowerId.current++;
+    setAdditionalShowers(current => [...current, { id, checklist: emptyChecklist, leaking: "" }]);
+    setShowAddArea(false);
+    focusJobField(`${P}-shower-${id}-heading`);
+  };
+
+  const addBalcony = () => {
+    if (includesJobBalcony(checklist, additionalBalconies)) {
+      setAdditionalBalconies(current => [...current, { leakage: "", area: "", tileSizes: [] }]);
+      focusJobField(`${P}-balcony-${additionalBalconies.length + 2}-area`);
+    } else {
+      setChecklist(current => ({ ...current, includeBalcony: "Yes" }));
+      focusJobField(`${P}-balcony-area`);
+    }
+    setShowAddArea(false);
   };
 
   /* ---------- pieces ---------- */
@@ -1008,18 +1055,52 @@ export default function QuoteFormV2({
                 errors={jobErrors}
                 onChange={(patch) => {
                   setChecklist((current) => ({ ...current, ...patch }));
-                  setJobErrors((current) => {
-                    const next = { ...current };
-                    for (const key of Object.keys(patch)) delete next[key];
-                    if (patch.leakAreas?.length) delete next.location;
-                    return next;
-                  });
+                  clearJobErrors([...Object.keys(patch), ...(patch.leakAreas?.length ? ["location"] : [])]);
                 }}
                 onLeakChange={(value) => {
                   setLeaking(value);
-                  setJobErrors((current) => ({ ...current, leaking: "" }));
+                  clearJobErrors(["leaking"]);
                 }}
               />
+              {additionalShowers.map((shower, index) => {
+                const showerId = `${P}-shower-${shower.id}`;
+                const errorPrefix = `shower-${index + 1}-`;
+                const errors = Object.fromEntries(Object.entries(jobErrors)
+                  .filter(([field]) => field.startsWith(errorPrefix))
+                  .map(([field, message]) => [field.slice(errorPrefix.length), message]));
+                return (
+                  <section key={shower.id} aria-labelledby={`${showerId}-heading`} className="mt-3 space-y-2 rounded-xl border border-[#DBE3F0] p-2.5">
+                    <div className="flex flex-wrap items-center justify-between gap-1">
+                      <h3 id={`${showerId}-heading`} tabIndex={-1} className="text-sm font-bold text-[#001F97]">Additional shower {index + 1}</h3>
+                      <button type="button" aria-label={`Remove additional shower ${index + 1}`} onClick={() => {
+                        setAdditionalShowers(current => current.filter(item => item.id !== shower.id));
+                        setJobErrors(current => Object.fromEntries(Object.entries(current).filter(([field]) => !field.startsWith("shower-"))));
+                        focusJobField(`${P}-add-area`);
+                      }} className="min-h-9 text-xs font-semibold text-red-700 underline">Remove shower</button>
+                    </div>
+                    <QuoteChecklist id={showerId} checklist={shower.checklist} leaking={shower.leaking} errors={errors} sectionsOnly
+                      onChange={patch => {
+                        setAdditionalShowers(current => current.map(item => item.id === shower.id ? { ...item, checklist: { ...item.checklist, ...patch } } : item));
+                        clearJobErrors([...Object.keys(patch), ...(patch.leakAreas?.length ? ["location"] : [])], errorPrefix);
+                      }}
+                      onLeakChange={value => {
+                        setAdditionalShowers(current => current.map(item => item.id === shower.id ? { ...item, leaking: value } : item));
+                        clearJobErrors(["leaking"], errorPrefix);
+                      }} />
+                  </section>
+                );
+              })}
+              <button id={`${P}-add-area`} type="button" aria-expanded={showAddArea} aria-controls={`${P}-area-options`}
+                onClick={() => setShowAddArea(current => !current)}
+                className="mt-2 min-h-10 w-full cursor-pointer rounded-lg border border-[#2F63CC] bg-[#EEF3FF] px-3 text-[13px] font-semibold text-[#001F97] hover:bg-[#DCE8FF]">
+                + Add another shower or balcony
+              </button>
+              <div id={`${P}-area-options`} hidden={!showAddArea} className="mt-1">
+                <div className="grid grid-cols-2 gap-2">
+                  <button type="button" onClick={addShower} className={backBtn}>Add shower</button>
+                  <button type="button" onClick={addBalcony} className={backBtn}>Add balcony</button>
+                </div>
+              </div>
               {photoAsk && (
                 <section aria-labelledby={`${P}-photo-ask`} className="rounded-xl border border-[#DBE3F0] bg-[#F8FAFF] p-3">
                   <h3 id={`${P}-photo-ask`} className="text-sm font-bold text-[#001F97]">Submit without photos?</h3>

@@ -35,6 +35,7 @@ export default async function JobChecklistPage({ params, searchParams }: {
             checklist: initialAnswers(lead.quoteChecklist, lead.leaking),
             leaking: lead.quoteChecklist && lead.quoteChecklist.location !== "Balcony" && (lead.leaking === "Yes" || lead.leaking === "No") ? lead.leaking : "",
             additionalBalconies: lead.additionalBalconies ?? [],
+            additionalShowers: lead.additionalShowers,
             photoCount: lead.photos?.length ?? lead.photosCount ?? 0,
           }} />
         )}

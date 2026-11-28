@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { rateLimit } from "@/lib/rateLimit";
 import { parseAdditionalBalconies, type QuoteBalcony } from "@/lib/quoteBalconies";
 import { initialChecklistRevision, verifyJobChecklistLink } from "@/lib/quoteChecklistLink";
-import { describeJobChecklist, jobChecklistErrors, normalizeJobChecklist } from "@/lib/quoteJobChecklist";
+import { describeJobChecklist, jobChecklistErrors, normalizeJobChecklist, parseAdditionalShowers, type AdditionalShower } from "@/lib/quoteJobChecklist";
 import { readQuotePhotos } from "@/lib/quotePhotoUpload";
 import { getSubmission, saveResentJobChecklist } from "@/lib/submissions";
 
@@ -33,14 +33,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const balconiesRaw = field("additionalBalconies");
   let checklist;
   let additionalBalconies: QuoteBalcony[];
+  let additionalShowers: AdditionalShower[];
   try {
     checklist = normalizeJobChecklist(JSON.parse(raw));
     additionalBalconies = balconiesRaw ? parseAdditionalBalconies(balconiesRaw) : [];
+    additionalShowers = parseAdditionalShowers(field("additionalShowers"));
   } catch {
-    return NextResponse.json({ error: "Check the job and balcony details and try again." }, { status: 400 });
+    return NextResponse.json({ error: "Check the shower and balcony details and try again." }, { status: 400 });
   }
   const leaking = checklist.location === "Balcony" ? "" : field("leaking");
-  const errors = jobChecklistErrors(checklist, leaking, additionalBalconies);
+  const errors = jobChecklistErrors(checklist, leaking, additionalBalconies, additionalShowers);
   if (Object.keys(errors).length) {
     return NextResponse.json({ error: "Complete the highlighted checklist fields.", errors }, { status: 400 });
   }
@@ -49,7 +51,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (!uploaded) return NextResponse.json({ error: "Please upload smaller images." }, { status: 400 });
 
   const job = describeJobChecklist(checklist, leaking, additionalBalconies);
-  const saved = await saveResentJobChecklist(id, revision, job, additionalBalconies, uploaded.submissionPhotos);
+  const saved = await saveResentJobChecklist(id, revision, job, additionalBalconies, uploaded.submissionPhotos, additionalShowers);
   if (!saved) {
     const current = await getSubmission(id);
     if (!current || (current.quoteChecklistRevision ?? initialChecklistRevision) === revision) {

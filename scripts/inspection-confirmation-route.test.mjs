@@ -39,6 +39,9 @@ for (const booked of [true, false]) {
     const fields = {
       firstName: "Sam", lastName: "Customer", email: "sam@example.test", phone: "0400000000",
       checklist: JSON.stringify({ location: "Main bathroom shower", work: "Grout only", additional: ["Kitchen"] }),
+      additionalShowers: JSON.stringify([
+        { checklist: { location: "Ensuite shower", work: "Grout and silicone", showerScope: "Floor only", leakNotes: "By the drain" }, leaking: "Yes" },
+      ]),
       address: "12 Smith Street, Gowanbrae VIC 3043", areas: "Ensuite Bathroom, Main Bathroom, Other", inspectionDate: "2026-10-22", inspectionTime: "09:00",
     };
     for (const address of ["", "Melbourne", "Richmond VIC 3121", "3000 Melbourne", "12 Smith Street"]) {
@@ -53,6 +56,13 @@ for (const booked of [true, false]) {
       assert.equal(texts.length, 0);
       assert.equal(submissions.length, 0);
     }
+    const incomplete = await POST({
+      headers: { get: () => null },
+      formData: async () => ({ get: key => key === "additionalShowers" ? JSON.stringify([{ checklist: {}, leaking: "" }]) : fields[key] ?? null, getAll: () => [] }),
+    });
+    assert.equal(incomplete.status, 400);
+    assert.ok(incomplete.body.errors["shower-1-leaking"]);
+    assert.equal(submissions.length, 0);
     const response = await POST({
       headers: { get: () => null },
       formData: async () => ({ get: key => fields[key] ?? null, getAll: () => [] }),
@@ -61,6 +71,8 @@ for (const booked of [true, false]) {
     assert.equal(submissions[0][0].areas, fields.areas);
     assert.equal(submissions[0][0].quoteChecklist.work, "Grout only");
     assert.deepEqual(Array.from(submissions[0][0].quoteChecklist.additional), ["Kitchen"]);
+    assert.equal(submissions[0][0].additionalShowers[0].checklist.leakNotes, "By the drain");
+    assert.equal(submissions[0][0].additionalShowers[0].leaking, "Yes");
     const customerEmails = emails.filter(email => email.toEmail === fields.email);
     assert.equal(customerEmails.length, 1);
     const customerEmail = customerEmails[0];

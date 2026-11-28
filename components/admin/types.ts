@@ -192,6 +192,7 @@ export interface Lead {
   checklist?: import("@/lib/checklist").ChecklistDoc;
   quoteChecklist?: Record<string, string | string[]>;
   additionalBalconies?: import("@/lib/quoteBalconies").QuoteBalcony[];
+  additionalShowers?: import("@/lib/quoteJobChecklist").AdditionalShower[];
   quoteRequestMode?: "quote" | "inspection";
   requestedInspectionAt?: string;
   checklistSentAt?: string;

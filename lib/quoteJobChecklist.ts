@@ -7,10 +7,24 @@ export type Checklist = {
   balconyTileSize: string; additional: string[]; notes: string;
   leakAreas: string[]; tileSizes: string[]; balconyTileSizes: string[];
   verticalJoints: string[]; horizontalJoints: string[]; tileActions: string[];
-  leakNotes: string; balconyLeakage: string;
+  leakNotes: string; includeBalcony: string; balconyLeakage: string;
   workDetails: string; summaryNotes: string; wallTileActions: string[]; floorTileActions: string[];
 };
-export const emptyChecklist: Checklist = { location: "", showerType: "", wallHeight: "", work: "", showerScope: "", wallCount: "", tileSize: "", mosaic: "", screen: "", siliconeJoints: "", wallTiles: "", floorTiles: "", tileAction: "", balconyArea: "", balconyTileSize: "", additional: [], notes: "", leakAreas: [], tileSizes: [], balconyTileSizes: [], verticalJoints: [], horizontalJoints: [], tileActions: [], leakNotes: "", balconyLeakage: "", workDetails: "", summaryNotes: "", wallTileActions: [], floorTileActions: [] };
+export const emptyChecklist: Checklist = { location: "", showerType: "", wallHeight: "", work: "", showerScope: "", wallCount: "", tileSize: "", mosaic: "", screen: "", siliconeJoints: "", wallTiles: "", floorTiles: "", tileAction: "", balconyArea: "", balconyTileSize: "", additional: [], notes: "", leakAreas: [], tileSizes: [], balconyTileSizes: [], verticalJoints: [], horizontalJoints: [], tileActions: [], leakNotes: "", includeBalcony: "", balconyLeakage: "", workDetails: "", summaryNotes: "", wallTileActions: [], floorTileActions: [] };
+
+export type AdditionalShower = { checklist: Checklist; leaking: string };
+
+export function parseAdditionalShowers(raw: string): AdditionalShower[] {
+  if (!raw) return [];
+  const entries: unknown = JSON.parse(raw);
+  if (!Array.isArray(entries)) throw new Error("Invalid shower details");
+  return entries.map((entry: unknown) => {
+    if (!entry || typeof entry !== "object" || !("checklist" in entry) || !("leaking" in entry) || typeof entry.leaking !== "string") {
+      throw new Error("Invalid shower details");
+    }
+    return { checklist: normalizeJobChecklist(entry.checklist), leaking: entry.leaking };
+  });
+}
 
 export function normalizeJobChecklist(raw: unknown): Checklist {
   const answers = raw && typeof raw === "object" ? raw as Record<string, unknown> : {};
@@ -23,20 +37,39 @@ export function normalizeJobChecklist(raw: unknown): Checklist {
   })) as Checklist;
 }
 
+export function includesJobBalcony(checklist: Checklist, additionalBalconies: QuoteBalcony[]) {
+  return Boolean(checklist.includeBalcony === "Yes" || checklist.location === "Balcony" || checklist.balconyLeakage
+    || checklist.balconyArea || checklist.balconyTileSize || checklist.balconyTileSizes.length || additionalBalconies.length);
+}
+
 function jobAreas(checklist: Checklist, leaking: string, additionalBalconies: QuoteBalcony[]) {
-  const hasBalcony = Boolean(checklist.balconyLeakage || checklist.balconyArea || checklist.balconyTileSizes.length || additionalBalconies.length);
-  const hasShower = Boolean((checklist.location && checklist.location !== "Balcony") || leaking || checklist.leakAreas.length || checklist.showerScope || checklist.showerType);
+  const hasBalcony = includesJobBalcony(checklist, additionalBalconies);
+  const hasShower = checklist.location !== "Balcony" && Boolean(checklist.location || leaking || checklist.leakAreas.length || checklist.showerScope || checklist.showerType);
   return { hasBalcony, balconyOnly: hasBalcony && !hasShower };
 }
 
-export function jobChecklistErrors(checklist: Checklist, leaking: string, additionalBalconies: QuoteBalcony[]) {
+export function jobChecklistErrors(checklist: Checklist, leaking: string, additionalBalconies: QuoteBalcony[], additionalShowers: AdditionalShower[] = []) {
+  return { ...checklistErrors(checklist, leaking, additionalBalconies), ...additionalShowerErrors(additionalShowers) };
+}
+
+export function additionalShowerErrors(additionalShowers: AdditionalShower[]) {
+  const errors: Record<string, string> = {};
+  additionalShowers.forEach((shower, index) => {
+    for (const [field, message] of Object.entries(checklistErrors(shower.checklist, shower.leaking, [], true))) {
+      errors[`shower-${index + 1}-${field}`] = message;
+    }
+  });
+  return errors;
+}
+
+function checklistErrors(checklist: Checklist, leaking: string, additionalBalconies: QuoteBalcony[], requireShower = false) {
   const { hasBalcony, balconyOnly } = jobAreas(checklist, leaking, additionalBalconies);
   const errors: Record<string, string> = {};
   const validArea = (value: string) => Number.isFinite(Number(value)) && Number(value) > 0;
   if (!["Silicone only", "Grout only", "Grout and silicone"].includes(checklist.work)) errors.work = "Choose the work required";
-  if (!balconyOnly) {
+  if (requireShower || !balconyOnly) {
     if (leaking !== "Yes" && leaking !== "No") errors.leaking = "Choose yes or no";
-    if ((!checklist.location || checklist.location === "Balcony") && !checklist.leakAreas.length) errors.location = "Choose the shower area";
+    if ((requireShower && checklist.location === "Balcony") || ((!checklist.location || checklist.location === "Balcony") && !checklist.leakAreas.length)) errors.location = "Choose the shower area";
     if (!checklist.showerScope) errors.showerScope = "Choose the area to work on";
   }
   if (hasBalcony) {
@@ -50,9 +83,14 @@ export function jobChecklistErrors(checklist: Checklist, leaking: string, additi
   return errors;
 }
 
-export function jobChecklistText(answers: Record<string, string | string[]> | undefined, leaking = "", additionalBalconies: QuoteBalcony[] = []) {
-  if (!answers) return "";
-  const checklist = normalizeJobChecklist(answers);
+export function jobChecklistText(answers: Record<string, string | string[]> | undefined, leaking = "", additionalBalconies: QuoteBalcony[] = [], additionalShowers: AdditionalShower[] = []) {
+  const first = answers ? checklistText(normalizeJobChecklist(answers), leaking, additionalBalconies, answers.photoLabels ?? []) : "";
+  return [first, ...additionalShowers.map((shower, index) =>
+    `Additional shower ${index + 1}\n${checklistText(normalizeJobChecklist(shower.checklist), shower.leaking)}`
+  )].filter(Boolean).join("\n\n");
+}
+
+function checklistText(checklist: Checklist, leaking: string, additionalBalconies: QuoteBalcony[] = [], photoLabels: string | string[] = []) {
   const rows: [string, string | string[]][] = [];
   if (checklist.location !== "Balcony") {
     rows.push(
@@ -77,7 +115,7 @@ export function jobChecklistText(answers: Record<string, string | string[]> | un
   additionalBalconies.forEach((balcony, index) => rows.push([
     `Balcony ${index + 2}`, [`${balcony.area} m²`, `Leakage ${balcony.leakage}`, ...balcony.tileSizes],
   ]));
-  rows.push(["Additional notes", checklist.summaryNotes], ["Photos", answers.photoLabels ?? []]);
+  rows.push(["Additional notes", checklist.summaryNotes], ["Photos", photoLabels]);
   return rows.flatMap(([label, value]) => {
     const text = Array.isArray(value) ? value.join(", ") : value.trim();
     return text ? [`${label}: ${text}`] : [];

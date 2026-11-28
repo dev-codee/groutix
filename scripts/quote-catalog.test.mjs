@@ -10,6 +10,23 @@ import { loadTs } from "./test-ts-loader.mjs";
 const { SERVICE_TEMPLATES, bestTemplateForTask } = loadTs("lib/serviceTemplates.ts");
 const { findBestTemplateForService, getMatchedQuoteItemsForLead, parseCustomerServices } = loadTs("lib/serviceMatching.ts");
 const { customerQuoteLead } = loadTs("lib/customerQuoteSelection.ts");
+const { normalizeJobChecklist, jobChecklistText, parseAdditionalShowers } = loadTs("lib/quoteJobChecklist.ts");
+
+test("each additional shower keeps its own answers, quantities and line items in the quote", () => {
+  const first = { location: "Ensuite shower", work: "Grout and silicone", showerType: "Single", showerScope: "Floor only" };
+  const additionalShowers = parseAdditionalShowers(JSON.stringify([
+    { checklist: { ...first, floorTiles: "2", floorTileActions: ["Repair"], leakNotes: "Leak by the door" }, leaking: "Yes" },
+    { checklist: { location: "Main bathroom shower", work: "Silicone only", verticalJoints: ["Inside"], showerScope: "Walls only", includeBalcony: "Yes", balconyLeakage: "No", balconyArea: "8", balconyTileSizes: ["Large"] }, leaking: "No" },
+  ]));
+  const lead = customerQuoteLead({ id: "lead-1", quoteChecklist: normalizeJobChecklist(first), leaking: "No", additionalShowers }, { values: {} });
+  const summary = jobChecklistText(lead.quoteChecklist, lead.leaking, [], lead.additionalShowers);
+  assert.match(summary, /Additional shower 1\nShower leakage: Yes[\s\S]*Leakage notes: Leak by the door/);
+  assert.match(summary, /Additional shower 2\nShower leakage: No\nShower areas: Main bathroom shower[\s\S]*Balcony area: 8 m²/);
+  const items = getMatchedQuoteItemsForLead(lead);
+  assert.deepEqual(Array.from(items, item => [item.code, item.qty]), [["EN-SS-FO-EG", 1], ["EN-SS-FO-EG", 1], ["TILE REPAIR", 2], ["C-V-I", 1], ["", 1]]);
+  assert.match(items[1].scope, /^Additional shower 1 · Ensuite shower/);
+  assert.match(items[4].scope, /^Additional shower 2 · Main bathroom shower\n8 m² · Leaking: No · Tile sizes: Large/);
+});
 
 test("selecting a quote version keeps saved answers and matches repair and replacement separately", () => {
   const quoteChecklist = {

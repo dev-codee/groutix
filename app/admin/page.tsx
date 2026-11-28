@@ -510,7 +510,7 @@ export default function CrmDashboardPage() {
     [activeQuoteLead],
   );
   const writtenQuoteChecklist = activeQuoteLead && jobChecklistText(
-    activeQuoteLead.quoteChecklist, activeQuoteLead.leaking, activeQuoteLead.additionalBalconies,
+    activeQuoteLead.quoteChecklist, activeQuoteLead.leaking, activeQuoteLead.additionalBalconies, activeQuoteLead.additionalShowers,
   );
   const detailedQuoteChecklist = activeQuoteLead?.checklist?.answers?.pages?.length
     ? checklistRequestText(activeQuoteLead.checklist.answers)

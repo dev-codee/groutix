@@ -1,6 +1,7 @@
 import { SERVICE_TEMPLATES, uniqueTemplateForCode, type ServiceTemplate } from "@/lib/serviceTemplates";
 import type { QuoteBalcony } from "@/lib/quoteBalconies";
 import { checklistToQuoteItems, type ChecklistDoc } from "@/lib/checklist";
+import { describeJobChecklist, type AdditionalShower } from "@/lib/quoteJobChecklist";
 
 export interface MatchedQuoteItem {
   templateNo: string;
@@ -291,7 +292,7 @@ function jobShowerTemplate(answer: (key: string) => string): ServiceTemplate | n
   return surface && height ? uniqueTemplateForCode(`${room}-${size}-${surface}-${height}-EG`) : null;
 }
 
-export function getMatchedQuoteItemsForLead(lead: {
+type JobMatchingInput = {
   service?: string;
   enquiry?: string;
   message?: string;
@@ -299,17 +300,32 @@ export function getMatchedQuoteItemsForLead(lead: {
   areas?: string;
   damagedTiles?: string;
   leaking?: string;
-  checklist?: ChecklistDoc;
-  checklistSubmittedAt?: string;
   quoteChecklist?: Record<string, string | string[]>;
   additionalBalconies?: QuoteBalcony[];
+};
+
+export function getMatchedQuoteItemsForLead(lead: JobMatchingInput & {
+  checklist?: ChecklistDoc;
+  checklistSubmittedAt?: string;
+  additionalShowers?: AdditionalShower[];
 }): MatchedQuoteItem[] {
   const detailed = lead.checklist;
   const newerJobChecklist = lead.quoteChecklist && detailed?.submittedAt && lead.checklistSubmittedAt
     && lead.checklistSubmittedAt > detailed.submittedAt;
   const detailedItems = detailed?.answers && !newerJobChecklist ? checklistToQuoteItems(detailed.answers, lead) : [];
-  if (detailedItems?.length) return detailedItems;
+  const primaryItems = detailedItems.length ? detailedItems : matchJobItems(lead);
+  const additionalItems = (lead.additionalShowers ?? []).flatMap(({ checklist, leaking }, index) => {
+    const job = describeJobChecklist(checklist, leaking, []);
+    const area = [`Additional shower ${index + 1}`, checklist.location].filter(Boolean).join(" · ");
+    return matchJobItems(job).map(item => ({
+      ...item,
+      scope: [area, item.scope].filter(Boolean).join("\n"),
+    }));
+  });
+  return [...primaryItems, ...additionalItems];
+}
 
+function matchJobItems(lead: JobMatchingInput): MatchedQuoteItem[] {
   const checklist = lead.quoteChecklist;
   const answer = (key: string) => typeof checklist?.[key] === "string" ? checklist[key] as string : "";
   const unscopedRequest = !checklist && /^(Shower|Balcony) (Grout only|Silicone only|Grout and silicone)$/i.exec(lead.service || lead.enquiry || "");
@@ -376,9 +392,11 @@ export function getMatchedQuoteItemsForLead(lead: {
   }
 
   if (isShower && answer("balconyLeakage")) {
+    const tileSizes = Array.isArray(checklist?.balconyTileSizes) && checklist.balconyTileSizes.length
+      ? checklist.balconyTileSizes.join(", ") : answer("balconyTileSize");
     items.push({
       templateNo: "", code: "", service: "Balcony — additional work",
-      scope: [answer("balconyArea") && `${answer("balconyArea")} m²`, `Leaking: ${answer("balconyLeakage")}`].filter(Boolean).join(" · "),
+      scope: [answer("balconyArea") && `${answer("balconyArea")} m²`, `Leaking: ${answer("balconyLeakage")}`, tileSizes && `Tile sizes: ${tileSizes}`].filter(Boolean).join(" · "),
       price: 0, qty: 1, matchedFrom: "Customer checklist",
     });
   }
