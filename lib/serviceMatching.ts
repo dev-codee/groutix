@@ -1,7 +1,7 @@
 import { SERVICE_TEMPLATES, uniqueTemplateForCode, type ServiceTemplate } from "@/lib/serviceTemplates";
 import type { QuoteBalcony } from "@/lib/quoteBalconies";
 import { checklistToQuoteItems, type ChecklistDoc } from "@/lib/checklist";
-import { describeJobChecklist, type AdditionalShower } from "@/lib/quoteJobChecklist";
+import { additionalAreaLabel, describeJobChecklist, type AdditionalShower } from "@/lib/quoteJobChecklist";
 
 export interface MatchedQuoteItem {
   templateNo: string;
@@ -314,12 +314,19 @@ export function getMatchedQuoteItemsForLead(lead: JobMatchingInput & {
     && lead.checklistSubmittedAt > detailed.submittedAt;
   const detailedItems = detailed?.answers && !newerJobChecklist ? checklistToQuoteItems(detailed.answers, lead) : [];
   const primaryItems = detailedItems.length ? detailedItems : matchJobItems(lead);
-  const additionalItems = (lead.additionalShowers ?? []).flatMap(({ checklist, leaking }, index) => {
+  const additionalItems = (lead.additionalShowers ?? []).flatMap((entry, index) => {
+    const { checklist, leaking } = entry;
     const job = describeJobChecklist(checklist, leaking, []);
-    const area = [`Additional shower ${index + 1}`, checklist.location].filter(Boolean).join(" · ");
+    const balconyOnly = job.quoteChecklist.location === "Balcony";
+    const area = [additionalAreaLabel(entry, index), !balconyOnly && checklist.location].filter(Boolean).join(" · ");
+    const balconyDetails = balconyOnly ? [
+      checklist.balconyArea && `${checklist.balconyArea} m²`,
+      job.leaking && `Leaking: ${job.leaking}`,
+      (checklist.balconyTileSizes.join(", ") || checklist.balconyTileSize) && `Tile sizes: ${checklist.balconyTileSizes.join(", ") || checklist.balconyTileSize}`,
+    ].filter(Boolean).join(" · ") : "";
     return matchJobItems(job).map(item => ({
       ...item,
-      scope: [area, item.scope].filter(Boolean).join("\n"),
+      scope: [area, balconyDetails, item.scope].filter(Boolean).join("\n"),
     }));
   });
   return [...primaryItems, ...additionalItems];

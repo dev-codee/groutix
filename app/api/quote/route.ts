@@ -183,11 +183,11 @@ export async function POST(req: NextRequest) {
   try {
     additionalShowers = parseAdditionalShowers(get("additionalShowers"));
   } catch {
-    return NextResponse.json({ error: "Check the additional shower details and try again." }, { status: 400 });
+    return NextResponse.json({ error: "Check the additional area details and try again." }, { status: 400 });
   }
   const showerErrors = additionalShowerErrors(additionalShowers);
   if (Object.keys(showerErrors).length) {
-    return NextResponse.json({ error: "Complete the highlighted shower fields.", errors: showerErrors }, { status: 400 });
+    return NextResponse.json({ error: "Complete the highlighted fields for the additional area.", errors: showerErrors }, { status: 400 });
   }
   const areas = get("areas");
   const heard = get("heard");
@@ -283,7 +283,7 @@ export async function POST(req: NextRequest) {
       ${row("Is area leaking", leaking)}
       ${checklist ? Object.entries(checklist).filter(([, value]) => Array.isArray(value) ? value.length : String(value || "").trim()).map(([key, value]) => row(key.replace(/([A-Z])/g, " $1").replace(/^./, c => c.toUpperCase()), Array.isArray(value) ? value.join(", ") : String(value))).join("") : ""}
       ${additionalBalconies.map((balcony, index) => row(`Balcony ${index + 2}`, [`${balcony.area} m²`, `Leaking: ${balcony.leakage}`, balcony.tileSizes.length ? `Tile sizes: ${balcony.tileSizes.join(", ")}` : ""].filter(Boolean).join(" · "))).join("")}
-      ${row("Additional showers", jobChecklistText(undefined, "", [], additionalShowers))}
+      ${row("Additional areas", jobChecklistText(undefined, "", [], additionalShowers))}
       ${row("Message", message)}
       ${row("Heard about us", heard)}
       ${row("Photos attached", submissionPhotos.length ? `${submissionPhotos.length} attached${photoLinksHtml ? ` (${photoLinksHtml})` : ""}` : "")}

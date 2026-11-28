@@ -28,6 +28,20 @@ test("each additional shower keeps its own answers, quantities and line items in
   assert.match(items[4].scope, /^Additional shower 2 · Main bathroom shower\n8 m² · Leaking: No · Tile sizes: Large/);
 });
 
+test("the additional area checklist can save a standalone balcony and match a balcony item", () => {
+  const { additionalShowerErrors } = loadTs("lib/quoteJobChecklist.ts");
+  const quoteChecklist = normalizeJobChecklist({ location: "Ensuite shower", work: "Grout and silicone", showerType: "Single", showerScope: "Floor only" });
+  const additionalShowers = parseAdditionalShowers(JSON.stringify([{
+    leaking: "", checklist: { work: "Grout and silicone", includeBalcony: "Yes", balconyLeakage: "No", balconyArea: "8", balconyTileSizes: ["Large"] },
+  }]));
+  assert.equal(Object.keys(additionalShowerErrors(additionalShowers)).length, 0);
+  const summary = jobChecklistText(quoteChecklist, "No", [], additionalShowers);
+  assert.match(summary, /Additional balcony 1\nWork required: Grout and silicone\nBalcony leakage: No\nBalcony area: 8 m²/);
+  const items = getMatchedQuoteItemsForLead({ quoteChecklist, additionalShowers });
+  assert.deepEqual(Array.from(items, item => item.code), ["EN-SS-FO-EG", "BALCONY"]);
+  assert.match(items[1].scope, /^Additional balcony 1\n8 m² · Leaking: No · Tile sizes: Large/);
+});
+
 test("selecting a quote version keeps saved answers and matches repair and replacement separately", () => {
   const quoteChecklist = {
     location: "Ensuite shower", work: "Grout and silicone", showerType: "Single", showerScope: "Floor only",
